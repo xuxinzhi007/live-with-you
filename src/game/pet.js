@@ -1,8 +1,10 @@
-window.Pet = class Pet {
-  constructor(el, world, fx) {
+import { createPetRenderer } from "./renderers/index.js";
+
+export class Pet {
+  constructor(el, world, fx, definition) {
     this.el = el;
     this.actor = el.querySelector(".pet-actor");
-    this.bubble = document.getElementById("bubble");
+    this.bubble = el.querySelector(".talk-bubble");
     this.world = world;
     this.fx = fx;
     this.w = 168;
@@ -10,6 +12,7 @@ window.Pet = class Pet {
     this.x = 0;
     this.y = 0;
     this.vy = 0;
+    this.kickVx = 0;
     this.dir = 1;
     this.state = "idle";
     this.speed = 150;
@@ -30,47 +33,13 @@ window.Pet = class Pet {
     this.pointerWorldX = 0;
     this.thenAction = null;
     this.busyUntil = 0;
-    this.mood = 64;
+    this.mood = definition.initialMood;
     this.pats = 0;
-    this.spriteName = "idle";
-    this.sprites = {
-      idle: "idle",
-      walk: "idle",
-      sit: "rest",
-      sleep: "sleep",
-      jump: "jump",
-      fall: "jump",
-      wave: "idle",
-      happy: "jump",
-      look: "idle",
-    };
-    this.img = el.querySelector("img");
-    this.source = el.querySelector("source");
-    this.lines = {
-      greet: ["你好，我是雯宝。", "我在这儿。", "今天也要摸鱼吗？"],
-      again: ["又来啦", "我还在。", "嘿嘿"],
-      back: ["你回来啦", "等你很久了", "我一直在。"],
-      miss: ["你去哪儿了…", "我想你了", "好久没见"],
-      idle: ["发呆中", "站一会儿。", "……"],
-      pat: ["嘿嘿", "好痒", "再摸摸～"],
-      poke: ["嗯？", "干嘛啦", "轻轻的。"],
-      walk: ["去那边看看", "散步～", "我过来啦"],
-      sit: ["歇一会儿", "摸鱼中", "坐着也挺好"],
-      sleep: ["困了…", "先睡一下", "Zzz"],
-      wake: ["嗯？", "我醒啦", "谁叫我"],
-      drop: ["哇！", "轻一点啦", "吓我一跳"],
-      dizzy: ["头好晕…", "下次轻点！"],
-      jump: ["嘿！", "跳～"],
-      toy: ["球！", "我去捡！", "给我给我"],
-      catch: ["拿到啦", "是我的。", "再丢一次？"],
-      follow: ["跟着你", "去哪儿？"],
-      window: ["外面好亮", "在看云。", "发呆中"],
-      night: ["好暗啊", "该睡觉了", "星星…"],
-      plant: ["绿绿的", "香香的？", "别吃土"],
-      frame: ["这张好看", "谁拍的", "嗯…"],
-      shelf: ["够不着", "放这儿的？", "积灰了"],
-      sad: ["……", "不想动", "哼"],
-    };
+    this.energy = 76;
+    this.hunger = 72;
+    this.lastCareAt = 0;
+    this.renderer = createPetRenderer(el, definition);
+    this.lines = definition.lines;
   }
 
   measure() {
@@ -92,6 +61,18 @@ window.Pet = class Pet {
     this.mood = Math.max(0, Math.min(100, (this.mood ?? 64) + delta));
   }
 
+  nudgeNeed(name, delta) {
+    this[name] = Math.max(0, Math.min(100, (this[name] ?? 70) + delta));
+  }
+
+  reward(kind, amount, line) {
+    this.nudgeMood(amount);
+    this.pats += Math.max(1, Math.round(amount / 2));
+    const heartY = this.y - Math.max(56, this.h * 0.28);
+    this.fx.burst(this.center().x, kind === "heart" ? heartY : this.center().y, kind || "heart");
+    if (line) this.speak(line);
+  }
+
   setState(next) {
     this.state = next;
     this.el.classList.remove(
@@ -100,20 +81,7 @@ window.Pet = class Pet {
     );
     this.el.classList.add(`is-${next}`);
     this.el.classList.toggle("is-airborne", next === "jump" || next === "fall" || this.dragging);
-    this.setSprite(next);
-  }
-
-  setSprite(state) {
-    const name = this.sprites[state] || "idle";
-    if (this.spriteName === name) return;
-    this.spriteName = name;
-    if (this.source) this.source.srcset = `assets/${name}.webp`;
-    if (this.img) {
-      this.img.src = `assets/${name}.png`;
-      if (this.source && this.source.parentElement) {
-        this.source.parentElement.insertBefore(this.source, this.img);
-      }
-    }
+    this.renderer.setAnimation(next);
   }
 
   setFacing(dir) {
@@ -153,7 +121,12 @@ window.Pet = class Pet {
   runThen(action) {
     if (action === "sit") this.sit();
     else if (action === "sniff") this.sniff();
-    else if (action === "sleep") this.sleep();
+    else if (action === "treat") this.treat();
+    else if (action === "dance") this.happy("music");
+    else if (action === "sleep") {
+      this.sleep();
+      this.speak("bed");
+    }
     else if (action === "frame") this.look("frame");
     else if (action === "shelf") this.look("shelf");
     else this.look(action || "window");
@@ -228,7 +201,7 @@ window.Pet = class Pet {
     this.setState("look");
     this.place();
     const night = this.world.period === "night";
-    const group = kind === "frame" ? "frame" : kind === "shelf" ? "shelf" : (night ? "night" : "window");
+    const group = this.lines[kind] ? kind : (night ? "night" : "window");
     this.speak(group);
     this.busyUntil = performance.now() + 5200 + Math.random() * 4000;
   }
@@ -243,6 +216,18 @@ window.Pet = class Pet {
     window.setTimeout(() => {
       if (!this.dragging && this.state === "wave") this.goIdle(true);
     }, 700);
+  }
+
+  treat() {
+    if (this.dragging) return;
+    this.thenAction = null;
+    this.nudgeNeed("hunger", 28);
+    this.nudgeNeed("energy", 4);
+    this.setState("happy");
+    this.reward("heart", 12, "treat");
+    window.setTimeout(() => {
+      if (!this.dragging && this.state === "happy") this.goIdle(true);
+    }, 800);
   }
 
   jump() {
@@ -273,20 +258,17 @@ window.Pet = class Pet {
   happy(group) {
     if (this.dragging) return;
     this.thenAction = null;
-    this.nudgeMood(10);
+    this.nudgeNeed("energy", -4);
     this.setState("happy");
-    this.speak(group || "pat");
-    this.fx.burst(this.center().x, this.center().y, "heart");
+    this.reward("heart", 10, group || "pat");
     window.setTimeout(() => {
       if (!this.dragging && this.state === "happy") this.goIdle(true);
     }, 800);
   }
 
   pat() {
-    this.nudgeMood(6);
-    this.pats += 1;
-    this.fx.burst(this.center().x, this.y + 36, "heart");
-    this.speak("pat");
+    this.nudgeNeed("energy", 1);
+    this.reward("heart", 7, "pat");
     if (this.state === "sleep") {
       this.goIdle(true);
       this.speak("wake");
@@ -296,6 +278,28 @@ window.Pet = class Pet {
         if (!this.dragging && this.state === "wave") this.goIdle(true);
       }, 700);
     }
+  }
+
+  care() {
+    if (this.dragging) return;
+    const now = performance.now();
+    if (now - this.lastCareAt < 1600) {
+      this.speak("again");
+      return;
+    }
+    this.lastCareAt = now;
+    if (this.hunger < 42) {
+      this.treat();
+      return;
+    }
+    if (this.energy < 34) {
+      this.sit(false, 4200);
+      this.nudgeNeed("energy", 20);
+      this.reward("sparkle", 8, "sit");
+      return;
+    }
+    this.happy("pat");
+    this.fx.burst(this.center().x, this.center().y - 28, "sparkle");
   }
 
   onTap(localY) {
@@ -309,6 +313,11 @@ window.Pet = class Pet {
     this.clickTimer = window.setTimeout(() => {
       this.clickCount = 0;
     }, window.matchMedia("(pointer: coarse)").matches ? 560 : 420);
+    if (this.clickCount >= 2 && localY > this.h * 0.55) {
+      this.clickCount = 0;
+      this.kick();
+      return;
+    }
     if (this.clickCount >= 3) {
       this.clickCount = 0;
       this.happy();
@@ -316,6 +325,19 @@ window.Pet = class Pet {
     }
     if (localY < this.h * 0.32) this.pat();
     else this.wave();
+  }
+
+  kick() {
+    if (this.dragging || this.state === "fall") return;
+    this.thenAction = null;
+    this.busyUntil = 0;
+    this.y = this.floorY();
+    this.dropFromY = this.y;
+    this.vy = -760;
+    this.kickVx = (this.dir || 1) * 560;
+    this.setState("fall");
+    this.speak("kick");
+    this.fx.burst(this.x + this.w * 0.5, this.y + this.h - 8, "dust");
   }
 
   startDrag(worldX, worldY) {
@@ -347,6 +369,7 @@ window.Pet = class Pet {
     if (this.dragMoved) {
       this.dropFromY = this.y;
       this.vy = 0;
+      this.kickVx = 0;
       this.nudgeMood(-4);
       this.setState("fall");
       this.speak("drop");
@@ -365,7 +388,9 @@ window.Pet = class Pet {
     if (mood < 30) sleepChance += 0.12;
 
     if (roll < sleepChance) {
-      this.sleep();
+      const beds = spots.filter((spot) => spot.kind === "bed");
+      if (beds.length) this.walkTo(beds[0].x - this.w / 2, true, "sleep");
+      else this.sleep();
       return;
     }
 
@@ -382,7 +407,7 @@ window.Pet = class Pet {
     }
 
     if (spots.length && roll < 0.8) {
-      const kinds = night ? ["window", "rug", "frame"] : ["window", "plant", "rug", "frame", "shelf"];
+      const kinds = night ? ["window", "rug", "frame", "bed"] : ["window", "plant", "rug", "frame", "shelf", "armchair", "record", "snack"];
       const pool = spots.filter((spot) => kinds.includes(spot.kind));
       const pickFrom = pool.length ? pool : spots;
       const spot = pickFrom[Math.floor(Math.random() * pickFrom.length)];
@@ -395,9 +420,12 @@ window.Pet = class Pet {
   }
 
   update(dt, now) {
-    if (this.dragging) return;
+    // 追球只能约束自主待机，不能暂停玩家拖拽后的下落物理。
+    if (this.dragging || (this.world.chasingToy && this.state !== "walk" && this.state !== "fall")) return;
 
     this.nudgeMood(-dt * 0.0012);
+    this.nudgeNeed("hunger", -dt * 0.00075);
+    this.nudgeNeed("energy", this.state === "sleep" ? dt * 0.008 : -dt * 0.0005);
 
     if (this.busyUntil && now >= this.busyUntil && (this.state === "sit" || this.state === "look" || this.state === "sleep")) {
       this.busyUntil = 0;
@@ -434,12 +462,19 @@ window.Pet = class Pet {
 
     if (this.state === "fall") {
       this.vy += 2400 * dt;
+      this.x += this.kickVx * dt;
+      this.kickVx *= Math.pow(0.12, dt);
+      if (this.x <= 0 || this.x >= this.world.w - this.w) {
+        this.x = this.clampX(this.x);
+        this.kickVx *= -0.35;
+      }
       this.y += this.vy * dt;
       const ground = this.floorY();
       if (this.y >= ground) {
         const fall = ground - this.dropFromY;
         this.y = ground;
         this.vy = 0;
+        this.kickVx = 0;
         this.fx.burst(this.x + this.w / 2, this.y + this.h, "dust");
         if (fall > 140) {
           this.fx.burst(this.center().x, this.center().y, "star");
@@ -467,5 +502,11 @@ window.Pet = class Pet {
       }
     }
     return "";
+  }
+
+  destroy() {
+    clearTimeout(this.speakTimer);
+    clearTimeout(this.clickTimer);
+    this.renderer.destroy();
   }
 };

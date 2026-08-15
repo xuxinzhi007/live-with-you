@@ -1,10 +1,31 @@
 # 桌面宠物 · 雯宝
 
-网页版桌面宠物。状态图会自动切到对应动作。
+网页版桌面宠物。使用 React、TypeScript 和 Vite；状态图会自动切到对应动作。
 
 ## 怎么运行
 
-用浏览器打开 `index.html`，或重新部署到 Netlify。
+本地开发：
+
+```bash
+npm install
+npm run dev
+```
+
+生产构建：
+
+```bash
+npm run build
+```
+
+Netlify 使用 `npm run build` 构建，并发布 `dist` 目录。图片资源位于 `public/assets`，在页面中统一以 `assets/...` 引用。
+
+## 扩展入口
+
+- `src/game/data/pet.js`：角色名称、精灵映射与台词。
+- `src/game/data/room.js`：房间内可交互物件及其动作。
+- `src/game/data/controls.js`：控制面板中的动作按钮。
+
+新增内容应优先更新这些配置；只有出现新的运行机制时，才修改 `src/game` 中的核心模块。
 
 ## 状态图
 

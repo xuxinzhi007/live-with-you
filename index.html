@@ -8,91 +8,13 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#d8c7b0" />
   <title>桌面宠物 · 雯宝</title>
-  <link rel="stylesheet" href="styles.css" />
   <link rel="preload" as="image" href="assets/idle.webp" type="image/webp" />
   <link rel="preload" as="image" href="assets/rest.webp" type="image/webp" />
   <link rel="preload" as="image" href="assets/sleep.webp" type="image/webp" />
   <link rel="preload" as="image" href="assets/jump.webp" type="image/webp" />
 </head>
 <body>
-  <div id="viewport">
-    <div id="world">
-      <div class="room">
-        <div class="wall" aria-hidden="true"></div>
-        <div class="window window--a" data-spot="window" aria-label="窗户"></div>
-        <div class="window window--b" data-spot="window" aria-label="窗户"></div>
-        <div class="frame frame--a" data-spot="frame" aria-label="相框"></div>
-        <div class="frame frame--b" data-spot="frame" aria-label="相框"></div>
-        <div class="plant plant--a" data-spot="plant" aria-label="盆栽"></div>
-        <div class="plant plant--b" data-spot="plant" aria-label="盆栽"></div>
-        <div class="rug rug--a" data-spot="rug" aria-label="地毯"></div>
-        <div class="rug rug--b" data-spot="rug" aria-label="地毯"></div>
-        <div class="shelf" data-spot="shelf" aria-label="架子"></div>
-        <div class="floor" aria-hidden="true"></div>
-        <div class="baseboard" aria-hidden="true"></div>
-      </div>
-      <canvas id="fx"></canvas>
-      <button type="button" class="toy" id="toy" hidden aria-label="玩具"></button>
-      <div class="pet" id="pet">
-        <div class="talk-bubble" id="bubble"></div>
-        <div class="pet-facing">
-          <div class="pet-actor" id="actor">
-            <picture>
-              <source srcset="assets/idle.webp" type="image/webp" />
-              <img
-                src="assets/idle.png"
-                alt="桌面宠物雯宝"
-                draggable="false"
-                decoding="async"
-                fetchpriority="high"
-              />
-            </picture>
-          </div>
-        </div>
-        <div class="pet-shadow"></div>
-      </div>
-    </div>
-  </div>
-
-  <aside class="desk-plate" id="plate">
-    <div class="desk-plate__top">
-      <p class="desk-plate__name">雯宝</p>
-      <button type="button" class="desk-plate__menu" id="menuToggle" aria-expanded="false">菜单</button>
-    </div>
-    <p class="desk-plate__hint">点她摸摸 · 点家具 · 拖空白处看房间</p>
-    <div class="desk-plate__row">
-      <button type="button" data-action="idle">待机</button>
-      <button type="button" data-action="walk">散步</button>
-      <button type="button" data-action="sit">坐下</button>
-      <button type="button" data-action="sleep">睡觉</button>
-      <button type="button" data-action="jump">跳一下</button>
-      <button type="button" data-action="toy">丢玩具</button>
-    </div>
-    <div class="desk-plate__extra" id="plateExtra">
-      <label class="desk-plate__toggle">
-        <input type="checkbox" id="followToggle" />
-        <span class="label-mouse">跟着鼠标</span>
-        <span class="label-touch">跟着手指</span>
-      </label>
-      <label class="desk-plate__toggle">
-        <input type="checkbox" id="cameraToggle" checked />
-        摄像机跟随
-      </label>
-      <label class="desk-plate__toggle">
-        <input type="checkbox" id="flipToggle" />
-        左右纠正
-      </label>
-      <label class="desk-plate__toggle">
-        <input type="checkbox" id="clearToggle" />
-        透明背景
-      </label>
-      <p class="desk-plate__keys">方向键走动 · 空格跳 · F 丢球</p>
-    </div>
-  </aside>
-
-  <script src="js/camera.js"></script>
-  <script src="js/fx.js"></script>
-  <script src="js/pet.js"></script>
-  <script src="js/main.js"></script>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

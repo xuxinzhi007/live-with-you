@@ -1,4 +1,4 @@
-window.viewSize = function viewSize() {
+export function viewSize() {
   const vv = window.visualViewport;
   if (vv && vv.width && vv.height) {
     return { w: vv.width, h: vv.height, left: vv.offsetLeft || 0, top: vv.offsetTop || 0 };
@@ -10,7 +10,7 @@ window.viewSize = function viewSize() {
  * 世界摄像机：跟着角色平移 / 缩放，方便以后加房间、道具、NPC。
  * 角色坐标在世界里，屏幕只是摄像机看到的那一块。
  */
-window.Camera = class Camera {
+export class Camera {
   constructor(worldEl, options = {}) {
     this.worldEl = worldEl;
     this.x = 0;

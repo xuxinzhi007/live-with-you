@@ -1,3 +1,4 @@
 .idea/
-assets/wenbebi-original.png
-assets/*状态.png
+node_modules/
+dist/
+source-assets/
