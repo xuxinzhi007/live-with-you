@@ -1,3 +1,5 @@
+import { ImagePetRenderer } from "./image-pet-renderer.js";
+
 const PUPPET_CONFIG_URL = "assets/characters/wenbebi/puppet.json";
 
 export class PuppetPetRenderer {
@@ -10,6 +12,8 @@ export class PuppetPetRenderer {
     this.resizeObserver = null;
     this.state = "idle";
     this.destroyed = false;
+    // Keep the bitmap renderer live until a real puppet rig is available.
+    this.fallback = new ImagePetRenderer(element, definition);
     this.load();
   }
 
@@ -65,6 +69,7 @@ export class PuppetPetRenderer {
 
   setAnimation(state) {
     this.state = state;
+    this.fallback?.setAnimation(state);
     if (this.rig) this.rig.dataset.state = state;
   }
 
@@ -72,6 +77,7 @@ export class PuppetPetRenderer {
     this.destroyed = true;
     this.resizeObserver?.disconnect();
     this.rig?.remove();
+    this.fallback?.destroy();
     if (this.picture) this.picture.hidden = false;
   }
 }

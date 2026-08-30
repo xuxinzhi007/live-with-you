@@ -14,7 +14,7 @@ export class FX {
 
   burst(x, y, kind) {
     const specs = {
-      heart: { n: 12, color: ["#e56f82", "#ffb1bd", "#fff0f1", "#d94f6b"], life: 1.25, size: 11, up: true, heart: true },
+      heart: { n: 10, color: ["#e56f82", "#ffb1bd", "#fff0f1", "#d94f6b"], life: 1.45, size: 10, up: true, heart: true, spread: 78 },
       sparkle: { n: 10, color: ["#f4c76d", "#fff5c9", "#ef9c77"], life: 0.9, size: 7, up: true, sparkle: true },
       dust: { n: 8, color: ["#c4a882", "#e6d3b5"], life: 0.45, size: 4, up: false },
       star: { n: 6, color: ["#f0d27a", "#fff4c8"], life: 0.7, size: 5, up: true },
@@ -23,10 +23,10 @@ export class FX {
     const spec = specs[kind] || specs.dust;
     for (let i = 0; i < spec.n; i += 1) {
       this.particles.push({
-        x: x + (Math.random() - 0.5) * 24,
-        y: y + (Math.random() - 0.5) * 10,
-        vx: (Math.random() - 0.5) * (spec.up ? 76 : 70),
-        vy: spec.up ? -58 - Math.random() * 82 : -10 - Math.random() * 20,
+        x: x + (Math.random() - 0.5) * (spec.spread || 24),
+        y: y + (Math.random() - 0.5) * (spec.spread ? 38 : 10),
+        vx: (Math.random() - 0.5) * (spec.spread ? 176 : spec.up ? 76 : 70),
+        vy: spec.up ? -58 - Math.random() * (spec.spread ? 128 : 82) : -10 - Math.random() * 20,
         life: spec.life,
         max: spec.life,
         size: spec.size + Math.random() * 4,

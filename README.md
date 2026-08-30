@@ -19,7 +19,11 @@ npm run build
 
 Netlify 使用 `npm run build` 构建，并发布 `dist` 目录。图片资源位于 `public/assets`，在页面中统一以 `assets/...` 引用。
 
+手机浏览器可通过“添加到主屏幕”把雯宝作为独立应用打开；清单与图标位于 `public/manifest.webmanifest` 和 `public/icon.svg`。当前不注册离线缓存，保证 Netlify 发布后始终使用最新版本。
+
 ## 扩展入口
+
+游戏的体验方向、横竖屏策略与上线验收标准见 [docs/game-direction.md](docs/game-direction.md)。
 
 - `src/game/data/pet.js`：角色名称、精灵映射与台词。
 - `src/game/data/room.js`：房间内可交互物件及其动作。

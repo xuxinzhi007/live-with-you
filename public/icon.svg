@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="雯宝">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f5ddc5"/>
+      <stop offset="1" stop-color="#c9897a"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <path d="M116 264 256 142l140 122v126a30 30 0 0 1-30 30H146a30 30 0 0 1-30-30Z" fill="#fffaf3"/>
+  <path d="M91 278 256 126l165 152" fill="none" stroke="#8d5c55" stroke-linecap="round" stroke-linejoin="round" stroke-width="30"/>
+  <path d="M256 356c-49-31-75-55-75-88 0-23 17-40 39-40 16 0 29 9 36 21 7-12 20-21 36-21 22 0 39 17 39 40 0 33-26 57-75 88Z" fill="#e56f82"/>
+  <circle cx="162" cy="184" r="14" fill="#fffaf3" opacity=".9"/>
+</svg>
