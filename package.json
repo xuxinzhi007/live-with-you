@@ -1,5 +1,5 @@
 {
-  "name": "wenbebi",
+  "name": "live-with-you",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -10,9 +10,10 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
-    "vite": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "react-pageflip": "^2.0.3",
+    "vite": "latest"
   },
   "devDependencies": {
     "@types/react": "latest",

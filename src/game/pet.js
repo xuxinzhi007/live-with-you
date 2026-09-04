@@ -146,6 +146,16 @@ export class Pet {
     this.speakTimer = window.setTimeout(() => this.bubble.classList.remove("show"), 1500);
   }
 
+  speakLine(text, ms) {
+    const line = String(text || "").trim();
+    if (!line) return;
+    this.bubble.textContent = line;
+    this.bubble.classList.add("show");
+    clearTimeout(this.speakTimer);
+    const hold = Number.isFinite(ms) ? ms : Math.min(8000, Math.max(2800, line.length * 120));
+    this.speakTimer = window.setTimeout(() => this.bubble.classList.remove("show"), hold);
+  }
+
   place() {
     this.x = this.clampX(this.x);
     this.el.style.left = `${this.x}px`;
@@ -363,7 +373,7 @@ export class Pet {
     if (this.state === "sleep") {
       this.goIdle(true);
       this.speak("wake");
-      return;
+      return "wake";
     }
     this.clickCount += 1;
     clearTimeout(this.clickTimer);
@@ -373,15 +383,19 @@ export class Pet {
     if (this.clickCount >= 2 && localY > this.h * 0.55) {
       this.clickCount = 0;
       this.kick();
-      return;
+      return "kick";
     }
     if (this.clickCount >= 3) {
       this.clickCount = 0;
       this.happy();
-      return;
+      return "happy";
     }
-    if (localY < this.h * 0.32) this.pat();
-    else this.wave();
+    if (localY < this.h * 0.32) {
+      this.pat();
+      return "pat";
+    }
+    this.wave();
+    return "wave";
   }
 
   kick() {

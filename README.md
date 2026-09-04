@@ -1,6 +1,6 @@
-# 桌面宠物 · 雯宝
+# 和你住在一起 · 雯宝的小屋
 
-网页版桌面宠物。使用 React、TypeScript 和 Vite；状态图会自动切到对应动作。
+一个和雯宝一起慢慢生活下去的移动端陪伴游戏。使用 React、TypeScript 和 Vite；状态图会自动切到对应动作。
 
 ## 怎么运行
 
@@ -20,6 +20,50 @@ npm run build
 Netlify 使用 `npm run build` 构建，并发布 `dist` 目录。图片资源位于 `public/assets`，在页面中统一以 `assets/...` 引用。
 
 手机浏览器可通过“添加到主屏幕”把雯宝作为独立应用打开；清单与图标位于 `public/manifest.webmanifest` 和 `public/icon.svg`。当前不注册离线缓存，保证 Netlify 发布后始终使用最新版本。
+
+## 可选：Ollama 陪伴内容
+
+页面只请求同源 `/.netlify/functions/companion-scene`，不直连 Ollama。
+
+本地开发（和 N100 同一局域网）：
+
+```bash
+copy .env.example .env
+```
+
+`.env` 里填：
+
+```env
+OLLAMA_BASE_URL=http://192.168.124.77:11434
+OLLAMA_MODEL=qwen2.5:3b-instruct
+```
+
+然后 `npm run dev`。Vite 会代理这个函数。浏览器打开后，点「模型状态」，并可在侧栏「和雯宝说两句」里聊天。
+
+## 存档策略
+
+网页始终以本地存档为准，游戏不会等待网络。运行时会把角色状态、房间布置、花园、资源、天气、今日片段和生活小记整理成一个版本化世界快照，写入 `wenbebi-world-v1`。
+
+后端准备好匿名存档接口后，可在构建环境配置 `VITE_WENBEBI_SAVE_URL`。页面会在切后台、退出和定时保存时静默上传快照；上传失败不会影响离线游玩。照片数据暂不上传，避免把大体积图片塞进游戏存档。
+
+## 在其他地方用网页聊天
+
+浏览器不能直连家里的 `11434`。外网打开 Netlify 网页时，链路是：
+
+```text
+网页（HTTPS）→ Netlify Function → 云主机 :8787（带密钥）→ 已有隧道 → N100 Ollama
+```
+
+1. 阿里云安全组放行 TCP **8787**（不要放行 11434）。
+2. 把 `server/ollama-gateway.py` 拷到云主机 `/root/wenbebi-ollama-gateway.py`，把 `server/wenbebi-ollama-gateway.service` 拷到 `/etc/systemd/system/`。
+3. 生成密钥并写入 service 里的 `OLLAMA_API_TOKEN`，然后：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now wenbebi-ollama-gateway
+```
+
+4. Netlify 环境变量填 `OLLAMA_BASE_URL=http://47.106.175.49:8787`、同一串 `OLLAMA_API_TOKEN`、`OLLAMA_MODEL=qwen2.5:3b-instruct`，再 Redeploy。
 
 ## 扩展入口
 

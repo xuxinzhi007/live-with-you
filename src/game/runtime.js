@@ -4,6 +4,7 @@ import { Pet } from "./pet.js";
 import { wenbebi } from "./data/pet.js";
 import { spotActions } from "./data/room.js";
 import { todayStories } from "./data/today-stories.js";
+import { queueWorldSnapshotSync } from "./world-save.js";
 
 export function startGame(root) {
   const SAVE_KEY = "wenbebi-v1";
@@ -48,6 +49,8 @@ export function startGame(root) {
   let weather = loadWeather();
   let journal = loadJournal();
   let todayStory = null;
+  let storyExpandTimer = 0;
+  let playStreakHideTimer = 0;
 
   const streetEvents = {
     fountain: {
@@ -274,6 +277,7 @@ export function startGame(root) {
     if (card) {
       card.hidden = false;
       card.dataset.completed = String(todayStory.completed);
+      if (todayStory.completed) card.dataset.expanded = "false";
       const title = card.querySelector("[data-today-story-title]");
       const copy = card.querySelector("[data-today-story-copy]");
       if (title) title.textContent = todayStory.completed ? "今天的小片段" : story.label;
@@ -283,6 +287,9 @@ export function startGame(root) {
   }
 
   function startTodayStory() {
+    const card = root.querySelector("#todayStory");
+    if (card) card.dataset.expanded = "false";
+    window.clearTimeout(storyExpandTimer);
     if (todayStory?.completed || currentScene !== "bedroom") return;
     const story = todayStory.story;
     const target = story.spot === "mementoShelf"
@@ -332,9 +339,16 @@ export function startGame(root) {
   function renderPlayStreak() {
     const badge = root.querySelector("#playStreak");
     if (!badge) return;
-    if (!play.streak) { badge.hidden = true; return; }
+    window.clearTimeout(playStreakHideTimer);
+    if (!play.streak) {
+      badge.hidden = true;
+      return;
+    }
     badge.hidden = false;
     badge.textContent = `接球默契 ${play.streak}/3`;
+    playStreakHideTimer = window.setTimeout(() => {
+      badge.hidden = true;
+    }, 5200);
   }
 
   function recordToyCatch() {
@@ -569,6 +583,14 @@ export function startGame(root) {
 
   function measureHud() {
     const view = viewSize();
+    if (root.dataset.talking === "true") {
+      const dock = root.querySelector(".talk-dock");
+      if (dock && !dock.hidden) {
+        const rect = dock.getBoundingClientRect();
+        if (rect.height > 0) return Math.max(0, view.top + view.h - rect.top);
+      }
+      return 0;
+    }
     if (view.w > 768) return 0;
     // 展开的更多抽屉只是覆盖层，沿用折叠底栏的预留高度，避免把场景整体顶起来。
     if (plate.classList.contains("is-open")) {
@@ -577,6 +599,24 @@ export function startGame(root) {
     }
     const rect = plate.getBoundingClientRect();
     return Math.max(0, view.top + view.h - rect.top);
+  }
+
+  function setMoreOpen(open) {
+    plate.classList.toggle("is-open", open);
+    root.querySelector("#menuToggle")?.setAttribute("aria-expanded", String(open));
+  }
+
+  function closeBagPanel() {
+    const panel = root.querySelector("#bagPanel");
+    panel?.classList.remove("is-open");
+    root.querySelector("#bagToggle")?.setAttribute("aria-expanded", "false");
+  }
+
+  function syncKeyboardInset() {
+    const vv = window.visualViewport;
+    let kb = 0;
+    if (vv) kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    root.style.setProperty("--kb-inset", `${Math.round(kb)}px`);
   }
 
   function loadSave() {
@@ -601,6 +641,7 @@ export function startGame(root) {
     } catch (err) {
       /* 无痕模式可能写不了 */
     }
+    queueWorldSnapshotSync();
   }
 
   function currentPeriod() {
@@ -1141,7 +1182,14 @@ export function startGame(root) {
     if (pet.dragging) {
       const worldPos = camera.screenToWorld(event.clientX, event.clientY);
       const moved = pet.endDrag();
-      if (!moved) pet.onTap(worldPos.y - pet.y);
+      if (!moved) {
+        const action = pet.onTap(worldPos.y - pet.y);
+        if (action === "wave") {
+          setMoreOpen(false);
+          closeBagPanel();
+          root.dispatchEvent(new CustomEvent("companion:talk"));
+        }
+      }
       return;
     }
     if (!gesture || event.pointerId !== gesture.pointerId) return;
@@ -1170,6 +1218,7 @@ export function startGame(root) {
   });
 
   listen(window, "keydown", (event) => {
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
     if (event.repeat && event.key !== "ArrowLeft" && event.key !== "ArrowRight" && event.key !== "a" && event.key !== "d") return;
     if (event.key === "ArrowLeft" || event.key === "a") pet.walkTo(pet.x - 220, true);
     if (event.key === "ArrowRight" || event.key === "d") pet.walkTo(pet.x + 220, true);
@@ -1183,9 +1232,25 @@ export function startGame(root) {
   });
 
   listen(root.querySelector("#menuToggle"), "click", () => {
-    const open = plate.classList.toggle("is-open");
-    const menu = root.querySelector("#menuToggle");
-    menu.setAttribute("aria-expanded", String(open));
+    const open = !plate.classList.contains("is-open");
+    setMoreOpen(open);
+    if (open) root.dispatchEvent(new CustomEvent("companion:talk-end"));
+  });
+
+  listen(root, "companion:talk", () => {
+    setMoreOpen(false);
+    closeBagPanel();
+    requestAnimationFrame(() => relayout());
+  });
+  listen(root, "companion:talk-end", () => {
+    requestAnimationFrame(() => relayout());
+  });
+  listen(root, "hud:change", () => {
+    requestAnimationFrame(() => relayout());
+  });
+  listen(root, "companion:said", (event) => {
+    const text = event.detail?.text;
+    if (typeof text === "string" && text) pet.speakLine(text);
   });
 
   listen(window, "resize", relayout);
@@ -1235,7 +1300,20 @@ export function startGame(root) {
     if (action.startsWith("event:")) openStreetEvent(action.slice("event:".length));
     if (action.startsWith("story:")) completeTodayStory(action.slice("story:".length));
   });
-  listen(root.querySelector("#todayStory"), "click", startTodayStory);
+  listen(root.querySelector("#todayStory"), "click", () => {
+    const card = root.querySelector("#todayStory");
+    if (!card) return;
+    const mobile = window.matchMedia("(max-width: 768px)").matches;
+    if (mobile && card.dataset.expanded !== "true") {
+      card.dataset.expanded = "true";
+      window.clearTimeout(storyExpandTimer);
+      storyExpandTimer = window.setTimeout(() => {
+        card.dataset.expanded = "false";
+      }, 4000);
+      return;
+    }
+    startTodayStory();
+  });
   listen(root.querySelector("#bagToggle"), "click", () => {
     const panel = root.querySelector("#bagPanel");
     const open = panel.classList.toggle("is-open");
@@ -1246,6 +1324,7 @@ export function startGame(root) {
   listen(window, "pagehide", persist);
 
   function relayout() {
+    syncKeyboardInset();
     const ratio = world.w ? pet.x / world.w : 0.5;
     layout();
     pet.x = pet.clampX(ratio * world.w);
