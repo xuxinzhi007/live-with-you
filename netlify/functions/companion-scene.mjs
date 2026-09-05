@@ -126,11 +126,17 @@ export async function handleCompanion({ httpMethod, body, env = process.env }) {
   }
 }
 
-export default async function handler(event) {
-  const httpMethod = event.httpMethod || event.method;
-  let body = event.body;
-  if (typeof body !== "string" && typeof event.text === "function") {
-    body = await event.text();
-  }
-  return handleCompanion({ httpMethod, body, env: process.env });
+export default async function handler(request) {
+  const body = request.method === "POST" || request.method === "PUT"
+    ? await request.text()
+    : "";
+  const result = await handleCompanion({
+    httpMethod: request.method,
+    body,
+    env: process.env,
+  });
+  return new Response(result.body, {
+    status: result.statusCode,
+    headers: result.headers,
+  });
 }

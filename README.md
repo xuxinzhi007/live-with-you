@@ -11,6 +11,14 @@ npm install
 npm run dev
 ```
 
+手机与电脑连接同一 Wi-Fi 时，可用局域网模式测试：
+
+```bash
+npm run dev:lan
+```
+
+然后在手机浏览器打开电脑局域网地址，例如 `http://192.168.124.36:5173`。首次访问若被 Windows 防火墙拦截，请允许 Node.js/Vite 通过“专用网络”。
+
 生产构建：
 
 ```bash
@@ -95,3 +103,11 @@ sudo systemctl enable --now wenbebi-ollama-gateway
 - 拖起来再放下：落地；从很高处摔下会晕一下
 - 丢玩具：她会跑去捡
 - 方向键走动，空格跳，F 丢球
+
+
+更新项目
+npm run build
+第一次使用需要登录
+npx netlify-cli login
+部署远程
+npx netlify-cli deploy --prod --dir=dist --functions=netlify/functions

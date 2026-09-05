@@ -142,6 +142,7 @@ export class Pet {
     const lines = this.lines[key] || this.lines.idle;
     this.bubble.textContent = lines[Math.floor(Math.random() * lines.length)];
     this.bubble.classList.add("show");
+    this.fitBubbleToViewport();
     clearTimeout(this.speakTimer);
     this.speakTimer = window.setTimeout(() => this.bubble.classList.remove("show"), 1500);
   }
@@ -151,9 +152,22 @@ export class Pet {
     if (!line) return;
     this.bubble.textContent = line;
     this.bubble.classList.add("show");
+    this.fitBubbleToViewport();
     clearTimeout(this.speakTimer);
     const hold = Number.isFinite(ms) ? ms : Math.min(8000, Math.max(2800, line.length * 120));
     this.speakTimer = window.setTimeout(() => this.bubble.classList.remove("show"), hold);
+  }
+
+  fitBubbleToViewport() {
+    this.bubble.style.setProperty("--bubble-shift", "0px");
+    const rect = this.bubble.getBoundingClientRect();
+    const margin = 12;
+    const shift = rect.left < margin
+      ? margin - rect.left
+      : rect.right > window.innerWidth - margin
+        ? window.innerWidth - margin - rect.right
+        : 0;
+    this.bubble.style.setProperty("--bubble-shift", `${Math.round(shift)}px`);
   }
 
   place() {

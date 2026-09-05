@@ -13,6 +13,7 @@ export function startGame(root) {
   const STREET_LOG_KEY = "wenbebi-street-log-v1";
   const WEATHER_KEY = "wenbebi-weather-v1";
   const JOURNAL_KEY = "wenbebi-life-journal-v1";
+  const RECENT_ACTION_KEY = "wenbebi-recent-action-v1";
   const PLAY_KEY = "wenbebi-play-streak-v1";
   const TODAY_STORY_KEY = "wenbebi-today-story-v1";
   const TOY_POSITION_KEY = "wenbebi-toy-position-v1";
@@ -323,6 +324,7 @@ export function startGame(root) {
     pet.bubble.textContent = todayStory.story.line;
     pet.bubble.classList.add("show");
     pet.nudgeMood(3);
+    rememberRecentAction("今天的小片段", todayStory.story.line);
   }
 
   function loadPlay() {
@@ -411,6 +413,7 @@ export function startGame(root) {
       saveBag(); saveGarden(); renderBag(); renderGarden();
       pet.nudgeMood(6);
       pet.bubble.textContent = "种下啦，慢慢等它开花。";
+      rememberRecentAction("照料阳台", "你和雯宝一起种下了一颗花种。");
       pet.bubble.classList.add("show");
       fx.burst(pet.center().x, pet.y + pet.h * 0.3, "sparkle");
       return;
@@ -422,6 +425,7 @@ export function startGame(root) {
       pet.nudgeMood(8);
       pet.pats += 2;
       pet.bubble.textContent = "收下一束花，带回小屋吧。";
+      rememberRecentAction("阳台开花了", "你和雯宝一起收下一束花。");
       writeJournal("阳台开花了", "雯宝收下一束慢慢长大的花。" );
       pet.bubble.classList.add("show");
       fx.burst(pet.center().x, pet.y + pet.h * 0.25, "heart");
@@ -432,6 +436,7 @@ export function startGame(root) {
     saveGarden(); renderGarden();
     pet.nudgeMood(3);
     pet.bubble.textContent = "浇好水啦，小花会长得更快。";
+    rememberRecentAction("照料阳台", "你给阳台的小花浇了水。");
     pet.bubble.classList.add("show");
     fx.burst(pet.center().x, pet.y + pet.h * 0.28, "sparkle");
   }
@@ -644,6 +649,10 @@ export function startGame(root) {
     queueWorldSnapshotSync();
   }
 
+  function rememberRecentAction(title, copy) {
+    try { localStorage.setItem(RECENT_ACTION_KEY, JSON.stringify({ title, copy, time: Date.now() })); } catch (err) { /* 当前会话仍可继续 */ }
+  }
+
   function currentPeriod() {
     const hour = new Date().getHours();
     if (hour >= 21 || hour < 6) return "night";
@@ -783,6 +792,7 @@ export function startGame(root) {
     ball.target = ball.x;
     world.chasingToy = true;
     pet.speak("toy");
+    rememberRecentAction("一起玩球", "你把球丢出去，雯宝追过去了。");
     pet.walkTo(ball.x - pet.w * 0.45, true);
   }
 
@@ -1184,6 +1194,7 @@ export function startGame(root) {
       const moved = pet.endDrag();
       if (!moved) {
         const action = pet.onTap(worldPos.y - pet.y);
+        rememberRecentAction("摸摸雯宝", "你刚刚摸了摸她的头。");
         if (action === "wave") {
           setMoreOpen(false);
           closeBagPanel();

@@ -1,6 +1,18 @@
 import { wenbebi } from "./game/data/pet";
 
+type RecentAction = { title: string; copy: string };
+
+function loadRecentAction(): RecentAction | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem("wenbebi-recent-action-v1") || "null");
+    return typeof saved?.title === "string" && typeof saved?.copy === "string" ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
 export function CharacterDetail() {
+  const recentAction = loadRecentAction();
   return (
     <main className="character-detail">
       <div className="character-detail__glow" aria-hidden="true" />
@@ -30,6 +42,13 @@ export function CharacterDetail() {
           <span><b>饱腹</b><strong>0</strong></span>
         </div>
       </section>
+      {recentAction && (
+        <section className="character-detail__card character-detail__recent" aria-label="最近的相处">
+          <h2>她记得</h2>
+          <strong>{recentAction.title}</strong>
+          <p>{recentAction.copy}</p>
+        </section>
+      )}
       <a className="character-detail__return" href="./">回到小屋</a>
     </main>
   );

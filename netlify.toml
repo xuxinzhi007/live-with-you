@@ -4,6 +4,9 @@
   functions = "netlify/functions"
 
 [functions]
+  directory = "netlify/functions"
+
+[functions."companion-scene"]
   timeout = 26
 
 [[headers]]
