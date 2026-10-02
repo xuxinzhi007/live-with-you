@@ -2,6 +2,13 @@ export const wenbebi = {
   id: "wenbebi",
   name: "雯宝",
   initialMood: 64,
+  personality: {
+    homebody: 0.72,
+    curiosity: 0.58,
+    social: 0.42,
+    tidy: 0.64,
+    energy: 0.68,
+  },
   sprites: {
     idle: "idle",
     walk: "idle",
@@ -51,5 +58,6 @@ export const wenbebi = {
     sleepy: ["有点困。", "想去床上躺会儿。", "眼睛要睁不开啦。"],
     lonely: ["陪陪我嘛。", "想和你玩一会儿。", "我在等你。"],
     sad: ["……", "不想动", "哼"],
+    notice: ["嗯？你在看我吗？", "我感觉到你啦。", "你在这里呀。"],
   },
 };

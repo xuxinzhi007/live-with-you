@@ -890,6 +890,61 @@ body.is-weather-rainy .weather-rain { display: block; }
 .life-compass__mark { color: #d08273; font-size: 15px; }
 .life-compass p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+.life-discovery {
+  position: fixed;
+  left: 50%;
+  top: 62px;
+  z-index: 41;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: min(360px, calc(100vw - 28px));
+  padding: 10px 11px;
+  border: 1px solid rgba(224, 181, 142, .55);
+  border-radius: 14px;
+  color: #684b3c;
+  background: #fff8ef;
+  box-shadow: 0 10px 24px rgba(81, 53, 39, .16);
+  transform: translateX(-50%);
+}
+.life-discovery[hidden] { display: none; }
+.life-discovery__pin { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; color: #b97865; background: #f7e4d5; font-size: 16px; }
+.life-discovery div { min-width: 0; flex: 1; }
+.life-discovery strong { display: block; font-size: 12px; }
+.life-discovery p { margin: 2px 0 0; overflow: hidden; color: #927663; font-size: 11px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.life-discovery button { flex: 0 0 auto; min-height: 32px; padding: 0 10px; border: 0; border-radius: 9px; color: #fffaf3; background: #c9897a; font: inherit; font-size: 11px; cursor: pointer; }
+.pet.is-away { opacity: 0; pointer-events: none; transition: opacity .35s ease; }
+
+.life-mode-panel {
+  position: fixed;
+  top: 96px;
+  left: 50%;
+  z-index: 36;
+  width: min(360px, calc(100vw - 32px));
+  padding: 14px;
+  border: 1px solid rgba(255, 250, 243, 0.94);
+  border-radius: 18px;
+  color: #654c3e;
+  background: rgba(255, 250, 243, 0.94);
+  box-shadow: 0 12px 28px rgba(58, 47, 40, 0.18);
+  transform: translateX(-50%);
+}
+.life-mode-panel__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.life-mode-panel__heading div { display: grid; gap: 2px; }
+.life-mode-panel__heading span { color: #bd7a6c; font-size: 10px; font-weight: 700; letter-spacing: .08em; }
+.life-mode-panel__heading strong { font-size: 17px; }
+.life-mode-panel__heading button { width: 28px; height: 28px; border: 0; border-radius: 50%; color: #936b5c; background: #f4e5d9; font-size: 20px; cursor: pointer; }
+.life-mode-panel__copy { margin: 8px 0 10px; color: #927b6a; font-size: 12px; }
+.life-mode-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
+.life-mode-actions button { display: grid; gap: 3px; min-height: 92px; padding: 9px 6px; border: 1px solid rgba(195, 137, 117, .2); border-radius: 12px; color: #654c3e; background: rgba(255, 255, 255, .6); font: inherit; text-align: left; cursor: pointer; transition: transform .18s ease, background .18s ease; }
+.life-mode-actions button:hover, .life-mode-actions button:focus-visible { background: #fff5ed; transform: translateY(-2px); }
+.life-mode-actions button.is-current { border-color: rgba(190, 116, 97, .62); background: #fff0e7; box-shadow: inset 0 0 0 1px rgba(190, 116, 97, .12); }
+.life-mode-actions span { color: #c78372; font-size: 19px; }
+.life-mode-actions b { font-size: 12px; }
+.life-mode-actions small { color: #927b6a; font-size: 10px; line-height: 1.25; }
+.life-mode-panel__foot { margin: 10px 0 0; padding-top: 9px; border-top: 1px solid rgba(182, 143, 113, .18); color: #a07c6a; font-size: 11px; }
+.desk-plate__experience { width: 100%; min-height: 36px; margin-bottom: 7px; border: 1px solid rgba(195, 137, 117, .28); border-radius: 10px; color: #a56f61; background: #fff4eb; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+
 .today-story {
   position: fixed;
   left: 50%;

@@ -36,6 +36,8 @@ export class Pet {
     this.pointerWorldX = 0;
     this.thenAction = null;
     this.busyUntil = 0;
+    this.awarenessTimer = 0;
+    this.lastAwarenessAt = 0;
     this.mood = definition.initialMood;
     this.pats = 0;
     this.energy = 76;
@@ -45,6 +47,8 @@ export class Pet {
     this.nextNeedCueAt = 0;
     this.renderer = createPetRenderer(el, definition);
     this.lines = definition.lines;
+    this.personality = definition.personality || {};
+    this.recentBehaviors = [];
   }
 
   measure() {
@@ -156,6 +160,19 @@ export class Pet {
     clearTimeout(this.speakTimer);
     const hold = Number.isFinite(ms) ? ms : Math.min(8000, Math.max(2800, line.length * 120));
     this.speakTimer = window.setTimeout(() => this.bubble.classList.remove("show"), hold);
+  }
+
+  noticePlayer() {
+    const now = performance.now();
+    if (this.dragging || now - this.lastAwarenessAt < 9000) return;
+    window.clearTimeout(this.awarenessTimer);
+    this.awarenessTimer = window.setTimeout(() => {
+      if (this.dragging || !["idle", "look", "sit"].includes(this.state)) return;
+      this.lastAwarenessAt = performance.now();
+      this.setState("look");
+      this.speak("notice");
+      this.busyUntil = performance.now() + 2200;
+    }, 720 + Math.random() * 720);
   }
 
   fitBubbleToViewport() {
@@ -469,6 +486,19 @@ export class Pet {
     const mood = this.mood ?? 64;
     const spots = this.world.getSpots ? this.world.getSpots() : [];
     const roll = Math.random();
+    const now = Date.now();
+    this.recentBehaviors = this.recentBehaviors.filter((item) => now - item.at < 18 * 60 * 1000);
+    const remember = (id) => {
+      this.recentBehaviors = [{ id, at: now }, ...this.recentBehaviors.filter((item) => item.id !== id)].slice(0, 6);
+    };
+    const seen = (id) => this.recentBehaviors.some((item) => item.id === id);
+    const curiosity = Number(this.personality.curiosity) || 0.5;
+    const homebody = Number(this.personality.homebody) || 0.5;
+    if (this.world.onAutonomousTravel && this.world.currentScene === "bedroom" && !seen("street-trip") && roll < ((0.04 + curiosity * 0.12) * (1 - homebody * 0.45))) {
+      remember("street-trip");
+      this.world.onAutonomousTravel("street");
+      return;
+    }
     let sleepChance = night ? 0.32 : 0.07;
     if (mood < 30) sleepChance += 0.12;
 
@@ -476,7 +506,7 @@ export class Pet {
       const beds = spots.filter((spot) => spot.kind === "bed");
       if (beds.length) this.walkTo(beds[0].x - this.w / 2, true, "sleep");
       else this.sleep();
-      return;
+      remember("sleep"); return;
     }
 
     const sitChance = mood < 35 ? 0.26 : 0.14;
@@ -488,15 +518,24 @@ export class Pet {
       } else {
         this.sit();
       }
-      return;
+      remember("sit"); return;
     }
 
     if (spots.length && roll < 0.8) {
       const kinds = night ? ["window", "rug", "frame", "bed", "cafeTable"] : ["window", "plant", "rug", "frame", "shelf", "armchair", "record", "snack", "balconyPlant", "balconyChair", "cafeCounter", "cafeTable"];
       const pool = spots.filter((spot) => kinds.includes(spot.kind));
       const pickFrom = pool.length ? pool : spots;
-      const spot = pickFrom[Math.floor(Math.random() * pickFrom.length)];
+      const weights = { window: 0.7 + homebody, rug: 0.8 + homebody * 0.6, plant: 0.6 + curiosity * 0.8, frame: 0.6 + curiosity * 0.5, shelf: 0.5 + curiosity * 0.6, cafeCounter: 0.5 + (Number(this.personality.social) || 0.5), cafeTable: 0.5 + (Number(this.personality.social) || 0.5) };
+      const totalWeight = pickFrom.reduce((sum, spot) => sum + (weights[spot.kind] || 1), 0);
+      let cursor = Math.random() * totalWeight;
+      const spot = pickFrom.find((candidate) => { cursor -= weights[candidate.kind] || 1; return cursor <= 0; }) || pickFrom[0];
       const action = spot.kind === "rug" ? "sit" : spot.kind === "plant" ? "sniff" : spot.kind;
+      const behaviorId = `${action}:${spot.kind}`;
+      if (seen(behaviorId) && Math.random() < 0.72) {
+        this.walkTo(Math.random() * (this.world.w - this.w), true);
+        return;
+      }
+      remember(behaviorId);
       this.walkTo(spot.x - this.w / 2, Math.random() < 0.55, action);
       return;
     }
@@ -593,6 +632,7 @@ export class Pet {
   destroy() {
     clearTimeout(this.speakTimer);
     clearTimeout(this.clickTimer);
+    clearTimeout(this.awarenessTimer);
     this.renderer.destroy();
   }
 };

@@ -14,6 +14,7 @@ const CORE_KEYS = [
   "wenbebi-life-journal-v1",
   "wenbebi-play-streak-v1",
   "wenbebi-today-story-v1",
+  "wenbebi-life-state-v1",
 ];
 
 let syncTimer = 0;

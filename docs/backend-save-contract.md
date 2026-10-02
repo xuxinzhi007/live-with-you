@@ -1,6 +1,8 @@
 # Wenbebi 匿名存档接口契约
 
-这是 Wenbebi 与 Moe Social 后端之间的最小存档协议。接口不依赖登录用户，也不接触 Companion、Pet 或 Game 的用户态数据。
+> 状态：匿名设备存档原型，尚未接入生产数据库。它适合验证单设备快照上传，不提供可靠的账号跨设备同步。长期目标、N100/MySQL 安全边界和离线重试设计见[离线优先存档与云同步设计](./offline-first-save-design.md)。
+
+这是 Wenbebi 与存档后端之间的最小匿名存档协议。接口不接触 Companion、Pet 或 Game 的其他用户态数据。
 
 ## Endpoint
 

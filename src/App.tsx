@@ -10,6 +10,7 @@ const MEMORIES_KEY = "wenbebi-memories-v1";
 const ONBOARDING_KEY = "wenbebi-onboarding-v1";
 const MOBILE_GUIDE_KEY = "wenbebi-mobile-guide-v1";
 const JOURNAL_KEY = "wenbebi-life-journal-v1";
+const EXPERIENCE_MODE_KEY = "wenbebi-experience-mode-v1";
 type MemoryPhoto = { id: string; src: string; title: string };
 type JournalEntry = { id: string; title: string; copy: string; time: number };
 type CompanionStatus = { model: string; models: Array<{ name: string; size: number; parameterSize: string }> };
@@ -22,6 +23,12 @@ const sceneLabels = {
   street: "街区",
   cafe: "咖啡店",
 } as const;
+const worldPlaces = [
+  { id: "bedroom", label: "小屋", note: "雯宝的家", icon: "⌂" },
+  { id: "balcony", label: "阳台", note: "花和风的地方", icon: "✿" },
+  { id: "street", label: "街区", note: "每天都会遇见一点事", icon: "✦" },
+  { id: "cafe", label: "咖啡店", note: "坐下来听一会儿", icon: "☕" },
+] as const;
 const movableSpots = roomSpots.filter((spot) => spot.movable);
 const defaultLayout: Record<string, { x: number; y: number }> = Object.fromEntries(
   movableSpots.map(({ id, x, y }) => [id, { x: Number(x) || 0, y: Number(y) || 0 }]),
@@ -75,6 +82,14 @@ function shouldShowMobileGuide() {
     return window.matchMedia("(pointer: coarse)").matches && localStorage.getItem(MOBILE_GUIDE_KEY) !== "seen";
   } catch {
     return false;
+  }
+}
+
+function loadExperienceMode(): "classic" | "life" {
+  try {
+    return localStorage.getItem(EXPERIENCE_MODE_KEY) === "life" ? "life" : "classic";
+  } catch {
+    return "classic";
   }
 }
 
@@ -145,6 +160,7 @@ export function App() {
   const [chatBusy, setChatBusy] = useState(false);
   const [chatError, setChatError] = useState("");
   const [talkOpen, setTalkOpen] = useState(false);
+  const [experienceMode, setExperienceMode] = useState<"classic" | "life">(loadExperienceMode);
 
   useEffect(() => {
     if (layoutSaveTimerRef.current) window.clearTimeout(layoutSaveTimerRef.current);
@@ -396,6 +412,20 @@ export function App() {
     }
   }
 
+  function toggleExperienceMode() {
+    setExperienceMode((current) => {
+      const next = current === "life" ? "classic" : "life";
+      try { localStorage.setItem(EXPERIENCE_MODE_KEY, next); } catch {}
+      return next;
+    });
+  }
+
+  function enterWorldPlace(place: (typeof worldPlaces)[number]["id"]) {
+    setTalkOpen(false);
+    setIsDecorating(false);
+    appRef.current?.dispatchEvent(new CustomEvent("scene:request", { detail: place }));
+  }
+
   function startFurnitureDrag(event: React.PointerEvent<HTMLButtonElement>, id: string) {
     if (!isDecorating) return;
     const item = layout[id];
@@ -451,7 +481,7 @@ export function App() {
   }
 
   return (
-    <div ref={appRef} className="game-app" data-scene={scene} data-decorating={isDecorating || undefined} data-talking={talkOpen || undefined} data-memory-open={isMemoryOpen || undefined} data-onboarding={showOnboarding || undefined}>
+    <div ref={appRef} className="game-app" data-scene={scene} data-experience={experienceMode} data-decorating={isDecorating || undefined} data-talking={talkOpen || undefined} data-memory-open={isMemoryOpen || undefined} data-onboarding={showOnboarding || undefined}>
       <div id="viewport">
         <div id="world">
           <div className={`room room--${scene}`}>
@@ -544,6 +574,30 @@ export function App() {
         <p data-life-compass>回来就好，慢慢待一会儿。</p>
       </aside>
 
+      <aside className="life-discovery" id="lifeDiscovery" aria-live="polite" hidden>
+        <span className="life-discovery__pin" aria-hidden="true">✉</span>
+        <div><strong data-life-note-title>雯宝留了张便条</strong><p data-life-note-copy>她出门了一会儿。</p></div>
+        <button type="button" data-life-note-action>去找她</button>
+      </aside>
+
+      {experienceMode === "life" && (
+        <aside className="life-mode-panel" aria-label="今日陪伴">
+          <div className="life-mode-panel__heading">
+            <div><span>雯宝的世界</span><strong>现在去哪里看看？</strong></div>
+            <button type="button" aria-label="关闭新版体验" onClick={toggleExperienceMode}>×</button>
+          </div>
+          <p className="life-mode-panel__copy">这是一张连续的生活地图。左右滑动探索，雯宝会自己决定去哪里。</p>
+          <div className="life-mode-actions">
+            {worldPlaces.map((place) => (
+              <button key={place.id} type="button" className={scene === place.id ? "is-current" : ""} onClick={() => enterWorldPlace(place.id)}>
+                <span>{place.icon}</span><b>{place.label}{scene === place.id ? " · 正在这里" : ""}</b><small>{place.note}</small>
+              </button>
+            ))}
+          </div>
+          <p className="life-mode-panel__foot">今天的天气是{scene === "bedroom" ? "小屋里很安静" : "，也许会遇到新的小事"}。</p>
+        </aside>
+      )}
+
       <button type="button" className="today-story" id="todayStory" aria-live="polite" hidden>
         <span className="today-story__eyebrow">此刻的小屋</span>
         <strong data-today-story-title>今天的小片段</strong>
@@ -574,6 +628,7 @@ export function App() {
           <span data-stat="hunger"><b>饱腹</b><strong data-hunger>--</strong></span>
         </div>
         <div className="desk-plate__extra" id="plateExtra">
+          <button type="button" className="desk-plate__experience" onClick={toggleExperienceMode} aria-pressed={experienceMode === "life"}>{experienceMode === "life" ? "使用经典玩法" : "试试新版体验"}</button>
           <a className="desk-plate__studio" href="?studio">角色工坊</a>
           <label className="desk-plate__toggle"><input type="checkbox" id="followToggle" /><span className="label-mouse">跟着鼠标</span><span className="label-touch">跟着手指</span></label>
           <label className="desk-plate__toggle"><input type="checkbox" id="cameraToggle" defaultChecked />摄像机跟随</label>
@@ -603,7 +658,7 @@ export function App() {
       </form>
 
       <p className={`mobile-gesture-tip${showMobileTip ? " is-visible" : ""}`} aria-live="polite">
-        {isDecorating ? "拖动家具布置 · 双指查看全景" : scene === "balcony" ? "点花盆、藤椅或楼梯 · 双指查看风景" : scene === "street" ? "点喷泉、花摊、长椅或路口 · 双指散步" : scene === "cafe" ? "点吧台或窗边小桌 · 从门口回街区" : "摸摸头 · 点身体说一句 · 从门口一起出门"}
+        {isDecorating ? "拖动家具布置 · 双指查看全景" : experienceMode === "life" ? "左右滑动探索生活地图 · 点角色或物件互动" : scene === "balcony" ? "点花盆、藤椅或楼梯 · 双指查看风景" : scene === "street" ? "点喷泉、花摊、长椅或路口 · 双指散步" : scene === "cafe" ? "点吧台或窗边小桌 · 从门口回街区" : "摸摸头 · 点身体说一句 · 从门口一起出门"}
       </p>
 
       <div className="life-event" id="lifeEvent" role="dialog" aria-modal="true" aria-label="街区偶遇" hidden>

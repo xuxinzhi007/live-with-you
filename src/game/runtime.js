@@ -18,13 +18,14 @@ export function startGame(root) {
   const TODAY_STORY_KEY = "wenbebi-today-story-v1";
   const TOY_POSITION_KEY = "wenbebi-toy-position-v1";
   const ROOM_STATE_KEY = "wenbebi-room-state-v1";
+  const LIFE_STATE_KEY = "wenbebi-life-state-v1";
   const viewport = root.querySelector("#viewport");
   const worldEl = root.querySelector("#world");
   const petEl = root.querySelector("#pet");
   const fxCanvas = root.querySelector("#fx");
   const plate = root.querySelector("#plate");
 
-  const world = { w: 0, h: 0, floorH: 0, period: "day", chasingToy: false };
+  const world = { w: 0, h: 0, floorH: 0, period: "day", chasingToy: false, currentScene: "bedroom" };
   const camera = new Camera(worldEl);
   const fx = new FX(fxCanvas);
   const pet = new Pet(petEl, world, fx, wenbebi);
@@ -44,12 +45,14 @@ export function startGame(root) {
   let nextStatusUpdate = 0;
   let lampOn = loadRoomState().lampOn;
   let currentScene = root.dataset.scene || "bedroom";
+  let petScene = currentScene;
   let bag = loadBag();
   let garden = loadGarden();
   let streetLog = loadStreetLog();
   let weather = loadWeather();
   let journal = loadJournal();
   let todayStory = null;
+  let lifeState = loadLifeState();
   let storyExpandTimer = 0;
   let playStreakHideTimer = 0;
 
@@ -634,6 +637,10 @@ export function startGame(root) {
 
   function persist() {
     const prev = loadSave();
+    lifeState.lastScene = currentScene;
+    lifeState.savedAt = Date.now();
+    lifeState.recentBehaviors = pet.recentBehaviors;
+    saveLifeState();
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
         savedAt: Date.now(),
@@ -647,6 +654,65 @@ export function startGame(root) {
       /* 无痕模式可能写不了 */
     }
     queueWorldSnapshotSync();
+  }
+
+  function loadLifeState() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(LIFE_STATE_KEY) || "{}");
+      return saved && typeof saved === "object" ? saved : {};
+    } catch (err) { return {}; }
+  }
+
+  function saveLifeState() {
+    try { localStorage.setItem(LIFE_STATE_KEY, JSON.stringify(lifeState)); } catch (err) { /* 本地试玩继续 */ }
+  }
+
+  function renderLifeDiscovery() {
+    const note = root.querySelector("#lifeDiscovery");
+    if (!note) return;
+    const away = lifeState.away;
+    note.hidden = !away || currentScene !== "bedroom";
+    if (!away) return;
+    const title = note.querySelector("[data-life-note-title]");
+    const copy = note.querySelector("[data-life-note-copy]");
+    if (title) title.textContent = away.title || "桌上留了一张便条";
+    if (copy) copy.textContent = away.activity ? `${away.note || "雯宝出门了一会儿。"} · ${away.activity}` : (away.note || "雯宝出门了一会儿，晚点回来。");
+  }
+
+  function isLifeMode() { return root.dataset.experience === "life"; }
+  function sceneLabel(scene) { return ({ bedroom: "小屋", balcony: "阳台", street: "街区", cafe: "咖啡店" })[scene] || "某个地方"; }
+  function swipeScene(deltaX) {
+    if (!isLifeMode() || Math.abs(deltaX) < 86) return false;
+    const order = ["bedroom", "balcony", "street", "cafe"];
+    const index = order.indexOf(currentScene);
+    const next = order[Math.max(0, Math.min(order.length - 1, index + (deltaX < 0 ? 1 : -1)))];
+    if (!next || next === currentScene) return false;
+    root.dispatchEvent(new CustomEvent("scene:request", { detail: next }));
+    return true;
+  }
+  function renderPresence() {
+    const label = root.querySelector(".mobile-presence__copy small");
+    if (label) label.textContent = petScene === currentScene ? `${sceneLabel(currentScene)} · 在这里陪你` : `${sceneLabel(petScene)} · 雯宝正在那里`;
+  }
+
+  function simulateOfflineLife(hours) {
+    if (!Number.isFinite(hours) || hours < 0.35 || lifeState.away) return;
+    const curiosity = Number(wenbebi.personality?.curiosity) || 0.5;
+    const homebody = Number(wenbebi.personality?.homebody) || 0.5;
+    const chance = Math.min(0.76, 0.22 + curiosity * 0.58 - homebody * 0.22);
+    if (Math.random() > chance) return;
+    const longAway = hours > 6;
+    lifeState.away = {
+      scene: "street",
+      title: longAway ? "雯宝留了张便条" : "桌边多了一张小纸条",
+      note: longAway ? "我去街区走走，顺便替你看看今天的风。等你来找我。" : "我去街区转一圈，很快就回来。看到这张纸条就来找我吧。",
+      activity: longAway ? "在喷泉边看了很久的水" : "去花摊闻了闻新开的花",
+      at: Date.now(),
+    };
+    lifeState.worldChange = longAway ? "fountain" : "streetFlower";
+    saveLifeState();
+    renderLifeDiscovery();
+    petEl.classList.add("is-away");
   }
 
   function rememberRecentAction(title, copy) {
@@ -680,6 +746,22 @@ export function startGame(root) {
       const pos = camera.screenToWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
       return { el, kind: el.getAttribute("data-spot"), x: pos.x };
     }).filter((spot) => spot.kind !== "travel" && spot.kind !== "garden" && spot.kind !== "toy");
+  };
+
+  world.onAutonomousTravel = function onAutonomousTravel(destination) {
+    if (destination !== "street" || currentScene !== "bedroom" || lifeState.away) return;
+    lifeState.away = {
+      scene: destination,
+      title: "雯宝出门了",
+      note: "她去了街区走走。桌上留着一杯还温着的水，去街区找找她吧。",
+      activity: "在街区慢慢散步",
+      at: Date.now(),
+    };
+    petScene = destination;
+    saveLifeState();
+    petEl.classList.add("is-away");
+    renderLifeDiscovery();
+    renderPresence();
   };
 
   function layout() {
@@ -721,14 +803,27 @@ export function startGame(root) {
   function changeScene(nextScene) {
     if (!nextScene || nextScene === currentScene) return;
     currentScene = nextScene;
+    world.currentScene = currentScene;
+    if (Array.isArray(lifeState.recentBehaviors)) pet.recentBehaviors = lifeState.recentBehaviors;
+    if (lifeState.away && lifeState.away.scene === nextScene) {
+      lifeState.away = null;
+      petScene = nextScene;
+      saveLifeState();
+      petEl.classList.remove("is-away");
+      writeJournal("雯宝的外出", "你在街区找到雯宝了，她把一路上的风景讲给你听。" );
+    }
     ball.target = null;
     world.chasingToy = false;
     ball.held = false;
     toyElement()?.classList.remove("is-held", "is-aiming");
-    pet.goIdle(true);
-    pet.x = pet.clampX(world.w * (nextScene === "street" ? 0.34 : nextScene === "balcony" ? 0.44 : nextScene === "cafe" ? 0.38 : 0.38));
-    pet.y = pet.floorY();
-    pet.place();
+    const followsPlayer = !isLifeMode() || petScene === nextScene;
+    petEl.classList.toggle("is-away", !followsPlayer);
+    if (followsPlayer) {
+      pet.goIdle(true);
+      pet.x = pet.clampX(world.w * (nextScene === "street" ? 0.34 : nextScene === "balcony" ? 0.44 : nextScene === "cafe" ? 0.38 : 0.38));
+      pet.y = pet.floorY();
+      pet.place();
+    }
     camera.setEnabled(true);
     root.querySelector("#cameraToggle").checked = true;
     camera.snapToTarget();
@@ -738,6 +833,8 @@ export function startGame(root) {
     renderStreetActivities();
     renderTodayStory();
     if (nextScene === "bedroom") renderToy();
+    renderLifeDiscovery();
+    renderPresence();
   }
 
   function toggleLamp() {
@@ -1204,11 +1301,20 @@ export function startGame(root) {
       return;
     }
     if (!gesture || event.pointerId !== gesture.pointerId) return;
+    const swipeDeltaX = event.clientX - gesture.startX;
+    if (gesture.mode === "pan" && !gesture.decorating && swipeScene(swipeDeltaX)) {
+      gesture = null;
+      return;
+    }
     if (gesture.mode === "pending" && !gesture.decorating) {
-      if (gesture.spot) goToSpot(gesture.spot);
+      if (gesture.spot) {
+        goToSpot(gesture.spot);
+        pet.noticePlayer();
+      }
       else {
         resumeCameraFollow();
         pet.walkTo(gesture.worldPos.x - pet.w / 2);
+        pet.noticePlayer();
       }
     }
     gesture = null;
@@ -1311,6 +1417,12 @@ export function startGame(root) {
     if (action.startsWith("event:")) openStreetEvent(action.slice("event:".length));
     if (action.startsWith("story:")) completeTodayStory(action.slice("story:".length));
   });
+  listen(root, "life:action", (event) => {
+    const kind = event.detail?.kind;
+    if (typeof kind !== "string") return;
+    const target = root.querySelector(`[data-spot="${kind}"]`);
+    if (target) goToSpot(target);
+  });
   listen(root.querySelector("#todayStory"), "click", () => {
     const card = root.querySelector("#todayStory");
     if (!card) return;
@@ -1329,6 +1441,10 @@ export function startGame(root) {
     const panel = root.querySelector("#bagPanel");
     const open = panel.classList.toggle("is-open");
     root.querySelector("#bagToggle").setAttribute("aria-expanded", String(open));
+  });
+  listen(root.querySelector("[data-life-note-action]"), "click", () => {
+    if (!lifeState.away) return;
+    root.dispatchEvent(new CustomEvent("scene:request", { detail: lifeState.away.scene || "street" }));
   });
 
   listen(root, "scene:change", (event) => changeScene(event.detail));
@@ -1389,6 +1505,7 @@ export function startGame(root) {
     if (save.savedAt) {
       const hours = (Date.now() - save.savedAt) / 3600000;
       pet.applyOfflineTime(hours);
+      simulateOfflineLife(hours);
       if (hours > 8) group = "miss";
       else if (hours > 0.75) group = "back";
       else if (hours < 0.04) group = "again";
@@ -1414,6 +1531,9 @@ export function startGame(root) {
     applyLampState();
     const savedToyPosition = loadToyPosition();
     todayStory = loadTodayStory();
+    world.currentScene = currentScene;
+    petScene = lifeState.away?.scene || currentScene;
+    if (Array.isArray(lifeState.recentBehaviors)) pet.recentBehaviors = lifeState.recentBehaviors;
     pet.x = world.w * 0.38;
     pet.goIdle(true);
     camera.snapToTarget();
@@ -1424,6 +1544,9 @@ export function startGame(root) {
       setToyPosition(toyPos.x);
     }
     greetFromMemory();
+    if (lifeState.away && lifeState.away.scene !== currentScene) petEl.classList.add("is-away");
+    renderLifeDiscovery();
+    renderPresence();
     renderBag();
     renderTodayStory();
     window.setTimeout(previewTodayStory, 760);
