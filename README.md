@@ -111,3 +111,9 @@ npm run build
 npx netlify-cli login
 部署远程
 npx netlify-cli deploy --prod --dir=dist --functions=netlify/functions
+
+# 临时关闭专用网络防火墙（测试用）
+Set-NetFirewallProfile -Profile Private -Enabled False
+
+# 测试完记得重新开启：
+# Set-NetFirewallProfile -Profile Private -Enabled True

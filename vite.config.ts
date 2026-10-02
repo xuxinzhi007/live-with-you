@@ -52,5 +52,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   return {
     plugins: [react(), companionDevPlugin(env)],
+    server: {
+      host: true,
+      port: 5173,
+    },
   };
 });

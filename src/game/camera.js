@@ -64,8 +64,12 @@ export class Camera {
   }
 
   setZoom(zoom) {
-    const max = viewSize().w < 768 ? 1.06 : 1.6;
-    this.targetZoom = Math.min(max, Math.max(0.85, zoom));
+    const view = viewSize();
+    const isPortrait = view.h > view.w;
+    const mobile = view.w < 768;
+    const min = isPortrait && mobile ? 0.65 : 0.85;
+    const max = isPortrait && mobile ? 1.02 : (mobile ? 1.06 : 1.6);
+    this.targetZoom = Math.min(max, Math.max(min, zoom));
   }
 
   shake(power = 6) {

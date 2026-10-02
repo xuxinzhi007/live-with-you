@@ -768,11 +768,15 @@ export function startGame(root) {
     pet.measure();
     const view = viewSize();
     const mobile = view.w <= 768;
+    const isPortrait = view.h > view.w;
     const hud = measureHud();
     world.h = view.h;
-    world.w = Math.max(view.w * 2.35, mobile ? 1120 : 2200);
+    const baseWidth = mobile
+      ? (isPortrait ? Math.max(view.w * 1.6, 600) : Math.max(view.w * 2.2, 1120))
+      : Math.max(view.w * 2.35, 2200);
+    world.w = baseWidth;
     world.hudH = hud;
-    world.floorH = mobile ? Math.max(hud + 72, view.h * 0.2) : Math.max(88, view.h * 0.18);
+    world.floorH = mobile ? Math.max(hud + 72, view.h * 0.25) : Math.max(88, view.h * 0.18);
     world.dragThreshold = isCoarse() ? 20 : 8;
     camera.setHudInset(hud);
     document.documentElement.style.setProperty("--floor-h", `${world.floorH}px`);
@@ -1534,9 +1538,26 @@ export function startGame(root) {
     world.currentScene = currentScene;
     petScene = lifeState.away?.scene || currentScene;
     if (Array.isArray(lifeState.recentBehaviors)) pet.recentBehaviors = lifeState.recentBehaviors;
-    pet.x = world.w * 0.38;
+    pet.x = world.w * 0.26; // 竖屏模式下角色站在家具旁边
     pet.goIdle(true);
-    camera.snapToTarget();
+    const view = viewSize();
+    const isPortrait = view.h > view.w;
+    const mobile = view.w <= 768;
+    if (isPortrait && mobile) {
+      camera.setEnabled(false);
+      // 竖屏模式下，摄像机对准场景中心偏左（家具密集区域）
+      const targetX = world.w * 0.35;
+      const targetY = world.h * 0.7; // 对准地板区域
+      const portraitZoom = 0.78;
+      camera.x = targetX;
+      camera.y = targetY;
+      camera.targetZoom = portraitZoom;
+      camera.zoom = portraitZoom;
+      camera.clamp();
+      camera.apply();
+    } else {
+      camera.snapToTarget();
+    }
     if (savedToyPosition) setToyPosition(savedToyPosition.x);
     else {
       const toyRect = toyElement()?.getBoundingClientRect();

@@ -1,0 +1,352 @@
+/* ============================================================
+   移动端竖屏样式 - 使用 body 前缀确保最高优先级
+   ============================================================ */
+
+/* Root Container */
+body .mobile-root {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+  background: #d8c7b0 !important;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif !important;
+  color: #3a2f28 !important;
+  z-index: 10000 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+body .mobile-root *,
+body .mobile-root *::before,
+body .mobile-root *::after {
+  box-sizing: border-box !important;
+}
+
+/* Scene Container */
+body .mobile-scene {
+  position: relative !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: block !important;
+}
+
+/* Floor */
+body .mobile-floor {
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  height: 22% !important;
+  z-index: 1 !important;
+  display: block !important;
+}
+
+/* Furniture */
+body .mobile-furn {
+  position: absolute !important;
+  z-index: 5 !important;
+  cursor: pointer !important;
+  border-radius: 4px !important;
+  display: block !important;
+  min-width: 10px !important;
+  min-height: 10px !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+body .furn-label {
+  position: absolute !important;
+  bottom: -18px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  white-space: nowrap !important;
+  font-size: 9px !important;
+  color: rgba(58, 47, 40, 0.8) !important;
+  pointer-events: none !important;
+  background: rgba(255, 250, 243, 0.7) !important;
+  padding: 1px 4px !important;
+  border-radius: 3px !important;
+}
+
+/* Pet */
+body .mobile-pet {
+  position: absolute !important;
+  left: 50% !important;
+  bottom: 26% !important;
+  transform: translateX(-50%) !important;
+  z-index: 10 !important;
+  width: 80px !important;
+  height: 130px !important;
+  display: block !important;
+}
+
+body .mobile-pet img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: bottom center !important;
+  pointer-events: none !important;
+  display: block !important;
+}
+
+body .pet-shadow {
+  position: absolute !important;
+  left: 50% !important;
+  bottom: -2px !important;
+  width: 40px !important;
+  height: 6px !important;
+  background: radial-gradient(ellipse, rgba(40, 28, 18, 0.3), transparent 70%) !important;
+  transform: translateX(-50%) !important;
+  pointer-events: none !important;
+}
+
+/* Scene Label */
+body .scene-label {
+  position: absolute !important;
+  top: 12px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 50 !important;
+  padding: 5px 16px !important;
+  border-radius: 20px !important;
+  background: rgba(255, 250, 243, 0.9) !important;
+  box-shadow: 0 2px 8px rgba(58, 47, 40, 0.12) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #6b5647 !important;
+  pointer-events: none !important;
+  white-space: nowrap !important;
+}
+
+/* Tab Bar */
+body .mobile-tabbar {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 60 !important;
+  display: flex !important;
+  height: 56px !important;
+  background: rgba(255, 250, 243, 0.96) !important;
+  box-shadow: 0 -2px 10px rgba(58, 47, 40, 0.08) !important;
+  border-top: 1px solid rgba(201, 137, 122, 0.15) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body .tab-btn {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  border: 0 !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  position: relative !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+body .tab-btn span {
+  font-size: 18px !important;
+  line-height: 1 !important;
+}
+
+body .tab-btn small {
+  font-size: 9px !important;
+  color: #9e8476 !important;
+}
+
+body .tab-btn.active small {
+  color: #c9897a !important;
+  font-weight: 600 !important;
+}
+
+body .tab-btn.active::before {
+  content: "" !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 24px !important;
+  height: 2px !important;
+  background: #c9897a !important;
+  border-radius: 0 0 2px 2px !important;
+}
+
+/* Chat Panel */
+body .chat-panel {
+  position: fixed !important;
+  bottom: 60px !important;
+  left: 10px !important;
+  right: 10px !important;
+  z-index: 56 !important;
+  border-radius: 14px !important;
+  background: rgba(255, 250, 243, 0.96) !important;
+  box-shadow: 0 4px 20px rgba(75, 49, 37, 0.14) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  max-height: 50vh !important;
+}
+
+body .chat-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 10px 12px !important;
+  border-bottom: 1px solid rgba(201, 137, 122, 0.12) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+body .chat-header button {
+  width: 26px !important;
+  height: 26px !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: rgba(201, 137, 122, 0.1) !important;
+  font-size: 12px !important;
+  cursor: pointer !important;
+}
+
+body .chat-body {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  padding: 8px 12px !important;
+  min-height: 0 !important;
+}
+
+body .chat-msg {
+  max-width: 80% !important;
+  padding: 8px 10px !important;
+  border-radius: 12px !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  margin-bottom: 6px !important;
+}
+
+body .chat-msg.assistant {
+  background: rgba(241, 230, 214, 0.9) !important;
+  color: #66493c !important;
+  border-bottom-left-radius: 4px !important;
+}
+
+body .chat-input-row {
+  display: flex !important;
+  gap: 6px !important;
+  padding: 8px 10px !important;
+  border-top: 1px solid rgba(201, 137, 122, 0.12) !important;
+}
+
+body .chat-input-row input {
+  flex: 1 !important;
+  height: 34px !important;
+  padding: 0 10px !important;
+  border: 1px solid rgba(182, 143, 113, 0.3) !important;
+  border-radius: 8px !important;
+  background: rgba(255, 250, 244, 0.9) !important;
+  font-size: 12px !important;
+  outline: none !important;
+}
+
+body .chat-input-row button {
+  min-width: 48px !important;
+  height: 34px !important;
+  padding: 0 10px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: #e7b7a0 !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+}
+
+/* Panel Overlay */
+body .panel-overlay {
+  position: fixed !important;
+  bottom: 60px !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 55 !important;
+  padding: 0 12px !important;
+}
+
+body .panel {
+  padding: 12px !important;
+  border-radius: 14px !important;
+  background: rgba(255, 250, 243, 0.96) !important;
+  box-shadow: 0 4px 20px rgba(75, 49, 37, 0.14) !important;
+}
+
+body .panel h3 {
+  margin: 0 0 10px !important;
+  font-size: 14px !important;
+  color: #654c3e !important;
+}
+
+body .stats-grid {
+  display: grid !important;
+  gap: 6px !important;
+}
+
+body .stat-item {
+  display: flex !important;
+  justify-content: space-between !important;
+  padding: 8px 10px !important;
+  border-radius: 8px !important;
+  background: rgba(241, 230, 214, 0.5) !important;
+  font-size: 12px !important;
+}
+
+body .stat-item b {
+  color: #a66c5d !important;
+}
+
+body .menu-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+body .menu-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 10px !important;
+  border-radius: 10px !important;
+  background: rgba(255, 250, 243, 0.5) !important;
+  border: 1px solid rgba(201, 137, 122, 0.12) !important;
+  color: #654c3e !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+}
+
+body .menu-item span {
+  font-size: 16px !important;
+  flex: 0 0 22px !important;
+  text-align: center !important;
+}
+
+body .menu-item div {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+body .menu-item strong {
+  display: block !important;
+  font-size: 12px !important;
+}
+
+body .menu-item small {
+  display: block !important;
+  font-size: 10px !important;
+  color: #927b6a !important;
+}
