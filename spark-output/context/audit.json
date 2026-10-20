@@ -1,0 +1,248 @@
+{
+  "skill": "audit",
+  "generated_at": "2026-10-20T07:22:35Z",
+  "project_name": "雯宝 (live-with-you)",
+  "target": {
+    "type": "code",
+    "reference": "/Users/xuxinzhi/Documents/gowork/live-with-you",
+    "pages_audited": [
+      "src/App.tsx",
+      "src/game/runtime.js",
+      "src/game/pet.js",
+      "src/game/camera.js",
+      "src/game/fx.js",
+      "src/game/data/*.js",
+      "src/game/renderers/*.js",
+      "styles.css",
+      "index.html"
+    ]
+  },
+  "audit_framework": [
+    "Nielsen-10",
+    "responsive",
+    "performance"
+  ],
+  "findings": [
+    {
+      "id": "audit-1",
+      "heuristic": "visibility",
+      "severity": "major",
+      "description": "角色动作缺乏差异化视觉反馈：walk/wave/look 等语义状态共用同一张 idle 立绘，多数动作玩家只看到站着不动+一句气泡",
+      "evidence": "src/game/data/pet.js sprites 映射",
+      "suggestion": "补齐 walk/wave/look/sit 差异化资源；资源到位前用 transform 让动作可区分",
+      "effort": "medium"
+    },
+    {
+      "id": "audit-2",
+      "heuristic": "visibility",
+      "severity": "major",
+      "description": "状态与需求反馈太弱：心情/精力/饱腹藏在更多抽屉里，需求只显示头顶小 emoji",
+      "evidence": "src/App.tsx:408-413、src/game/pet.js:87-104",
+      "suggestion": "把需求表达并入角色表情/动作/气泡，数字面板降级为补充",
+      "effort": "medium"
+    },
+    {
+      "id": "audit-3",
+      "heuristic": "visibility",
+      "severity": "minor",
+      "description": "天气与时段变化无显式提示，只改 body class 背景",
+      "evidence": "src/game/runtime.js:202-216, 606-621",
+      "suggestion": "切换时给一条可忽略的轻提示",
+      "effort": "quick-win"
+    },
+    {
+      "id": "audit-4",
+      "heuristic": "real-world-match",
+      "severity": "major",
+      "description": "开发者/引擎开关（跟着鼠标、摄像机跟随、左右纠正）混入玩家更多菜单",
+      "evidence": "src/App.tsx:414-420",
+      "suggestion": "移到 ?studio 调试区或开发环境面板",
+      "effort": "quick-win"
+    },
+    {
+      "id": "audit-5",
+      "heuristic": "user-control",
+      "severity": "minor",
+      "description": "布置模式无撤销/重置通道",
+      "evidence": "src/App.tsx:267-289",
+      "suggestion": "加撤销上一步或重置默认布局",
+      "effort": "medium"
+    },
+    {
+      "id": "audit-6",
+      "heuristic": "user-control",
+      "severity": "minor",
+      "description": "删除回忆照片无二次确认",
+      "evidence": "src/App.tsx:229-239",
+      "suggestion": "删除前加一步确认",
+      "effort": "quick-win"
+    },
+    {
+      "id": "audit-7",
+      "heuristic": "consistency",
+      "severity": "major",
+      "description": "移动端 HUD 信息面过多（presence/life-bag/desk-plate/compass/story-card/gesture-tip 六套）互相争夺注意力",
+      "evidence": "src/App.tsx:356-425",
+      "suggestion": "主视图只留角色+场景+一条线索+背包+底栏，其余收进抽屉",
+      "effort": "major-rework"
+    },
+    {
+      "id": "audit-8",
+      "heuristic": "error-prevention",
+      "severity": "minor",
+      "description": "触屏上零钱不够的禁用按钮无解释（只靠 hover title）",
+      "evidence": "src/game/runtime.js:533-535",
+      "suggestion": "禁用态用可见文案替代 title，或保留可点并弹说明",
+      "effort": "quick-win"
+    },
+    {
+      "id": "audit-9",
+      "heuristic": "recognition",
+      "severity": "minor",
+      "description": "可交互物件无可见的可点提示，玩家靠试错",
+      "evidence": "src/game/runtime.js:891-909",
+      "suggestion": "新手期给物件轻量短暂高亮后淡出",
+      "effort": "medium"
+    },
+    {
+      "id": "audit-10",
+      "heuristic": "flexibility",
+      "severity": "minor",
+      "description": "快捷键仅桌面，移动端无等效效率路径（暂不优先，仅记录）",
+      "evidence": "src/game/runtime.js:1172-1183",
+      "suggestion": "暂不处理",
+      "effort": "quick-win"
+    },
+    {
+      "id": "audit-11",
+      "heuristic": "aesthetic",
+      "severity": "major",
+      "description": "拟人立绘在移动端缩至 118px/88px，表情与动作不可读",
+      "evidence": "styles.css:2013-2016, 2254-2257",
+      "suggestion": "为小屏优化构图（脸部占比放大、剪影清晰）而非直缩整图",
+      "effort": "major-rework"
+    },
+    {
+      "id": "audit-12",
+      "heuristic": "error-recovery",
+      "severity": "minor",
+      "description": "存储满/立绘加载失败只告知无重试通道",
+      "evidence": "src/App.tsx:220-226、src/game/runtime.js:1346-1349",
+      "suggestion": "立绘失败给重试；存储满引导去清理",
+      "effort": "quick-win"
+    },
+    {
+      "id": "audit-13",
+      "heuristic": "help-docs",
+      "severity": "minor",
+      "description": "首次引导只教操作，不钩动机（无明天预告钩子）",
+      "evidence": "src/App.tsx:447-461",
+      "suggestion": "onboarding 末屏埋明天预告钩子",
+      "effort": "quick-win"
+    },
+    {
+      "id": "audit-14",
+      "heuristic": "responsive",
+      "severity": "major",
+      "description": "世界宽 1120px、屏幕只显示约 1/3，探索靠双指平移成本高",
+      "evidence": "src/game/runtime.js:641",
+      "suggestion": "移动端房间收窄到 1-1.5 屏宽，或提供缩略总览",
+      "effort": "major-rework"
+    },
+    {
+      "id": "audit-15",
+      "heuristic": "performance",
+      "severity": "major",
+      "description": "fx canvas 尺寸=世界尺寸，每帧 clearRect 全画布，常驻 GPU 负担",
+      "evidence": "src/game/fx.js:8-13, 42-44",
+      "suggestion": "canvas 只覆盖可视区跟随摄像机，或降低分辨率",
+      "effort": "medium"
+    },
+    {
+      "id": "audit-16",
+      "heuristic": "performance",
+      "severity": "minor",
+      "description": "立绘冷切换可能闪白，多态资源预加载不足",
+      "evidence": "index.html:16-19、image-pet-renderer.js:10-16",
+      "suggestion": "预加载常用动作或新图 onload 再切换",
+      "effort": "medium"
+    }
+  ],
+  "opportunities": [
+    {
+      "title": "让每次互动都有看得见的差异化反馈（解决没亮点）",
+      "addresses_findings": [
+        "audit-1",
+        "audit-2",
+        "audit-3"
+      ],
+      "priority": "high",
+      "rationale": "三个 finding 都指向雯宝的反应玩家看不见，直接对应口述卡点'没有亮点'"
+    },
+    {
+      "title": "给玩家明天还想打开的悬念与目标（解决没动力玩下去）",
+      "addresses_findings": [
+        "audit-13",
+        "audit-9"
+      ],
+      "priority": "high",
+      "rationale": "引导无动机钩子+物件不可发现，缺失'接下来会发生什么'的可见悬念"
+    },
+    {
+      "title": "移动端 HUD 收敛 + 单屏可见性 + 性能",
+      "addresses_findings": [
+        "audit-7",
+        "audit-4",
+        "audit-14",
+        "audit-15"
+      ],
+      "priority": "medium",
+      "rationale": "HUD 六套信息面超预算、世界宽需平移、全画布重绘，共同拖累移动端手感"
+    },
+    {
+      "title": "拟人立绘的移动端可读性 + 美术/生图管线",
+      "addresses_findings": [
+        "audit-11",
+        "audit-16"
+      ],
+      "priority": "medium",
+      "rationale": "拟人方向需要小屏可读的成套多动作资源与稳定生图流程，但排在体验结构之后"
+    },
+    {
+      "title": "防错与细节（quick-win 包）",
+      "addresses_findings": [
+        "audit-5",
+        "audit-6",
+        "audit-8",
+        "audit-12"
+      ],
+      "priority": "low",
+      "rationale": "低成本高确定性，可先清掉"
+    }
+  ],
+  "summary": {
+    "total_findings": 16,
+    "by_severity": {
+      "major": 7,
+      "minor": 9
+    },
+    "by_heuristic": {
+      "visibility": 3,
+      "real-world-match": 1,
+      "user-control": 2,
+      "consistency": 1,
+      "error-prevention": 1,
+      "recognition": 1,
+      "flexibility": 1,
+      "aesthetic": 1,
+      "error-recovery": 1,
+      "help-docs": 1,
+      "responsive": 1,
+      "performance": 2
+    },
+    "top_opportunities": [
+      "让每次互动都有看得见的差异化反馈（解决没亮点）",
+      "给玩家明天还想打开的悬念与目标（解决没动力玩下去）"
+    ]
+  }
+}

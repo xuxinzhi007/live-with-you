@@ -1,0 +1,74 @@
+{
+  "skill": "frame",
+  "generated_at": "2026-10-20T15:56:08+0800",
+  "project_name": "雯宝（多人共处小世界）",
+  "persona": {
+    "name": "开发者（情侣中的一方）",
+    "description": "给对象做陪伴游戏的人，技术背景（Go/Python/React），目前单独开发",
+    "situation": "想和对象一起待着、彼此陪伴，但现有雯宝只有一个宠物角色、只能观察，自己不在场",
+    "goal": "看到自己的角色在小世界生活，和对象的角色共同在场、实时互动",
+    "workaround": "现在只有一个雯宝角色，单人观察，对象没法进来",
+    "frustrations": ["点击没爽感", "画面糙", "玩法单调无聊", "总感觉缺少很多东西"],
+    "what_good_looks_like": "打开游戏，看到自己（和对象）的角色在小世界里生活、能实时互动；每次互动有爽感，且有'打开就有期待'的钩子"
+  },
+  "jtbd": {
+    "functional": "当想和对象一起待着/看看对方时，开发者想让自己的角色和对象的角色在小世界里共同生活、互动，从而感到彼此陪伴",
+    "social": "让对象觉得彼此在这个小世界里'共同生活'",
+    "emotional": "感到被陪伴/在场 / 避免孤单、无聊、游戏单调没意思",
+    "combined": "当想和对象一起待着时，开发者想让自己的角色和对象的角色在小世界里共同生活、互动，从而感到彼此陪伴；让对象觉得彼此共同生活；感到被陪伴、避免无聊"
+  },
+  "opportunities": [
+    { "title": "我没法在这个世界里看到'我自己'", "importance": "H", "satisfaction": "L", "priority": "高" },
+    { "title": "我没法让对象/好友进来共同在场", "importance": "H", "satisfaction": "L", "priority": "高" },
+    { "title": "角色之间没法互动", "importance": "H", "satisfaction": "L", "priority": "高" },
+    { "title": "点击没爽感、画面糙、玩法缺钩子", "importance": "H", "satisfaction": "M", "priority": "高" }
+  ],
+  "competitive_landscape": [
+    { "product": "月兔奥德赛", "bet_on": "观察角色自主生活 + 慢节奏", "got_right": "打开有期待、角色有 agency、每次互动有魅力动画", "gap_left": "单人、无'自己'在场、无真实他人" },
+    { "product": "猫咪后院", "bet_on": "放食物→等猫→发现", "got_right": "等待+惊喜的钩子，低主动操作也上瘾", "gap_left": "几乎无主动互动爽感、无关系对象" },
+    { "product": "旅行青蛙", "bet_on": "把玩家的牵挂/思念作为放置内容", "got_right": "打开期待'带了什么回来'，长期情感锁定", "gap_left": "互动极少、单角色、无实时他人" }
+  ],
+  "business_angle": {
+    "why_now": "现有版本手感糙、无钩子，开发者自己都觉得无聊；前端先行可快速迭代；后端（moe_social/backend，Kratos REST 单体）尚无实时通道",
+    "who_pays": "无商业化（给对象 + 自用/好友小圈子）",
+    "monetization": "无/成本中心（自娱 + 礼物）",
+    "strategic_intent": "retention"
+  },
+  "directions": [
+    {
+      "id": "A",
+      "one_liner": "让'我'在场：角色创建 + 每次互动的 juice 反馈",
+      "addresses_opportunity": "1,4",
+      "user_value": "打开能看到自己，每次互动有爽感、不糙",
+      "business_value": "共处的地基；纯前端、便宜、先于美术、快速见效",
+      "riskiest_assumption": "用户真的想要'自己'在场，而不只是看雯宝"
+    },
+    {
+      "id": "B",
+      "one_liner": "让'我们'共处：对象的角色 + 角色间互动动词 + 留痕，实时联机后置",
+      "addresses_opportunity": "2,3",
+      "user_value": "彼此共同在场，角色间能互动，打开有期待",
+      "business_value": "独有的钩子（别的放置游戏没有'另一个真实的人'）",
+      "riskiest_assumption": "'共处'是解无聊的真正解药（未验证）"
+    },
+    {
+      "id": "C",
+      "one_liner": "纯手感重做：不动'在场'，只把现有雯宝的点击做爽",
+      "addresses_opportunity": "4",
+      "user_value": "现有互动不糙、有爽感",
+      "business_value": "最小改动、最快",
+      "riskiest_assumption": "只改手感不改'在场'，'无聊'会复发"
+    }
+  ],
+  "lean_direction": "A",
+  "critical_assumption": "核心钩子是'一起玩'的共处时刻（而非独自每天打开）：两人同时在线时有足够多能一起做的互动，才能解决无聊",
+  "pressure_test": {
+    "ran": true,
+    "verdict": "holds",
+    "conditions": ["已问对象验证：多人方向确认（第1问），打开时机是'一起玩'而非每天独自打开（第3问），无聊根因是'能做的太少'（第2问）——方向调整为围绕'一起玩'的共处时刻设计互动"]
+  },
+  "hmw_cards": {
+    "ran": false,
+    "cards": []
+  }
+}
