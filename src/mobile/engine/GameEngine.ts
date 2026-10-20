@@ -1,136 +1,78 @@
-// 移动端游戏引擎 - 核心状态管理
-import { useState, useCallback, useRef } from "react";
-import { SceneId } from "../data/scenes";
-import { PetState, INITIAL_PET_STATE, PetAction, PET_ACTIONS, getSpriteForAction, getDialogueForMood } from "../data/pet-actions";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { SCENE_FURNITURE, type SceneId } from "../data/scenes";
+import { PET_ACTIONS, type PetAction } from "../data/pet-actions";
+import { interactWithFurniture as applyFurnitureInteraction, petCompanion, switchScene as applySceneChange } from "./game-rules";
+import { INITIAL_GAME_UI_STATE, type GameState, type GameUIState } from "./types";
+import { loadGameState, saveGameState } from "./storage";
 
-export interface GameState {
-  currentScene: SceneId;
-  pet: PetState;
-  selectedFurniture: string | null;
-  showActionMenu: boolean;
-  actionMenuPosition: { x: number; y: number } | null;
+function scheduleIdle(
+  timer: { current: ReturnType<typeof setTimeout> | null },
+  setState: React.Dispatch<React.SetStateAction<GameState>>,
+  duration: number,
+) {
+  if (timer.current) clearTimeout(timer.current);
+  timer.current = setTimeout(() => {
+    setState((previous) => ({
+      ...previous,
+      pet: { ...previous.pet, currentAction: "idle", mood: "normal" },
+    }));
+  }, duration);
 }
 
-const INITIAL_STATE: GameState = {
-  currentScene: "bedroom",
-  pet: { ...INITIAL_PET_STATE },
-  selectedFurniture: null,
-  showActionMenu: false,
-  actionMenuPosition: null,
-};
-
 export function useGameEngine() {
-  const [state, setState] = useState<GameState>(INITIAL_STATE);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [state, setState] = useState<GameState>(loadGameState);
+  const [ui, setUI] = useState<GameUIState>(INITIAL_GAME_UI_STATE);
+  const actionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 切换场景
+  useEffect(() => {
+    saveGameState(state);
+  }, [state]);
+
+  useEffect(() => () => {
+    if (actionTimer.current) clearTimeout(actionTimer.current);
+  }, []);
+
   const switchScene = useCallback((sceneId: SceneId) => {
-    setState((prev) => ({
-      ...prev,
-      currentScene: sceneId,
-      selectedFurniture: null,
-      showActionMenu: false,
-      actionMenuPosition: null,
-    }));
+    setState((previous) => applySceneChange(previous, sceneId));
+    setUI(INITIAL_GAME_UI_STATE);
   }, []);
 
-  // 选择家具
-  const selectFurniture = useCallback(
-    (furnitureId: string, position: { x: number; y: number }) => {
-      setState((prev) => ({
-        ...prev,
-        selectedFurniture: furnitureId,
-        showActionMenu: true,
-        actionMenuPosition: position,
-      }));
-    },
-    []
-  );
+  const selectFurniture = useCallback((furnitureId: string, position: { x: number; y: number }) => {
+    setUI({ selectedFurniture: furnitureId, showActionMenu: true, actionMenuPosition: position });
+  }, []);
 
-  // 关闭动作菜单
   const closeActionMenu = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      selectedFurniture: null,
-      showActionMenu: false,
-      actionMenuPosition: null,
-    }));
+    setUI(INITIAL_GAME_UI_STATE);
   }, []);
 
-  // 执行宠物动作
-  const executeAction = useCallback(
-    (action: PetAction) => {
-      setState((prev) => {
-        const newPet = {
-          ...prev.pet,
-          currentAction: action.id,
-          mood: action.mood,
-          lastInteraction: Date.now(),
-          happiness: Math.min(100, prev.pet.happiness + 5),
-        };
+  const interactWithFurniture = useCallback((furnitureId: string, actionId: string) => {
+    const action = PET_ACTIONS.find((item) => item.id === actionId);
+    if (!action) return;
 
-        // 动作结束后恢复 idle
-        if (timerRef.current) clearTimeout(timerRef.current);
-        timerRef.current = setTimeout(() => {
-          setState((p) => ({
-            ...p,
-            pet: { ...p.pet, currentAction: "idle", mood: "normal" },
-          }));
-        }, action.duration);
-
-        return {
-          ...prev,
-          pet: newPet,
-          showActionMenu: false,
-          selectedFurniture: null,
-          actionMenuPosition: null,
-        };
-      });
-    },
-    []
-  );
-
-  // 与家具互动
-  const interactWithFurniture = useCallback(
-    (furnitureId: string, actionId: string) => {
-      const action = PET_ACTIONS.find((a) => a.id === actionId);
-      if (action) {
-        executeAction(action);
-      }
-    },
-    [executeAction]
-  );
-
-  // 触摸宠物
-  const petThePet = useCallback(() => {
-    setState((prev) => {
-      const newPet = {
-        ...prev.pet,
-        currentAction: "happy",
-        mood: "happy",
-        happiness: Math.min(100, prev.pet.happiness + 10),
-        lastInteraction: Date.now(),
-      };
-
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => {
-        setState((p) => ({
-          ...p,
-          pet: { ...p.pet, currentAction: "idle", mood: "normal" },
-        }));
-      }, 2000);
-
-      return { ...prev, pet: newPet };
+    setState((previous) => {
+      const furniture = SCENE_FURNITURE[previous.currentScene].find((item) => item.id === furnitureId);
+      if (!furniture) return previous;
+      const result = applyFurnitureInteraction(previous, furniture, action);
+      return result.blockedMessage ? previous : result.state;
     });
+    setUI(INITIAL_GAME_UI_STATE);
+    scheduleIdle(actionTimer, setState, action.duration);
+  }, []);
+
+  const petThePet = useCallback(() => {
+    setState((previous) => petCompanion(previous));
+    scheduleIdle(actionTimer, setState, 1800);
   }, []);
 
   return {
     state,
+    ui,
     switchScene,
     selectFurniture,
     closeActionMenu,
-    executeAction,
     interactWithFurniture,
     petThePet,
   };
 }
+
+export type { GameState, GameUIState } from "./types";

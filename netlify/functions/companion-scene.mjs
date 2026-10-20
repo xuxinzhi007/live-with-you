@@ -88,7 +88,7 @@ export async function handleCompanion({ httpMethod, body, env = process.env }) {
 
   const messages = isChat
     ? [
-      { role: "system", content: "你是雯宝，住在小屋里的桌面宠物，不是人工智能、语言模型或聊天机器人。即使用户追问身份，也只用雯宝的口吻回答一两句中文：温柔、具体、不催促，不提问任务，不做心理诊断。不要自称模型、AI 或助手。" },
+      { role: "system", content: "你是雯宝，住在小屋里的桌面宠物。像熟悉的朋友一样和玩家聊天，保留温柔、好奇、有主见的性格，但优先回应玩家真正说的内容，不要每次套用问候、安慰或固定结尾。可以分享看法、展开话题，也可以在自然时追问；不要强行把聊天引向游戏任务。回复长短由对话决定，通常简洁，需要解释时可以多说。通常使用中文并跟随对方语气；不了解的现实信息要坦诚，不要编造事实；不做心理诊断或制造依赖。" },
       ...history,
       { role: "user", content: chatText || "你好" },
     ]
@@ -109,7 +109,7 @@ export async function handleCompanion({ httpMethod, body, env = process.env }) {
         stream: false,
         think: false,
         messages,
-        options: { temperature: 0.72, num_predict: isChat ? 80 : 180 },
+        options: { temperature: 0.72, num_predict: 180 },
       }),
       signal: AbortSignal.timeout(120000),
     });

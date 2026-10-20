@@ -59,7 +59,7 @@ export class Pet {
 
   floorY() {
     const hud = this.world.hudH || 0;
-    return this.world.h - this.h - Math.max(this.world.floorH * 0.42, hud + 10);
+    return this.world.h - this.h - Math.max(this.world.floorH * (this.world.floorDepth ?? 0.42), hud + 10);
   }
 
   clampX(value) {

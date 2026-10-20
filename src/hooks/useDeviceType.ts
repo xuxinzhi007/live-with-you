@@ -34,12 +34,15 @@ export function useDeviceType(): DeviceConfig {
     window.addEventListener("orientationchange", handleResize);
 
     const mediaQuery = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`);
+    const pointerQuery = window.matchMedia("(pointer: coarse)");
     mediaQuery.addEventListener("change", handleResize);
+    pointerQuery.addEventListener("change", handleResize);
 
     return () => {
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("orientationchange", handleResize);
       mediaQuery.removeEventListener("change", handleResize);
+      pointerQuery.removeEventListener("change", handleResize);
     };
   }, []);
 

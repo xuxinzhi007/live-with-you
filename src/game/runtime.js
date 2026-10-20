@@ -25,7 +25,7 @@ export function startGame(root) {
   const fxCanvas = root.querySelector("#fx");
   const plate = root.querySelector("#plate");
 
-  const world = { w: 0, h: 0, floorH: 0, period: "day", chasingToy: false, currentScene: "bedroom" };
+  const world = { w: 0, h: 0, floorH: 0, floorDepth: 0.42, portraitZoom: 1, period: "day", chasingToy: false, currentScene: "bedroom" };
   const camera = new Camera(worldEl);
   const fx = new FX(fxCanvas);
   const pet = new Pet(petEl, world, fx, wenbebi);
@@ -53,7 +53,6 @@ export function startGame(root) {
   let journal = loadJournal();
   let todayStory = null;
   let lifeState = loadLifeState();
-  let storyExpandTimer = 0;
   let playStreakHideTimer = 0;
 
   const streetEvents = {
@@ -293,7 +292,6 @@ export function startGame(root) {
   function startTodayStory() {
     const card = root.querySelector("#todayStory");
     if (card) card.dataset.expanded = "false";
-    window.clearTimeout(storyExpandTimer);
     if (todayStory?.completed || currentScene !== "bedroom") return;
     const story = todayStory.story;
     const target = story.spot === "mementoShelf"
@@ -616,8 +614,12 @@ export function startGame(root) {
 
   function closeBagPanel() {
     const panel = root.querySelector("#bagPanel");
+    const toggle = root.querySelector("#bagToggle");
+    const container = root.querySelector(".life-bag");
     panel?.classList.remove("is-open");
-    root.querySelector("#bagToggle")?.setAttribute("aria-expanded", "false");
+    panel?.setAttribute("aria-hidden", "true");
+    toggle?.setAttribute("aria-expanded", "false");
+    container?.classList.remove("is-open");
   }
 
   function syncKeyboardInset() {
@@ -772,13 +774,18 @@ export function startGame(root) {
     const hud = measureHud();
     world.h = view.h;
     const baseWidth = mobile
-      ? (isPortrait ? Math.max(view.w * 1.6, 600) : Math.max(view.w * 2.2, 1120))
+      ? (isPortrait ? Math.max(view.w * 1.8, 540) : Math.max(view.w * 2.2, 1120))
       : Math.max(view.w * 2.35, 2200);
     world.w = baseWidth;
+    world.portraitZoom = mobile && isPortrait ? view.w / world.w : 1;
+    world.h = mobile && isPortrait ? world.w * view.h / view.w : view.h;
+    world.floorDepth = mobile && isPortrait ? 0.58 : 0.42;
     world.hudH = hud;
-    world.floorH = mobile ? Math.max(hud + 72, view.h * 0.25) : Math.max(88, view.h * 0.18);
+    world.floorH = mobile
+      ? Math.max(hud + 72, (isPortrait ? world.h : view.h) * 0.25)
+      : Math.max(88, view.h * 0.18);
     world.dragThreshold = isCoarse() ? 20 : 8;
-    camera.setHudInset(hud);
+    camera.setHudInset(mobile && isPortrait ? 0 : hud);
     document.documentElement.style.setProperty("--floor-h", `${world.floorH}px`);
     document.documentElement.style.setProperty("--hud-h", `${hud}px`);
     worldEl.style.width = `${world.w}px`;
@@ -1427,24 +1434,32 @@ export function startGame(root) {
     const target = root.querySelector(`[data-spot="${kind}"]`);
     if (target) goToSpot(target);
   });
-  listen(root.querySelector("#todayStory"), "click", () => {
-    const card = root.querySelector("#todayStory");
-    if (!card) return;
-    const mobile = window.matchMedia("(max-width: 768px)").matches;
-    if (mobile && card.dataset.expanded !== "true") {
-      card.dataset.expanded = "true";
-      window.clearTimeout(storyExpandTimer);
-      storyExpandTimer = window.setTimeout(() => {
-        card.dataset.expanded = "false";
-      }, 4000);
-      return;
-    }
-    startTodayStory();
-  });
+  listen(root.querySelector("#todayStory"), "click", startTodayStory);
   listen(root.querySelector("#bagToggle"), "click", () => {
     const panel = root.querySelector("#bagPanel");
-    const open = panel.classList.toggle("is-open");
+    const open = !panel.classList.contains("is-open");
+    panel.classList.toggle("is-open", open);
+    panel.setAttribute("aria-hidden", String(!open));
     root.querySelector("#bagToggle").setAttribute("aria-expanded", String(open));
+    root.querySelector(".life-bag")?.classList.toggle("is-open", open);
+  });
+  listen(root.querySelector("[data-bag-close]"), "click", () => {
+    closeBagPanel();
+    root.querySelector("#bagToggle")?.focus();
+  });
+  listen(document, "pointerdown", (event) => {
+    const container = root.querySelector(".life-bag");
+    const panel = root.querySelector("#bagPanel");
+    if (panel?.classList.contains("is-open") && event.target instanceof Node && !container?.contains(event.target)) {
+      closeBagPanel();
+    }
+  });
+  listen(document, "keydown", (event) => {
+    const panel = root.querySelector("#bagPanel");
+    if (event.key === "Escape" && panel?.classList.contains("is-open")) {
+      closeBagPanel();
+      root.querySelector("#bagToggle")?.focus();
+    }
   });
   listen(root.querySelector("[data-life-note-action]"), "click", () => {
     if (!lifeState.away) return;
@@ -1474,6 +1489,8 @@ export function startGame(root) {
     }
     const dt = Math.min(0.032, (now - last) / 1000);
     last = now;
+    const view = viewSize();
+    const baseZoom = view.w <= 768 && view.h > view.w ? world.portraitZoom : 1;
 
     if (now >= nextStatusUpdate) {
       updateStatus();
@@ -1485,11 +1502,11 @@ export function startGame(root) {
     syncHeldToy(now);
     if (landed === "landed") {
       camera.shake(pet.state === "sit" ? 10 : 5);
-      camera.setZoom(1);
+      camera.setZoom(baseZoom);
     }
-    if (pet.state === "sleep") camera.setZoom(viewSize().w < 768 ? 1.02 : 1.16);
-    else if (pet.state === "walk") camera.setZoom(1);
-    else if (pet.state !== "sit") camera.setZoom(1);
+    if (pet.state === "sleep") camera.setZoom(baseZoom * (view.w < 768 ? 1.02 : 1.16));
+    else if (pet.state === "walk") camera.setZoom(baseZoom);
+    else if (pet.state !== "sit") camera.setZoom(baseZoom);
 
     bringToyToPet();
 
@@ -1546,9 +1563,9 @@ export function startGame(root) {
     if (isPortrait && mobile) {
       camera.setEnabled(false);
       // 竖屏模式下，摄像机对准场景中心偏左（家具密集区域）
-      const targetX = world.w * 0.35;
-      const targetY = world.h * 0.7; // 对准地板区域
-      const portraitZoom = 0.78;
+      const targetX = world.w / 2;
+      const targetY = world.h / 2;
+      const portraitZoom = world.portraitZoom;
       camera.x = targetX;
       camera.y = targetY;
       camera.targetZoom = portraitZoom;

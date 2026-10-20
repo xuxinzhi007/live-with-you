@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { wenbebi } from "../game/data/pet";
+import { requestCompanionChat, requestCompanionStatus } from "../game/companion";
 import {
   SCENES,
   SceneId,
@@ -13,916 +14,404 @@ import {
   getSpriteForAction,
   getDialogueForMood,
 } from "../mobile/data/pet-actions";
+import { getInteractionBlockMessage, relationshipLevel } from "../mobile/engine/game-rules";
 import { useGameEngine } from "../mobile/engine/GameEngine";
-
-// ============ 内联样式 - 最高优先级隔离 ============
-const STYLES = `
-  /* ===== ROOT - 完全覆盖 ===== */
-  #mobile-game-root {
-    position: fixed !important;
-    top: 0 !important; left: 0 !important;
-    width: 100vw !important; height: 100dvh !important;
-    max-height: 100dvh !important;
-    overflow: hidden !important;
-    background: #2c1810 !important;
-    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif !important;
-    z-index: 999999 !important;
-    margin: 0 !important; padding: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    box-sizing: border-box !important;
-    -webkit-tap-highlight-color: transparent !important;
-    user-select: none !important;
-    -webkit-user-select: none !important;
-  }
-  #mobile-game-root *,
-  #mobile-game-root *::before,
-  #mobile-game-root *::after {
-    box-sizing: border-box !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    outline: none !important;
-  }
-
-  /* ===== 场景区域 ===== */
-  .m-scene-area {
-    flex: 1 !important;
-    position: relative !important;
-    overflow: hidden !important;
-    width: 100% !important;
-    min-height: 0 !important;
-  }
-  .m-scene-bg {
-    position: absolute !important;
-    inset: 0 !important;
-    z-index: 0 !important;
-  }
-  .m-floor {
-    position: absolute !important;
-    left: 0 !important; right: 0 !important;
-    bottom: 0 !important;
-    height: 32% !important;
-    z-index: 1 !important;
-  }
-
-  /* ===== 家具 ===== */
-  .m-furn {
-    position: absolute !important;
-    z-index: 5 !important;
-    cursor: pointer !important;
-    display: flex !important;
-    align-items: flex-end !important;
-    justify-content: center !important;
-    transition: transform 0.15s ease, filter 0.15s ease !important;
-    -webkit-tap-highlight-color: transparent !important;
-    touch-action: manipulation !important;
-  }
-  .m-furn:active {
-    transform: scale(0.95) !important;
-    filter: brightness(1.1) !important;
-  }
-  .m-furn-label {
-    font-size: 10px !important;
-    color: rgba(255,255,255,0.85) !important;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.6) !important;
-    padding: 2px 6px !important;
-    background: rgba(0,0,0,0.3) !important;
-    border-radius: 8px !important;
-    margin-bottom: 4px !important;
-    pointer-events: none !important;
-    white-space: nowrap !important;
-    line-height: 1.2 !important;
-  }
-  .m-furn--portal .m-furn-label {
-    background: rgba(232,115,74,0.8) !important;
-    color: #fff !important;
-  }
-  .m-furn--interactive {
-    animation: m-pulse 2s ease-in-out infinite !important;
-  }
-  @keyframes m-pulse {
-    0%, 100% { filter: brightness(1); }
-    50% { filter: brightness(1.15); }
-  }
-
-  /* ===== 宠物 ===== */
-  .m-pet-wrap {
-    position: absolute !important;
-    left: 50% !important;
-    bottom: 28% !important;
-    transform: translateX(-50%) !important;
-    z-index: 10 !important;
-    width: 80px !important;
-    height: 120px !important;
-    cursor: pointer !important;
-    transition: transform 0.3s ease !important;
-  }
-  .m-pet-wrap:active {
-    transform: translateX(-50%) scale(0.9) !important;
-  }
-  .m-pet-wrap.m-pet-action {
-    animation: m-bounce 0.5s ease !important;
-  }
-  @keyframes m-bounce {
-    0%, 100% { transform: translateX(-50%) translateY(0); }
-    40% { transform: translateX(-50%) translateY(-20px); }
-    60% { transform: translateX(-50%) translateY(-10px); }
-  }
-  .m-pet-img {
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: contain !important;
-    display: block !important;
-    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2)) !important;
-    pointer-events: none !important;
-  }
-  .m-pet-shadow {
-    position: absolute !important;
-    left: 15% !important; right: 15% !important;
-    bottom: -6px !important;
-    height: 10px !important;
-    border-radius: 50% !important;
-    background: rgba(0,0,0,0.2) !important;
-    filter: blur(3px) !important;
-    pointer-events: none !important;
-  }
-
-  /* ===== 场景标题 ===== */
-  .m-scene-title {
-    position: absolute !important;
-    top: 48px !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    background: rgba(0,0,0,0.5) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
-    color: #fff !important;
-    padding: 6px 20px !important;
-    border-radius: 20px !important;
-    font-size: 14px !important;
-    font-weight: 600 !important;
-    z-index: 20 !important;
-    letter-spacing: 1px !important;
-    pointer-events: none !important;
-  }
-
-  /* ===== 顶部导航 ===== */
-  .m-top-nav {
-    position: absolute !important;
-    top: 0 !important; left: 0 !important; right: 0 !important;
-    height: 44px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    z-index: 25 !important;
-    gap: 8px !important;
-    padding: 0 12px !important;
-  }
-  .m-top-nav-btn {
-    padding: 6px 16px !important;
-    border-radius: 18px !important;
-    font-size: 13px !important;
-    font-weight: 500 !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 4px !important;
-    background: rgba(255,255,255,0.7) !important;
-    color: #5a3e28 !important;
-    border: none !important;
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
-    -webkit-tap-highlight-color: transparent !important;
-    touch-action: manipulation !important;
-  }
-  .m-top-nav-btn:active {
-    transform: scale(0.95) !important;
-    background: rgba(255,255,255,0.9) !important;
-  }
-  .m-top-nav-btn.m-active {
-    background: rgba(232,115,74,0.85) !important;
-    color: #fff !important;
-  }
-
-  /* ===== 底部Tab栏 ===== */
-  .m-tabbar {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-around !important;
-    height: 60px !important;
-    min-height: 60px !important;
-    background: linear-gradient(180deg, #fdf6ec 0%, #f5e6d3 100%) !important;
-    border-top: 1px solid rgba(0,0,0,0.08) !important;
-    padding: 0 !important;
-    z-index: 30 !important;
-    flex-shrink: 0 !important;
-    padding-bottom: env(safe-area-inset-bottom, 0) !important;
-  }
-  .m-tab-btn {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 3px !important;
-    flex: 1 !important;
-    height: 100% !important;
-    background: transparent !important;
-    color: #9a8c7a !important;
-    font-size: 10px !important;
-    cursor: pointer !important;
-    -webkit-tap-highlight-color: transparent !important;
-    touch-action: manipulation !important;
-    transition: color 0.2s ease !important;
-    border: none !important;
-    outline: none !important;
-  }
-  .m-tab-btn:active {
-    transform: scale(0.92) !important;
-  }
-  .m-tab-btn .m-tab-icon {
-    font-size: 22px !important;
-    line-height: 1 !important;
-    transition: transform 0.2s ease !important;
-  }
-  .m-tab-btn.m-active {
-    color: #e8734a !important;
-  }
-  .m-tab-btn.m-active .m-tab-icon {
-    transform: scale(1.1) !important;
-  }
-
-  /* ===== 动作菜单 ===== */
-  .m-action-menu {
-    position: absolute !important;
-    z-index: 100 !important;
-    background: rgba(255,255,255,0.95) !important;
-    backdrop-filter: blur(16px) !important;
-    -webkit-backdrop-filter: blur(16px) !important;
-    border-radius: 16px !important;
-    padding: 12px !important;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.2) !important;
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 8px !important;
-    max-width: 280px !important;
-    animation: m-menu-pop 0.2s ease !important;
-  }
-  @keyframes m-menu-pop {
-    0% { transform: scale(0.8); opacity: 0; }
-    100% { transform: scale(1); opacity: 1; }
-  }
-  .m-action-btn {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 4px !important;
-    width: 64px !important;
-    height: 56px !important;
-    border-radius: 12px !important;
-    background: linear-gradient(135deg, #fdf6ec, #f5e6d3) !important;
-    border: 2px solid rgba(0,0,0,0.06) !important;
-    cursor: pointer !important;
-    font-size: 11px !important;
-    color: #5a3e28 !important;
-    -webkit-tap-highlight-color: transparent !important;
-    touch-action: manipulation !important;
-    transition: all 0.15s ease !important;
-  }
-  .m-action-btn:active {
-    transform: scale(0.92) !important;
-    border-color: #e8734a !important;
-    background: linear-gradient(135deg, #ffe8d6, #ffd4b8) !important;
-  }
-  .m-action-btn .m-action-icon {
-    font-size: 22px !important;
-    line-height: 1 !important;
-  }
-
-  /* ===== 对话气泡 ===== */
-  .m-dialogue {
-    position: absolute !important;
-    z-index: 15 !important;
-    background: #fff !important;
-    border-radius: 16px !important;
-    padding: 10px 14px !important;
-    font-size: 13px !important;
-    color: #3a2f28 !important;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12) !important;
-    max-width: 200px !important;
-    text-align: center !important;
-    line-height: 1.4 !important;
-    animation: m-dialogue-in 0.3s ease !important;
-  }
-  .m-dialogue::after {
-    content: '' !important;
-    position: absolute !important;
-    bottom: -8px !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    width: 0 !important; height: 0 !important;
-    border-left: 8px solid transparent !important;
-    border-right: 8px solid transparent !important;
-    border-top: 8px solid #fff !important;
-  }
-  @keyframes m-dialogue-in {
-    0% { transform: translateY(10px); opacity: 0; }
-    100% { transform: translateY(0); opacity: 1; }
-  }
-
-  /* ===== 面板叠加层 ===== */
-  .m-overlay {
-    position: absolute !important;
-    inset: 0 !important;
-    background: rgba(0,0,0,0.4) !important;
-    z-index: 200 !important;
-    display: flex !important;
-    align-items: flex-end !important;
-    justify-content: center !important;
-    animation: m-fade-in 0.2s ease !important;
-  }
-  @keyframes m-fade-in {
-    0% { opacity: 0; }
-    100% { opacity: 1; }
-  }
-  .m-panel {
-    width: 92% !important;
-    max-height: 75% !important;
-    background: linear-gradient(180deg, #fff 0%, #fdf6ec 100%) !important;
-    border-radius: 20px 20px 0 0 !important;
-    padding: 20px 16px 24px !important;
-    overflow-y: auto !important;
-    animation: m-slide-up 0.3s ease !important;
-  }
-  @keyframes m-slide-up {
-    0% { transform: translateY(100%); }
-    100% { transform: translateY(0); }
-  }
-  .m-panel-title {
-    font-size: 18px !important;
-    font-weight: 700 !important;
-    color: #3a2f28 !important;
-    margin-bottom: 16px !important;
-    text-align: center !important;
-  }
-  .m-panel-close {
-    position: absolute !important;
-    top: 12px !important; right: 16px !important;
-    width: 32px !important; height: 32px !important;
-    border-radius: 50% !important;
-    background: rgba(0,0,0,0.06) !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 16px !important;
-    cursor: pointer !important;
-    border: none !important;
-    -webkit-tap-highlight-color: transparent !important;
-  }
-  .m-stats-grid {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 12px !important;
-    margin-top: 12px !important;
-  }
-  .m-stat-card {
-    background: linear-gradient(135deg, #fdf6ec, #f5e6d3) !important;
-    border-radius: 14px !important;
-    padding: 14px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 6px !important;
-  }
-  .m-stat-icon {
-    font-size: 28px !important;
-  }
-  .m-stat-label {
-    font-size: 12px !important;
-    color: #9a8c7a !important;
-  }
-  .m-stat-value {
-    font-size: 20px !important;
-    font-weight: 700 !important;
-    color: #3a2f28 !important;
-  }
-  .m-menu-list {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 10px !important;
-    margin-top: 12px !important;
-  }
-  .m-menu-item {
-    display: flex !important;
-    align-items: center !important;
-    gap: 14px !important;
-    padding: 14px !important;
-    background: linear-gradient(135deg, #fdf6ec, #f5e6d3) !important;
-    border-radius: 14px !important;
-    font-size: 14px !important;
-    color: #3a2f28 !important;
-    cursor: pointer !important;
-    text-decoration: none !important;
-    -webkit-tap-highlight-color: transparent !important;
-    touch-action: manipulation !important;
-    transition: transform 0.15s ease !important;
-    border: none !important;
-    width: 100% !important;
-    text-align: left !important;
-  }
-  .m-menu-item:active {
-    transform: scale(0.97) !important;
-  }
-  .m-menu-icon {
-    font-size: 24px !important;
-    width: 40px !important;
-    height: 40px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background: rgba(255,255,255,0.6) !important;
-    border-radius: 12px !important;
-  }
-  .m-menu-text strong {
-    display: block !important;
-    font-size: 14px !important;
-    font-weight: 600 !important;
-  }
-  .m-menu-text small {
-    display: block !important;
-    color: #9a8c7a !important;
-    font-size: 11px !important;
-    margin-top: 2px !important;
-  }
-
-  /* ===== 聊天面板 ===== */
-  .m-chat-panel {
-    position: absolute !important;
-    left: 0 !important; right: 0 !important;
-    bottom: 60px !important;
-    height: 60% !important;
-    background: linear-gradient(180deg, #fff 0%, #fdf6ec 100%) !important;
-    border-radius: 20px 20px 0 0 !important;
-    box-shadow: 0 -4px 24px rgba(0,0,0,0.15) !important;
-    z-index: 150 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-    animation: m-slide-up 0.3s ease !important;
-  }
-  .m-chat-header {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    padding: 14px 16px !important;
-    border-bottom: 1px solid rgba(0,0,0,0.06) !important;
-    flex-shrink: 0 !important;
-  }
-  .m-chat-header-title {
-    font-weight: 600 !important;
-    font-size: 16px !important;
-    color: #3a2f28 !important;
-  }
-  .m-chat-close {
-    width: 32px !important; height: 32px !important;
-    border-radius: 50% !important;
-    background: rgba(0,0,0,0.06) !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 14px !important;
-    cursor: pointer !important;
-    border: none !important;
-    -webkit-tap-highlight-color: transparent !important;
-  }
-  .m-chat-body {
-    flex: 1 !important;
-    overflow-y: auto !important;
-    padding: 16px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 12px !important;
-  }
-  .m-chat-msg {
-    padding: 12px 16px !important;
-    border-radius: 16px !important;
-    font-size: 14px !important;
-    line-height: 1.5 !important;
-    max-width: 85% !important;
-    word-break: break-word !important;
-  }
-  .m-chat-msg.m-assistant {
-    background: linear-gradient(135deg, #fdf6ec, #f5e6d3) !important;
-    color: #3a2f28 !important;
-    align-self: flex-start !important;
-    border-bottom-left-radius: 4px !important;
-  }
-  .m-chat-msg.m-user {
-    background: linear-gradient(135deg, #e8734a, #d4603a) !important;
-    color: #fff !important;
-    align-self: flex-end !important;
-    border-bottom-right-radius: 4px !important;
-  }
-  .m-chat-input-row {
-    display: flex !important;
-    gap: 10px !important;
-    padding: 12px 16px !important;
-    border-top: 1px solid rgba(0,0,0,0.06) !important;
-    flex-shrink: 0 !important;
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0)) !important;
-  }
-  .m-chat-input {
-    flex: 1 !important;
-    height: 40px !important;
-    border: 2px solid rgba(0,0,0,0.08) !important;
-    border-radius: 20px !important;
-    padding: 0 16px !important;
-    font-size: 14px !important;
-    background: #fff !important;
-    color: #3a2f28 !important;
-    outline: none !important;
-  }
-  .m-chat-input:focus {
-    border-color: #e8734a !important;
-  }
-  .m-chat-send {
-    width: 64px !important; height: 40px !important;
-    border: none !important;
-    border-radius: 20px !important;
-    background: linear-gradient(135deg, #e8734a, #d4603a) !important;
-    color: #fff !important;
-    font-size: 14px !important;
-    font-weight: 600 !important;
-    cursor: pointer !important;
-    -webkit-tap-highlight-color: transparent !important;
-    touch-action: manipulation !important;
-  }
-  .m-chat-send:active {
-    transform: scale(0.95) !important;
-  }
-
-  /* ===== 宠物状态指示器 ===== */
-  .m-pet-status {
-    position: absolute !important;
-    top: 96px !important;
-    left: 12px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 8px !important;
-    z-index: 25 !important;
-  }
-  .m-status-bar {
-    width: 100px !important;
-    height: 8px !important;
-    background: rgba(0,0,0,0.15) !important;
-    border-radius: 4px !important;
-    overflow: hidden !important;
-  }
-  .m-status-fill {
-    height: 100% !important;
-    border-radius: 4px !important;
-    transition: width 0.3s ease !important;
-  }
-  .m-status-fill.m-energy {
-    background: linear-gradient(90deg, #f2c94c, #f7dc6f) !important;
-  }
-  .m-status-fill.m-happy {
-    background: linear-gradient(90deg, #e8734a, #f5a87c) !important;
-  }
-  .m-status-label {
-    font-size: 9px !important;
-    color: rgba(255,255,255,0.8) !important;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
-    margin-bottom: -4px !important;
-  }
-`;
+import { SPRITES } from "../mobile/data/pixel-sprites";
+import "../mobile/mobile-layout.css";
 
 // ============ 主组件 ============
 export function MobileLayout() {
   const {
     state,
+    ui,
     switchScene,
     selectFurniture,
     closeActionMenu,
-    executeAction,
+    interactWithFurniture,
     petThePet,
   } = useGameEngine();
-
-  const [tab, setTab] = useState<"home" | "collect" | "chat" | "more">("home");
-  const [showChat, setShowChat] = useState(false);
+  const [tab, setTab] = useState<"home" | "collection" | "journal" | "chat">("home");
   const [chatInput, setChatInput] = useState("");
-  const [chatMessages, setChatMessages] = useState<{ role: string; text: string }[]>([
-    { role: "assistant", text: wenbebi.lines.greet?.[0] || "你好呀～" },
-  ]);
+  const [chatBusy, setChatBusy] = useState(false);
+  const [chatError, setChatError] = useState("");
+  const [lastFailedText, setLastFailedText] = useState("");
+  const [chatTurns, setChatTurns] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [chatMessages, setChatMessages] = useState<{ role: "user" | "assistant"; text: string }[]>([]);
+  const [companionStatus, setCompanionStatus] = useState<{ model?: string; models?: { name: string }[] } | null>(null);
+  const [companionStatusState, setCompanionStatusState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [companionStatusError, setCompanionStatusError] = useState("");
   const [dialogue, setDialogue] = useState<string | null>(null);
   const dialogueTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sceneAreaRef = useRef<HTMLDivElement>(null);
+  const chatLogRef = useRef<HTMLDivElement>(null);
 
   const currentScene = SCENES.find((s) => s.id === state.currentScene)!;
   const furniture = SCENE_FURNITURE[state.currentScene] || [];
   const bg = SCENE_BACKGROUNDS[state.currentScene];
   const petSprite = getSpriteForAction(state.pet.currentAction);
+  const level = relationshipLevel(state.bond);
+  const levelProgress = Math.round((state.bond % 24) / 24 * 100);
+  const relationshipName = level >= 8 ? "最好的朋友" : level >= 5 ? "形影不离" : level >= 2 ? "小伙伴" : "刚认识";
 
-  // 显示对话气泡
   const showDialogue = useCallback((text: string) => {
     if (dialogueTimer.current) clearTimeout(dialogueTimer.current);
     setDialogue(text);
     dialogueTimer.current = setTimeout(() => setDialogue(null), 3000);
   }, []);
 
-  // 家具点击
+  useEffect(() => () => {
+    if (dialogueTimer.current) clearTimeout(dialogueTimer.current);
+  }, []);
+
   const handleFurnitureClick = useCallback(
-    (item: FurnitureItem, position: { x: number; y: number }) => {
+    (item: FurnitureItem, event: React.MouseEvent<HTMLDivElement>) => {
       if (item.type === "portal" && item.targetScene) {
         switchScene(item.targetScene);
         if (item.dialogue) showDialogue(item.dialogue);
         return;
       }
       if (item.actions.length > 0) {
-        selectFurniture(item.id, position);
+        const rect = sceneAreaRef.current?.getBoundingClientRect();
+        selectFurniture(item.id, {
+          x: event.clientX - (rect?.left || 0),
+          y: event.clientY - (rect?.top || 0),
+        });
         if (item.dialogue) showDialogue(item.dialogue);
       }
     },
     [switchScene, selectFurniture, showDialogue]
   );
 
-  // 发送消息
-  const sendMessage = useCallback(() => {
-    if (!chatInput.trim()) return;
-    const newMessages = [
-      ...chatMessages,
-      { role: "user", text: chatInput },
-      { role: "assistant", text: getDialogueForMood(state.pet.mood) },
-    ];
-    setChatMessages(newMessages);
-    setChatInput("");
-  }, [chatInput, chatMessages, state.pet.mood]);
-
-  // 动作按钮
   const handleAction = useCallback(
     (action: PetAction) => {
-      executeAction(action);
-      closeActionMenu();
+      if (!ui.selectedFurniture) return;
+      const selectedItem = furniture.find((item) => item.id === ui.selectedFurniture);
+      if (!selectedItem) {
+        closeActionMenu();
+        return;
+      }
+      const blockedMessage = getInteractionBlockMessage(state, selectedItem, action.id);
+      if (blockedMessage) {
+        showDialogue(blockedMessage);
+        closeActionMenu();
+        return;
+      }
+      interactWithFurniture(ui.selectedFurniture, action.id);
+      showDialogue(action.dialogue || getDialogueForMood(action.mood));
     },
-    [executeAction, closeActionMenu]
+    [ui.selectedFurniture, state, furniture, interactWithFurniture, closeActionMenu, showDialogue]
   );
 
-  const currentFurniture = state.selectedFurniture
-    ? furniture.find((f) => f.id === state.selectedFurniture)
+  const currentFurniture = ui.selectedFurniture
+    ? furniture.find((item) => item.id === ui.selectedFurniture)
     : null;
-
-  // 获取可用的动作
   const availableActions = currentFurniture
-    ? PET_ACTIONS.filter((a) => currentFurniture.actions.includes(a.id))
+    ? PET_ACTIONS.filter((action) => currentFurniture.actions.includes(action.id))
     : [];
-
-  // 计算动作菜单位置
-  const menuStyle: React.CSSProperties = state.actionMenuPosition
+  const sceneRect = sceneAreaRef.current?.getBoundingClientRect();
+  const menuWidth = Math.min(280, (sceneRect?.width || window.innerWidth) - 24);
+  const menuStyle: React.CSSProperties = ui.actionMenuPosition
     ? {
-        left: Math.min(state.actionMenuPosition.x, window.innerWidth - 300),
-        top: Math.max(state.actionMenuPosition.y - 80, 60),
+        left: Math.max(12, Math.min(ui.actionMenuPosition.x - menuWidth / 2, (sceneRect?.width || window.innerWidth) - menuWidth - 12)),
+        top: Math.max(126, Math.min(ui.actionMenuPosition.y - 96, (sceneRect?.height || window.innerHeight) - 190)),
       }
-    : { left: "50%", top: "40%", transform: "translate(-50%, -50%)" };
+    : { left: "50%", top: "50%", transform: "translate(-50%, -50%)" };
+
+  const checkCompanionStatus = useCallback(async () => {
+    setCompanionStatusState("loading");
+    setCompanionStatusError("");
+    try {
+      const next = await requestCompanionStatus() as { model?: string; models?: { name: string }[] };
+      setCompanionStatus(next);
+      setCompanionStatusState("ready");
+    } catch (error) {
+      setCompanionStatusError(error instanceof Error ? error.message : "无法连接 Ollama");
+      setCompanionStatusState("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tab === "chat" && companionStatusState === "idle") void checkCompanionStatus();
+  }, [tab, companionStatusState, checkCompanionStatus]);
+
+  const sendMessage = useCallback(async (submittedText = chatInput, appendUserMessage = true) => {
+    const text = submittedText.trim();
+    if (!text || chatBusy) return;
+
+    const history = chatTurns.slice(-8);
+    setChatError("");
+    setLastFailedText("");
+    setChatBusy(true);
+    setChatInput("");
+    if (appendUserMessage) {
+      setChatMessages((previous) => [...previous, { role: "user" as const, text }].slice(-16));
+    }
+
+    try {
+      const result = await requestCompanionChat(text, history) as { reply?: unknown };
+      if (typeof result?.reply !== "string" || !result.reply.trim()) throw new Error("雯宝这次没有收到回复，请再试一次。");
+      const reply = result.reply.trim();
+      setChatTurns((previous) => [...previous, { role: "user" as const, content: text }, { role: "assistant" as const, content: reply }].slice(-12));
+      setChatMessages((previous) => [...previous, { role: "assistant" as const, text: reply }].slice(-16));
+      setCompanionStatusState("ready");
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : "暂时无法连接雯宝的对话服务");
+      setLastFailedText(text);
+      setChatInput(text);
+    } finally {
+      setChatBusy(false);
+    }
+  }, [chatInput, chatBusy, chatTurns]);
+
+  const quickPrompts = [
+    "今天你过得怎么样？",
+    `我现在在${currentScene.name}，陪我聊聊这里吧。`,
+    "我想和你安静地待一会儿。",
+  ];
+
+  useEffect(() => {
+    if (tab === "chat" && chatLogRef.current) {
+      chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight;
+    }
+  }, [tab, chatMessages, chatBusy, chatError]);
+
+  const modelName = companionStatus?.model || "Ollama";
+  const modelAvailable = !companionStatus?.models?.length
+    || companionStatus.models.some((model) => model.name === companionStatus.model);
+  const chatStatusText = companionStatusState === "loading"
+    ? "正在连接模型…"
+    : companionStatusState === "error"
+      ? companionStatusError || "模型暂时无法连接"
+      : companionStatusState === "ready"
+        ? modelAvailable ? `已连接 · ${modelName}` : `已连接，但未找到 ${modelName}`
+        : "等待连接模型";
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: STYLES }} />
+
       <div id="mobile-game-root">
-        {/* 场景区域 */}
-        <div className="m-scene-area">
-          <div className="m-scene-bg" style={{ background: bg.wall }} />
-          <div className="m-floor" style={{ background: bg.floor }} />
-
-          {/* 家具 */}
-          {furniture.map((item) => (
-            <div
-              key={item.id}
-              className={`m-furn${item.type === "interactive" ? " m-furn--interactive" : ""}${
-                item.type === "portal" ? " m-furn--portal" : ""
-              }`}
-              style={{
-                left: `${item.left}%`,
-                bottom: `${item.bottom}%`,
-                width: `${item.w}%`,
-                height: `${item.h}%`,
-                backgroundColor: item.color,
-                borderRadius: item.borderRadius,
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                const rect = (e.target as HTMLElement).getBoundingClientRect();
-                handleFurnitureClick(item, {
-                  x: e.clientX - rect.left,
-                  y: e.clientY - rect.top,
-                });
-              }}
-              onTouchStart={(e) => {
-                e.stopPropagation();
-                const touch = e.touches[0];
-                const rect = (e.target as HTMLElement).getBoundingClientRect();
-                handleFurnitureClick(item, {
-                  x: touch.clientX - rect.left,
-                  y: touch.clientY - rect.top,
-                });
-              }}
-            >
-              <span className="m-furn-label">{item.label}</span>
-            </div>
-          ))}
-
-          {/* 宠物 */}
-          <div
-            className={`m-pet-wrap${state.pet.currentAction === "jump" || state.pet.currentAction === "happy" ? " m-pet-action" : ""}`}
-            onClick={() => {
-              petThePet();
-              showDialogue(getDialogueForMood(state.pet.mood));
-            }}
-          >
-            <img src={`assets/${petSprite}.png`} alt={wenbebi.name} className="m-pet-img" draggable={false} />
-            <div className="m-pet-shadow" />
-          </div>
-
-          {/* 对话气泡 */}
-          {dialogue && (
-            <div className="m-dialogue" style={{ left: "50%", bottom: "42%", transform: "translateX(-50%)" }}>
-              {dialogue}
-            </div>
-          )}
-
-          {/* 场景标题 */}
-          <div className="m-scene-title">{currentScene.name}</div>
-
-          {/* 宠物状态 */}
-          <div className="m-pet-status">
-            <div className="m-status-label">活力</div>
-            <div className="m-status-bar">
-              <div className="m-status-fill m-energy" style={{ width: `${state.pet.energy}%` }} />
-            </div>
-            <div className="m-status-label">心情</div>
-            <div className="m-status-bar">
-              <div className="m-status-fill m-happy" style={{ width: `${state.pet.happiness}%` }} />
+        <header className="m-hud">
+          <div className="m-hud-brand">
+            <img className="m-hud-avatar" src={`assets/${wenbebi.sprites.idle}.webp`} alt="" draggable={false} />
+            <div className="m-hud-name">
+              <strong>{wenbebi.name}</strong>
+              <small>Lv.{level} · {relationshipName}</small>
             </div>
           </div>
+          <div className="m-hud-right">
+            <div className="m-currency" aria-label={`零钱 ${state.coins}`}><span aria-hidden="true">🪙</span><strong>{state.coins}</strong></div>
+            <button className="m-header-action" type="button" aria-label="打开手账" title="打开手账" onClick={() => setTab("journal")}>▤</button>
+          </div>
+        </header>
 
-          {/* 动作菜单 */}
-          {state.showActionMenu && availableActions.length > 0 && (
-            <div className="m-action-menu" style={menuStyle}>
-              {availableActions.map((action) => (
-                <button
-                  key={action.id}
-                  className="m-action-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAction(action);
-                  }}
-                >
-                  <span className="m-action-icon">{action.icon}</span>
-                  <span>{action.label}</span>
-                </button>
-              ))}
+        <main className="m-main">
+          {tab === "home" && (
+            <div className="m-scene-area" ref={sceneAreaRef}>
+              <div className="m-scene-bg" style={{ background: bg.wall }} />
+              <div className="m-floor" style={{ background: bg.floor }} />
+
+              <nav className="m-location-nav" aria-label="选择地点">
+                {SCENES.map((scene) => (
+                  <button
+                    key={scene.id}
+                    type="button"
+                    className={`m-location-btn${scene.id === state.currentScene ? " m-active" : ""}`}
+                    aria-current={scene.id === state.currentScene ? "location" : undefined}
+                    onClick={() => switchScene(scene.id)}
+                  >
+                    <span aria-hidden="true">{scene.icon}</span>{scene.name}
+                  </button>
+                ))}
+              </nav>
+
+              {furniture.map((item) => {
+                const furnClass = item.id === "rug" ? " m-furn--rug" : item.id === "sky-view" ? " m-furn--sky" : "";
+                const spriteSrc = SPRITES[item.id];
+                const accessibleName = item.label || item.id.replaceAll("-", " ");
+                return (
+                  <div
+                    key={item.id}
+                    className={`m-furn${item.type === "interactive" ? " m-furn--interactive" : ""}${item.type === "portal" ? " m-furn--portal" : ""}${furnClass}`}
+                    data-type={item.type}
+                    role={item.actions.length ? "button" : undefined}
+                    tabIndex={item.actions.length ? 0 : undefined}
+                    aria-label={item.actions.length ? accessibleName : undefined}
+                    style={{
+                      left: `${item.left}%`,
+                      bottom: `${item.bottom}%`,
+                      width: `${item.w}%`,
+                      height: `${item.h}%`,
+                    }}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleFurnitureClick(item, event);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        handleFurnitureClick(item, {
+                          clientX: rect.left + rect.width / 2,
+                          clientY: rect.top + rect.height / 2,
+                        } as React.MouseEvent<HTMLDivElement>);
+                      }
+                    }}
+                  >
+                    <div className="m-furn-img-wrap">
+                      {spriteSrc && <img src={spriteSrc} alt="" className="m-furn-img" draggable={false} />}
+                    </div>
+                    {item.type === "portal" && <span className="m-furn-label">{item.label}</span>}
+                  </div>
+                );
+              })}
+
               <button
-                className="m-action-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeActionMenu();
+                type="button"
+                className={`m-pet-wrap${state.pet.currentAction === "jump" || state.pet.currentAction === "happy" ? " m-pet-action" : ""}`}
+                aria-label={`摸摸${wenbebi.name}`}
+                onClick={() => {
+                  petThePet();
+                  showDialogue(getDialogueForMood("happy"));
                 }}
-                style={{ background: "rgba(0,0,0,0.05)" }}
               >
-                <span className="m-action-icon">✕</span>
-                <span>关闭</span>
+                <img src={`assets/${petSprite}.webp`} alt={wenbebi.name} className="m-pet-img" draggable={false} />
+                <span className="m-pet-shadow" />
               </button>
+
+              {dialogue && (
+                <div className="m-dialogue" style={{ left: "50%", bottom: "calc(10% + 132px)", transform: "translateX(-50%)" }} aria-live="polite">
+                  {dialogue}
+                </div>
+              )}
+
+              {ui.showActionMenu && currentFurniture && availableActions.length > 0 && (
+                <div className="m-action-menu" style={menuStyle} role="group" aria-label={`${currentFurniture.label || currentFurniture.id}的互动`}>
+                  <div className="m-action-heading">{currentFurniture.label || accessibleFurnitureName(currentFurniture.id)}</div>
+                  {availableActions.map((action) => (
+                    <button key={action.id} type="button" className="m-action-btn" onClick={(event) => { event.stopPropagation(); handleAction(action); }}>
+                      <span className="m-action-icon" aria-hidden="true">{action.icon}</span>
+                      <span>{action.label}</span>
+                    </button>
+                  ))}
+                  <button type="button" className="m-action-btn" onClick={(event) => { event.stopPropagation(); closeActionMenu(); }}>
+                    <span className="m-action-icon" aria-hidden="true">×</span><span>收起</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
-        </div>
 
-        {/* 底部Tab栏 */}
-        <nav className="m-tabbar">
-          <button
-            className={`m-tab-btn${tab === "home" ? " m-active" : ""}`}
-            onClick={() => setTab("home")}
-          >
-            <span className="m-tab-icon">🏠</span>
-            <span>主页</span>
+          {tab === "collection" && (
+            <section className="m-screen" aria-labelledby="collection-title">
+              <div className="m-screen-heading">
+                <div><h1 id="collection-title">收藏与成长</h1><p>一起走过的地方和留下的小东西</p></div>
+                <span className="m-count-label">探索 {state.exploredScenes.length} / {SCENES.length}</span>
+              </div>
+              <div className="m-level-card">
+                <div className="m-level-top"><strong>Lv.{level} · {relationshipName}</strong><span>{state.bond} 亲密</span></div>
+                <div className="m-progress-track"><div className="m-progress-fill" style={{ width: `${levelProgress}%` }} /></div>
+                <div className="m-level-caption"><span>下一枚纪念章</span><span>{state.bond % 24} / 24</span></div>
+              </div>
+              <div className="m-inventory-grid">
+                <div className="m-inventory-card"><span className="m-inventory-icon">🪙</span><span className="m-inventory-copy"><small>零钱</small><strong>{state.coins}</strong></span></div>
+                <div className="m-inventory-card"><span className="m-inventory-icon">🌱</span><span className="m-inventory-copy"><small>花种</small><strong>{state.seeds}</strong></span></div>
+                <div className="m-inventory-card"><span className="m-inventory-icon">💐</span><span className="m-inventory-copy"><small>花朵</small><strong>{state.flowers}</strong></span></div>
+                <div className="m-inventory-card"><span className="m-inventory-icon">🎖️</span><span className="m-inventory-copy"><small>纪念物</small><strong>{state.mementos}</strong></span></div>
+              </div>
+              <h2 className="m-section-label">一起去过的地方</h2>
+              <div className="m-place-row">
+                {SCENES.map((scene) => (
+                  <span key={scene.id} className={`m-place-chip${state.exploredScenes.includes(scene.id) ? "" : " m-unseen"}`}>
+                    {state.exploredScenes.includes(scene.id) ? "✓ " : "· "}{scene.icon} {scene.name}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {tab === "journal" && (
+            <section className="m-screen" aria-labelledby="journal-title">
+              <div className="m-screen-heading"><div><h1 id="journal-title">生活小记</h1><p>那些一起度过的片刻</p></div></div>
+              <h2 className="m-section-label">最近的日子</h2>
+              <div className="m-journal-list">
+                {state.journal.length ? state.journal.map((entry) => (
+                  <article className="m-journal-entry" key={entry.id}>
+                    <span className="m-journal-dot" aria-hidden="true" />
+                    <div><p>{entry.text}</p><time>{new Date(entry.time).toLocaleDateString("zh-CN", { month: "long", day: "numeric" })}</time></div>
+                  </article>
+                )) : <p className="m-empty-journal">新的一页还空着。探索时，新的故事会留在这里。</p>}
+              </div>
+              <a className="m-text-link" href="?desktop">打开桌面版</a>
+            </section>
+          )}
+
+          {tab === "chat" && (
+            <section className="m-screen m-chat-screen" aria-labelledby="chat-title">
+              <div className="m-screen-heading"><div><h1 id="chat-title">和雯宝聊会儿</h1><p>{currentScene.name} · 她就在你身边</p></div></div>
+              <div className={`m-chat-status${companionStatusState === "ready" && modelAvailable ? " m-connected" : ""}${companionStatusState === "error" || (companionStatusState === "ready" && !modelAvailable) ? " m-error" : ""}`} role="status">
+                <span className="m-chat-status-copy"><span className="m-chat-status-dot" aria-hidden="true" />{chatStatusText}</span>
+                <button className="m-chat-retry" type="button" onClick={() => void checkCompanionStatus()} disabled={companionStatusState === "loading"}>
+                  {companionStatusState === "loading" ? "连接中" : companionStatusState === "error" ? "重试连接" : "刷新状态"}
+                </button>
+              </div>
+              <div className="m-chat-card">
+                <div className="m-chat-log" ref={chatLogRef} aria-live="polite" aria-relevant="additions text">
+                  {!chatMessages.length && !chatBusy && <p className="m-chat-empty">今天想和雯宝聊些什么？</p>}
+                  {chatMessages.map((message, index) => (
+                    <div key={`${index}-${message.role}`} className={`m-chat-msg${message.role === "user" ? " m-user" : ""}`}>{message.text}</div>
+                  ))}
+                  {chatBusy && <div className="m-chat-msg m-chat-thinking" role="status">雯宝正在想…</div>}
+                </div>
+                {!chatMessages.length && <div className="m-chat-topics" aria-label="聊天开场">
+                  {quickPrompts.map((prompt) => (
+                    <button key={prompt} type="button" className="m-topic-btn" onClick={() => void sendMessage(prompt)} disabled={chatBusy}>{prompt}</button>
+                  ))}
+                </div>}
+                {chatError && <div className="m-chat-error" role="alert"><span>{chatError}</span>{lastFailedText && <button className="m-chat-retry" type="button" onClick={() => void sendMessage(lastFailedText, false)} disabled={chatBusy}>重试发送</button>}</div>}
+                <form className="m-chat-compose" onSubmit={(event) => { event.preventDefault(); void sendMessage(); }}>
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(event) => setChatInput(event.target.value)}
+                    placeholder="和雯宝说说话…"
+                    aria-label="输入要对雯宝说的话"
+                    maxLength={400}
+                    disabled={chatBusy}
+                  />
+                  <button className="m-chat-send" type="submit" disabled={chatBusy || !chatInput.trim()}>{chatBusy ? "发送中" : "发送"}</button>
+                </form>
+              </div>
+            </section>
+          )}
+        </main>
+
+        <nav className="m-tabbar" aria-label="游戏导航">
+          <button type="button" className={`m-tab-btn${tab === "home" ? " m-active" : ""}`} aria-current={tab === "home" ? "page" : undefined} onClick={() => setTab("home")}>
+            <span className="m-tab-icon" aria-hidden="true">🏠</span><span>陪伴</span>
           </button>
-          <button
-            className={`m-tab-btn${tab === "collect" ? " m-active" : ""}`}
-            onClick={() => setTab("collect")}
-          >
-            <span className="m-tab-icon">🎒</span>
-            <span>收集</span>
+          <button type="button" className={`m-tab-btn${tab === "collection" ? " m-active" : ""}`} aria-current={tab === "collection" ? "page" : undefined} onClick={() => setTab("collection")}>
+            <span className="m-tab-icon" aria-hidden="true">🎒</span><span>收藏</span>
           </button>
-          <button
-            className={`m-tab-btn${tab === "chat" ? " m-active" : ""}`}
-            onClick={() => {
-              setTab("chat");
-              setShowChat(true);
-            }}
-          >
-            <span className="m-tab-icon">💬</span>
-            <span>对话</span>
+          <button type="button" className={`m-tab-btn${tab === "journal" ? " m-active" : ""}`} aria-current={tab === "journal" ? "page" : undefined} onClick={() => setTab("journal")}>
+            <span className="m-tab-icon" aria-hidden="true">📔</span><span>手账</span>
           </button>
-          <button
-            className={`m-tab-btn${tab === "more" ? " m-active" : ""}`}
-            onClick={() => setTab("more")}
-          >
-            <span className="m-tab-icon">️</span>
-            <span>更多</span>
+          <button type="button" className={`m-tab-btn${tab === "chat" ? " m-active" : ""}`} aria-current={tab === "chat" ? "page" : undefined} onClick={() => setTab("chat")}>
+            <span className="m-tab-icon" aria-hidden="true">💬</span><span>聊聊</span>
           </button>
         </nav>
-
-        {/* 聊天面板 */}
-        {showChat && (
-          <div className="m-chat-panel">
-            <div className="m-chat-header">
-              <span className="m-chat-header-title">与 {wenbebi.name} 对话</span>
-              <button className="m-chat-close" onClick={() => setShowChat(false)}>✕</button>
-            </div>
-            <div className="m-chat-body">
-              {chatMessages.map((msg, i) => (
-                <div key={i} className={`m-chat-msg m-${msg.role}`}>
-                  {msg.text}
-                </div>
-              ))}
-            </div>
-            <div className="m-chat-input-row">
-              <input
-                className="m-chat-input"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                placeholder="说点什么..."
-              />
-              <button className="m-chat-send" onClick={sendMessage}>发送</button>
-            </div>
-          </div>
-        )}
-
-        {/* 收集面板 */}
-        {tab === "collect" && (
-          <div className="m-overlay" onClick={() => setTab("home")}>
-            <div className="m-panel" onClick={(e) => e.stopPropagation()}>
-              <button className="m-panel-close" onClick={() => setTab("home")}>✕</button>
-              <div className="m-panel-title">收集背包</div>
-              <div className="m-stats-grid">
-                <div className="m-stat-card">
-                  <span className="m-stat-icon">🌸</span>
-                  <span className="m-stat-label">花种</span>
-                  <span className="m-stat-value">0</span>
-                </div>
-                <div className="m-stat-card">
-                  <span className="m-stat-icon">💐</span>
-                  <span className="m-stat-label">花束</span>
-                  <span className="m-stat-value">0</span>
-                </div>
-                <div className="m-stat-card">
-                  <span className="m-stat-icon">🎁</span>
-                  <span className="m-stat-label">纪念品</span>
-                  <span className="m-stat-value">0</span>
-                </div>
-                <div className="m-stat-card">
-                  <span className="m-stat-icon">💰</span>
-                  <span className="m-stat-label">零钱</span>
-                  <span className="m-stat-value">0</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 更多面板 */}
-        {tab === "more" && (
-          <div className="m-overlay" onClick={() => setTab("home")}>
-            <div className="m-panel" onClick={(e) => e.stopPropagation()}>
-              <button className="m-panel-close" onClick={() => setTab("home")}>✕</button>
-              <div className="m-panel-title">更多选项</div>
-              <div className="m-menu-list">
-                <div className="m-menu-item">
-                  <span className="m-menu-icon">🎨</span>
-                  <div className="m-menu-text">
-                    <strong>角色工坊</strong>
-                    <small>自定义外观</small>
-                  </div>
-                </div>
-                <div className="m-menu-item">
-                  <span className="m-menu-icon">🛋️</span>
-                  <div className="m-menu-text">
-                    <strong>布置房间</strong>
-                    <small>拖拽家具</small>
-                  </div>
-                </div>
-                <a href="?desktop" className="m-menu-item">
-                  <span className="m-menu-icon">🖥️</span>
-                  <div className="m-menu-text">
-                    <strong>桌面版</strong>
-                    <small>返回经典玩法</small>
-                  </div>
-                </a>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </>
   );
+}
+
+function accessibleFurnitureName(id: string) {
+  const names: Record<string, string> = {
+    "window-a": "窗边", "window-b": "窗边", "plant-a": "小盆栽", bed: "床铺", "toy-box": "玩具箱",
+    armchair: "扶手椅", "record-player": "唱片机", lamp: "小台灯", desk: "书桌", snack: "点心",
+    "home-door": "出门", "balcony-plant": "阳台花盆", "balcony-chair": "阳台椅", railing: "栏杆",
+    "sky-view": "天空", "balcony-exit": "下楼", "street-fountain": "喷泉", "street-flower": "街边花摊",
+    "street-bench": "长椅", "street-sign": "路牌", "street-gate": "回家", "cafe-counter": "咖啡吧台",
+    "cafe-table": "靠窗桌", "cafe-exit": "离开咖啡馆",
+  };
+  return names[id] || "场景物件";
 }

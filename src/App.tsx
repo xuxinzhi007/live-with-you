@@ -124,7 +124,7 @@ function compressMemoryPhoto(file: File) {
   });
 }
 
-export function App() {
+export function App({ mobile = false }: { mobile?: boolean }) {
   const appRef = useRef<HTMLDivElement>(null);
   const layoutSaveTimerRef = useRef<number | null>(null);
   const furnitureDragRef = useRef<{
@@ -149,7 +149,7 @@ export function App() {
   const memorySwipeStartRef = useRef<number | null>(null);
   const [memoryBookSize, setMemoryBookSize] = useState({ width: 320, height: 460 });
   const [showMobileTip, setShowMobileTip] = useState(shouldShowMobileGuide);
-  const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding);
+  const [showOnboarding, setShowOnboarding] = useState(() => mobile ? false : shouldShowOnboarding());
   const [memoryNotice, setMemoryNotice] = useState("");
   const [journal, setJournal] = useState<JournalEntry[]>(loadJournal);
   const [companionStatus, setCompanionStatus] = useState<CompanionStatus | null>(null);
@@ -160,7 +160,12 @@ export function App() {
   const [chatBusy, setChatBusy] = useState(false);
   const [chatError, setChatError] = useState("");
   const [talkOpen, setTalkOpen] = useState(false);
-  const [experienceMode, setExperienceMode] = useState<"classic" | "life">(loadExperienceMode);
+  const [experienceMode, setExperienceMode] = useState<"classic" | "life">(() => mobile ? "classic" : loadExperienceMode());
+
+  useEffect(() => {
+    setShowOnboarding(mobile ? false : shouldShowOnboarding());
+    setExperienceMode(mobile ? "classic" : loadExperienceMode());
+  }, [mobile]);
 
   useEffect(() => {
     if (layoutSaveTimerRef.current) window.clearTimeout(layoutSaveTimerRef.current);
@@ -481,7 +486,7 @@ export function App() {
   }
 
   return (
-    <div ref={appRef} className="game-app" data-scene={scene} data-experience={experienceMode} data-decorating={isDecorating || undefined} data-talking={talkOpen || undefined} data-memory-open={isMemoryOpen || undefined} data-onboarding={showOnboarding || undefined}>
+    <div ref={appRef} className="game-app" data-mobile={mobile || undefined} data-scene={scene} data-experience={experienceMode} data-decorating={isDecorating || undefined} data-talking={talkOpen || undefined} data-memory-open={isMemoryOpen || undefined} data-onboarding={showOnboarding || undefined}>
       <div id="viewport">
         <div id="world">
           <div className={`room room--${scene}`}>
@@ -544,9 +549,12 @@ export function App() {
       </a>
 
       <section className="life-bag" aria-label="生活背包">
-        <button type="button" id="bagToggle" aria-expanded="false"><span className="life-bag__icon" aria-hidden="true">✦</span> 收集 <span data-bag-total>0</span></button>
-        <div className="life-bag__panel" id="bagPanel">
-          <p>散步收获</p>
+        <button type="button" id="bagToggle" aria-label="收集背包" aria-expanded="false" aria-controls="bagPanel" title="收集背包"><span className="life-bag__icon" aria-hidden="true">✦</span> 收集 <span data-bag-total>0</span></button>
+        <div className="life-bag__panel" id="bagPanel" role="region" aria-label="散步收获" aria-hidden="true">
+          <div className="life-bag__heading">
+            <p>散步收获</p>
+            <button type="button" className="life-bag__close" data-bag-close aria-label="关闭收集面板" title="关闭"><span aria-hidden="true">×</span></button>
+          </div>
           <span>天气 <strong data-weather>晴天</strong></span>
           <span>花种 <strong data-bag-seeds>0</strong></span>
           <span>花束 <strong data-bag-flowers>0</strong></span>
