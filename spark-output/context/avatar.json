@@ -1,0 +1,29 @@
+{
+  "skill": "avatar",
+  "generated_at": "2026-10-20T19:38:00+0800",
+  "project_name": "雯宝多人共处小世界",
+  "confirmed_params": {
+    "style_mode": "3d-cartoon",
+    "subject_type": "human",
+    "body_framing": "half-body",
+    "background_type": "solid",
+    "realistic_finish": null,
+    "style_profile": "3D 渲染 Q 版（大头小身）Pixar 风格，扁平色块着色、少立体阴影；深棕齐刘海短发、大眼高光、粉腮红、白圆领短袖 T 恤、光腿"
+  },
+  "appearance_source": "public/assets/wenbebi.png（现有立绘，2D 平涂 chibi）",
+  "generated_images": [
+    { "file": "v1-1-neutral.png", "desc": "中性笑·米白底（偏写实+牛仔裤，淘汰）", "status": "rejected" },
+    { "file": "v1-2-smile.png", "desc": "开朗笑·蜜桃底（偏写实+牛仔裤，淘汰）", "status": "rejected" },
+    { "file": "v1-3-confident.png", "desc": "温柔笑·薄荷底（偏写实+牛仔裤，淘汰）", "status": "rejected" },
+    { "file": "v1-4-friendly.png", "desc": "亲和笑·浅黄底（偏写实+牛仔裤，淘汰）", "status": "rejected" },
+    { "file": "v2-1-neutral.png", "desc": "中性笑·米白底（Q版修正）", "status": "rejected" },
+    { "file": "v2-2-smile.png", "desc": "开朗张嘴笑·蜜桃底（Q版修正）", "status": "rejected" },
+    { "file": "v2-3-gentle.png", "desc": "温柔闭口笑·薄荷底（Q版修正）", "status": "selected" },
+    { "file": "v2-4-friendly.png", "desc": "亲和闭口笑·浅黄底（Q版修正）", "status": "rejected" }
+  ],
+  "final_selection": {
+    "file_path": "spark-output/avatar/wenbebi/wenbebi-avatar-final.png",
+    "resolution": "1024x1536",
+    "iterations": 2
+  }
+}

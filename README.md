@@ -1,53 +1,79 @@
-# 桌面宠物 · 雯宝
+# 雯宝
 
-网页版桌面宠物。使用 React、TypeScript 和 Vite；状态图会自动切到对应动作。
+浏览器里的陪伴小世界。打开就能看见雯宝在小屋、阳台、街区和咖啡店里生活；点她、点家具、出门、布置房间，今天的事会留在这个浏览器里。
 
-## 怎么运行
+技术栈是 React、TypeScript 和 Vite。它是网页，不是要单独安装的桌面程序。
 
-本地开发：
+## 先装 Node.js
+
+`npm install` 和 `npm run dev` 这两条命令是对的。如果终端提示 `zsh: command not found: npm`，是这台电脑还没装 Node.js，npm 会跟着 Node 一起装上。
+
+本仓库锁定的 Vite 需要 **Node.js 20.19 及以上，或 22.12 及以上**。
+
+macOS 上如果已经有 [Homebrew](https://brew.sh)：
+
+```bash
+brew install node
+node -v
+npm -v
+```
+
+两条版本命令都能打出数字后，关掉当前终端再开一个，然后回到项目目录。
+
+还没有 Homebrew 时，去 [nodejs.org](https://nodejs.org) 安装标为 LTS 的版本，装完同样新开一个终端。
+
+## 本地运行
 
 ```bash
 npm install
 npm run dev
 ```
 
-生产构建：
+浏览器打开终端里打印的地址，一般是 http://localhost:5173 。
+
+看构建后的页面：
 
 ```bash
 npm run build
+npm run preview
 ```
 
-Netlify 使用 `npm run build` 构建，并发布 `dist` 目录。图片资源位于 `public/assets`，在页面中统一以 `assets/...` 引用。
+进度、房间布置、花园、照片和生活小记都写在**当前浏览器**的 localStorage 里。换浏览器、开无痕窗口，或清除这个站点的数据，存档会消失。
 
-手机浏览器可通过“添加到主屏幕”把雯宝作为独立应用打开；清单与图标位于 `public/manifest.webmanifest` 和 `public/icon.svg`。当前不注册离线缓存，保证 Netlify 发布后始终使用最新版本。
-
-## 扩展入口
-
-游戏的体验方向、横竖屏策略与上线验收标准见 [docs/game-direction.md](docs/game-direction.md)。
-
-- `src/game/data/pet.js`：角色名称、精灵映射与台词。
-- `src/game/data/room.js`：房间内可交互物件及其动作。
-- `src/game/data/controls.js`：控制面板中的动作按钮。
-
-新增内容应优先更新这些配置；只有出现新的运行机制时，才修改 `src/game` 中的核心模块。
-
-## 状态图
-
-| 动作 | 使用图片 |
-|---|---|
-| 待机 / 散步 / 挥手 | `assets/idle.webp` |
-| 坐下（休息） | `assets/rest.webp` |
-| 睡觉 | `assets/sleep.webp` |
-| 跳跃 / 开心 | `assets/jump.webp` |
-
-中文原图会留在本地，部署只用上面这些英文小图，手机上更稳。
-
-## 操作
+## 怎么玩
 
 - 点地板：雯宝走过去
-- 点头：摸摸，出爱心
-- 点身体：挥手
-- 连点三下：开心跳
-- 拖起来再放下：落地；从很高处摔下会晕一下
-- 丢玩具：她会跑去捡
-- 方向键走动，空格跳，F 丢球
+- 点她：摸头、挥手；连点会开心跳
+- 拖起来再放下：落地；从很高的地方摔下会晕一下
+- 点家具：她先走过去，再坐下、睡觉、吃点心或听唱片
+- 拖小球再松开：她会去捡；连续接住三次会留下纪念
+- 点门口、楼梯或路口：她先走到出口，再去下一个地方
+- 底栏「布置」：拖动家具，角色和小球不受影响
+- 底栏「回忆」：放进最多 6 张照片，并查看生活小记
+
+电脑上也可以用方向键或 `A` / `D` 走动，空格或 `W` 跳跃，`S` / `E` 坐下，`Q` 睡觉，`F` 丢球。手机上双指可以平移看房间，不改变游戏状态。
+
+手机浏览器可以用「添加到主屏幕」单独打开。清单和图标在 `public/manifest.webmanifest`、`public/icon.svg`。当前不缓存离线页面，发布后会用到最新版本。
+
+## 改内容从哪下手
+
+新台词、新家具、新的「今天在做什么」，优先改数据，不要先改运行逻辑。
+
+- `src/game/data/pet.js`：名字、动作图、台词
+- `src/game/data/room.js`：房间里的物件和点下去会发生什么
+- `src/game/data/today-stories.js`：每天进小屋时的生活片段
+- `src/game/data/controls.js`：更多菜单里的动作按钮
+- `public/assets`：页面里用的图片，路径写成 `assets/...`
+
+只有出现新的玩法机制时，才改 `src/game` 里的运行时代码。界面、布置和回忆录在 `src/App.tsx`。
+
+地址加上 `?studio` 会打开角色调试页，例如 http://localhost:5173/?studio 。
+
+产品方向和后续顺序写在：
+
+- [docs/product-charter.md](docs/product-charter.md)
+- [docs/current-state-and-next.md](docs/current-state-and-next.md)
+
+## 发布
+
+Netlify 执行 `npm run build`，发布 `dist` 目录。配置见 `netlify.toml`。
