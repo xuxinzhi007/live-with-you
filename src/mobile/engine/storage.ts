@@ -1,11 +1,13 @@
 import { SCENES, type SceneId } from "../data/scenes.ts";
 import { INITIAL_PET_STATE, type PetMood } from "../data/pet-actions.ts";
-import type { GameState, JournalEntry } from "./types.ts";
+import { PLAYER_LOOKS, type PlayerLookId } from "../data/player-looks.ts";
+import type { GameState, JournalEntry, PlayerProfile } from "./types.ts";
 
 export const MOBILE_SAVE_KEY = "wenbebi-mobile-game-v2";
 const LEGACY_SAVE_KEY = "wenbebi-mobile-game-v1";
 const JOURNAL_LIMIT = 48;
 const MOODS: PetMood[] = ["happy", "normal", "sleepy", "excited", "curious"];
+const LOOK_IDS = new Set(PLAYER_LOOKS.map((look) => look.id));
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
 
@@ -23,10 +25,37 @@ function isSceneId(value: unknown): value is SceneId {
   return SCENES.some((scene) => scene.id === value);
 }
 
+function ensurePlayerId(value: unknown): string {
+  if (typeof value === "string" && value.trim()) return value.trim().slice(0, 64);
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizePlayer(value: unknown, now: number): PlayerProfile | null {
+  if (!isRecord(value)) return null;
+  if (typeof value.name !== "string") return null;
+  const name = value.name.trim().slice(0, 12);
+  if (!name) return null;
+  const lookId = LOOK_IDS.has(value.lookId as PlayerLookId)
+    ? (value.lookId as PlayerLookId)
+    : PLAYER_LOOKS[0].id;
+  return {
+    playerId: ensurePlayerId(value.playerId),
+    name,
+    lookId,
+    createdAt: clamp(value.createdAt, now, Number.MAX_SAFE_INTEGER),
+  };
+}
+
+export function createPlayerId(): string {
+  return ensurePlayerId(undefined);
+}
+
 export function createInitialGameState(now = Date.now()): GameState {
   return {
     currentScene: "bedroom",
     pet: { ...INITIAL_PET_STATE, lastInteraction: now },
+    player: null,
     coins: 18,
     seeds: 1,
     flowers: 0,
@@ -35,6 +64,8 @@ export function createInitialGameState(now = Date.now()): GameState {
     exploredScenes: ["bedroom"],
     bondedMoments: [],
     journal: [],
+    lastCoplayId: null,
+    lastCoplayAt: 0,
   };
 }
 
@@ -75,6 +106,7 @@ export function normalizeGameState(value: unknown, now = Date.now()): GameState 
       happiness: clamp(savedPet.happiness, fresh.pet.happiness, 100),
       lastInteraction: clamp(savedPet.lastInteraction, now, Number.MAX_SAFE_INTEGER),
     },
+    player: normalizePlayer(value.player, now),
     coins: clamp(value.coins, fresh.coins),
     seeds: clamp(value.seeds, fresh.seeds),
     flowers: clamp(value.flowers, fresh.flowers),
@@ -83,6 +115,8 @@ export function normalizeGameState(value: unknown, now = Date.now()): GameState 
     exploredScenes: exploredScenes.length ? exploredScenes : ["bedroom"],
     bondedMoments,
     journal,
+    lastCoplayId: typeof value.lastCoplayId === "string" ? value.lastCoplayId : null,
+    lastCoplayAt: clamp(value.lastCoplayAt, 0, Number.MAX_SAFE_INTEGER),
   };
 }
 

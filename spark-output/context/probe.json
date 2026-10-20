@@ -1,0 +1,213 @@
+{
+  "skill": "probe",
+  "generated_at": "2026-10-20T23:20:00+0800",
+  "project_name": "雯宝多人共处小世界",
+  "mode": "n1_depth_plus_build_validation_protocol",
+  "sample": {
+    "n": 1,
+    "target_n": "5-8（标准 Probe）；本项目可及样本仅核心验收人 1 人",
+    "method": "Frame 压测三问深挖 + 现网共处原型对照 + 下一轮共玩验收脚本",
+    "limitation": "n=1 只能定方向与验收标准，不能外推人群；结论标 confidence",
+    "participants": [
+      {
+        "id": "P1",
+        "role": "对象（情侣另一方）",
+        "relation": "唯一真实目标用户兼验收人",
+        "sessions": [
+          {
+            "id": "P1-S0",
+            "when": "Frame 压测（方向确认）",
+            "type": "interview",
+            "status": "done"
+          },
+          {
+            "id": "P1-S1",
+            "when": "待约：共玩一局验收现网 Mobile",
+            "type": "playtest_interview",
+            "status": "ready"
+          }
+        ]
+      }
+    ]
+  },
+  "quotes": [
+    {
+      "id": "Q1",
+      "participant": "P1",
+      "text": "肯定是多人这种",
+      "theme": "product_shape",
+      "evidence_status": "verified_quote"
+    },
+    {
+      "id": "Q2",
+      "participant": "P1",
+      "text": "能做的太少",
+      "theme": "boredom_root",
+      "evidence_status": "verified_quote"
+    },
+    {
+      "id": "Q3",
+      "participant": "P1",
+      "text": "每天打开不一定，偶尔看看，类似养；大部分是一起玩的时候打开",
+      "theme": "open_moment",
+      "evidence_status": "verified_paraphrase_from_frame"
+    }
+  ],
+  "persona": {
+    "name": "一起玩的另一方",
+    "who": "情侣中的对象；偶尔会自己打开看看，更常在约定一起玩时打开",
+    "job": "想和对方在一个小世界里待一会儿，感到彼此在一起",
+    "anti_job": "不想被每日任务催；不想只能点一下看她挥手",
+    "confidence": "high_for_this_dyad"
+  },
+  "jtbd": {
+    "when": "想和对方待着，或约好一起玩一小段时间",
+    "want_to": "让双方角色在同一小世界里一起做几件有反馈的事",
+    "so_that": "感到彼此真的在一起，而不是各自盯着单机宠物",
+    "success_looks_like": "玩完愿意再说「下次再一起开」；过程中不觉得无聊",
+    "confidence": "high"
+  },
+  "themes": [
+    {
+      "id": "T1",
+      "title": "产品形态必须是多人共处，不是第二只宠物",
+      "quotes": ["Q1"],
+      "analysis": "第二角色要代表真人。现网用雯宝代理「她」是本地先验，未满足「对象自己的角色」；P1-S1 需问：你更在意「有两个人」还是「那个角色看起来像我」。",
+      "confidence": "high_on_shape; medium_on_avatar_identity"
+    },
+    {
+      "id": "T2",
+      "title": "无聊根因=一起能做的事太少",
+      "quotes": ["Q2"],
+      "analysis": "加地点/片段/台词不解。现网已有 6 个共处动词；P1-S1 要验：玩 3–5 分钟后是否仍说「太少」。",
+      "confidence": "high_on_root; pending_on_verb_sufficiency"
+    },
+    {
+      "id": "T3",
+      "title": "打开时机=一起玩；单人=偶尔养",
+      "quotes": ["Q3"],
+      "analysis": "主单元是共玩会话。禁止 daily 钩子。单人态现网几乎只有痕迹手账，P1-S1 可轻问是否空。",
+      "confidence": "high"
+    }
+  ],
+  "emotional_curve_coplay_session": [
+    { "stage": "约好", "emotion": 1, "note": "有期待，但若说不清能一起做什么会虚" },
+    { "stage": "打开/创建「我」", "emotion": 0, "note": "现网有创建流；摩擦待测" },
+    { "stage": "看见彼此在场", "emotion": 2, "note": "目标峰值；现网是我+雯宝代理" },
+    { "stage": "一起做几件事", "emotion": -2, "note": "改版前低谷；现网应用 6 动词抬升，待 P1 验" },
+    { "stage": "结束留下痕迹", "emotion": 1, "note": "手账有共处句；对方可见性仍弱" }
+  ],
+  "pain_points": [
+    {
+      "id": "PP1",
+      "pain": "一起能做的太少",
+      "said_vs_behind": {
+        "said": "能做的太少",
+        "behind": "缺少「我们对彼此」的动词，不是缺内容量"
+      },
+      "priority": 1,
+      "build_now": "6 coplay verbs + sheet UI",
+      "still_open": "动词是否够爽、是否像真共处"
+    },
+    {
+      "id": "PP2",
+      "pain": "世界里看不到「我们」",
+      "said_vs_behind": {
+        "said": "肯定是多人这种",
+        "behind": "需要真人代理在场，不是再养一只"
+      },
+      "priority": 2,
+      "build_now": "player 创建 + 双人同屏",
+      "still_open": "对方独立角色 / 不像雯宝代理"
+    },
+    {
+      "id": "PP3",
+      "pain": "点了没爽感",
+      "said_vs_behind": {
+        "said": "（开发者自述+audit）",
+        "behind": "反馈不可见强化无聊感"
+      },
+      "priority": 3,
+      "build_now": "摸她 juice + 共处短动画",
+      "still_open": "手感是否达到「不糙」"
+    }
+  ],
+  "current_build_map": {
+    "as_of": "2026-10-20",
+    "addresses": [
+      { "theme": "T2", "code": "src/mobile/data/coplay-actions.ts + m-coplay-sheet" },
+      { "theme": "T1", "code": "player 创建 + presence 双人；对方仍是雯宝代理" },
+      { "theme": "T3", "code": "无签到；journal 留痕" }
+    ],
+    "ui_lesson": "常驻横滑「一起做」条被否；已改为单入口+面板"
+  },
+  "hypotheses": [
+    {
+      "id": "H1",
+      "statement": "本地双角色 + ≥5 共处动词，即使不联机，也能让 P1 显著降低「无聊」",
+      "test": "P1-S1 共玩 5 分钟后追问",
+      "status": "ready_to_test"
+    },
+    {
+      "id": "H2",
+      "statement": "对方若一直是雯宝皮，P1 仍会觉得「不是我俩」",
+      "test": "P1-S1 问身份认同",
+      "status": "ready_to_test"
+    },
+    {
+      "id": "H3",
+      "statement": "单入口「一起做」面板比常驻横滑条更不抢主画面",
+      "test": "观察是否误触底栏、是否找不到入口",
+      "status": "ready_to_test"
+    }
+  ],
+  "next_recruit": [
+    {
+      "who": "继续深挖 P1（本产品唯一真实用户）",
+      "why": "验收人；n 无法扩到 5-8 时优先饱和访谈",
+      "session": "P1-S1"
+    },
+    {
+      "who": "（可选）另一对情侣朋友，若愿外测",
+      "why": "验证「共处会话」是否可迁移；非必须",
+      "session": "optional"
+    }
+  ],
+  "playtest_script_p1_s1": {
+    "setup": "手机竖屏打开 Mobile；必要时清 wenbebi-mobile-game-v2",
+    "tasks": [
+      "创建自己的角色（名+样子）",
+      "确认场景里能看见「我」和雯宝",
+      "点「一起做」，各试至少 3 个动作",
+      "随便摸摸她，看反馈",
+      "打开手账看是否留下一起做的句子"
+    ],
+    "debrief_questions": [
+      "刚才一起玩，还无聊吗？1–5 分",
+      "六个「一起做」里哪个最像你们会真做的？哪个假？",
+      "雯宝现在算「我」还是算「你」？你希望对方角色长什么样？",
+      "「一起做」按钮好找吗？会不会挡事？",
+      "下次还想约着打开吗？为什么？"
+    ],
+    "pass_bar": [
+      "无聊感较改版前下降（口头即可）",
+      "能说出至少 2 个愿意再做的共处动作",
+      "不要求每日打开"
+    ]
+  },
+  "opportunities": [
+    {
+      "title": "用 P1-S1 验收现网共处，再决定是否加动词或改身份模型",
+      "priority": "immediate"
+    },
+    {
+      "title": "若 H2 成立：补对方独立角色创建（不先做实时）",
+      "priority": "high"
+    },
+    {
+      "title": "若 H1 不成立：先加强 juice/动作可读，再加动词数量",
+      "priority": "high"
+    }
+  ],
+  "summary": "Probe 完成（n=1 深挖版）：方向由 P1 三问锁定为共玩会话产品。现网已对 PP1/PP2/PP3 做本地先验实现。正式关闭需跑 P1-S1 共玩验收脚本；未跑前假设保持 pending。"
+}

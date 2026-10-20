@@ -1,0 +1,79 @@
+{
+  "skill": "signal",
+  "generated_at": "2026-10-20T22:45:00+0800",
+  "project_name": "雯宝多人共处小世界",
+  "mode": "proxy_no_ticket_corpus",
+  "note": "无客服工单/应用商店评论/埋点工单池。本 Skill 用 Probe 原话 + Audit findings 做高频痛点代理聚类，供 Journey 解锁；不作大样本统计结论。",
+  "sources": [
+    { "id": "probe", "weight": "primary", "what": "对象三信号 S1–S3 + 时刻地图" },
+    { "id": "audit", "weight": "secondary", "what": "16 findings，取 major 与高优机会点" },
+    { "id": "dev_self", "weight": "secondary", "what": "开发者自述：点击没爽感、画面糙、单调" }
+  ],
+  "frequency_clusters": [
+    {
+      "id": "SIG-01",
+      "theme": "一起能做的太少",
+      "frequency_proxy": "critical",
+      "evidence": ["probe.S2", "brief.user[能做的太少]", "controls.js 仅我对她动词"],
+      "user_impact": "共玩会话中段无聊 → 不想再约",
+      "maps_to_journey_stage": "coplay_mid",
+      "design_response": "≥5 共处动词 + juice"
+    },
+    {
+      "id": "SIG-02",
+      "theme": "没有「我们」在场",
+      "frequency_proxy": "critical",
+      "evidence": ["probe.S1", "frame.opportunity#1-2"],
+      "user_impact": "打开仍是单机宠物，无法感到对方在",
+      "maps_to_journey_stage": "enter_meet",
+      "design_response": "角色创建 + 第二人角色在场 + 相遇仪式"
+    },
+    {
+      "id": "SIG-03",
+      "theme": "点了看不见反馈 / 糙",
+      "frequency_proxy": "high",
+      "evidence": ["audit-1", "audit-2", "frame.frustrations"],
+      "user_impact": "每次互动无爽感，强化「没意思」",
+      "maps_to_journey_stage": "coplay_mid",
+      "design_response": "方向 A juice；动作差异化"
+    },
+    {
+      "id": "SIG-04",
+      "theme": "移动端信息过载 / 世界难看全",
+      "frequency_proxy": "medium",
+      "evidence": ["audit-7", "audit-14", "brief.多端"],
+      "user_impact": "竖屏共玩时注意力被 HUD 抢走，角色间互动难聚焦",
+      "maps_to_journey_stage": "enter_meet",
+      "design_response": "HUD 收敛；世界 1–1.5 屏宽"
+    },
+    {
+      "id": "SIG-05",
+      "theme": "独自打开缺乏动机（次要）",
+      "frequency_proxy": "low",
+      "evidence": ["probe.S3 每天不一定", "audit 机会点2 与新方向冲突"],
+      "user_impact": "若做成每日催促会违背打开时机；若完全空则单人态冷清",
+      "maps_to_journey_stage": "solo_trace",
+      "design_response": "单人=痕迹回看，不做签到/明日任务钩子"
+    }
+  ],
+  "ranked_for_journey": [
+    "SIG-01",
+    "SIG-02",
+    "SIG-03",
+    "SIG-04",
+    "SIG-05"
+  ],
+  "dropout_risk_hotspots": [
+    {
+      "stage_hint": "coplay_mid",
+      "risk": "约好打开后 2 分钟内发现只能摸/走/丢球 → 判定还是无聊 → 不再约",
+      "signal_ids": ["SIG-01", "SIG-03"]
+    },
+    {
+      "stage_hint": "enter_meet",
+      "risk": "打开看不到对方角色 → 「多人」承诺落空 → 信任破灭",
+      "signal_ids": ["SIG-02"]
+    }
+  ],
+  "summary": "无工单池，用 Probe+Audit 代理。最高频可行动信号：共处动词不足、无人在场、互动无反馈。独自每日动机为次要且不可用 daily 钩子硬拉。"
+}

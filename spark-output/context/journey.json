@@ -1,0 +1,172 @@
+{
+  "skill": "journey",
+  "generated_at": "2026-10-20T22:50:00+0800",
+  "project_name": "雯宝多人共处小世界",
+  "persona": "情侣双方（开发者 + 对象）",
+  "scenario": "约好一起玩的一局共处会话（主旅程）；单人偶尔回看为支线",
+  "core_job": "让自己的角色和对方的角色在小世界里一起做几件事，感到彼此真的在一起",
+  "stages": [
+    {
+      "id": "invite",
+      "name": "约一起玩",
+      "goal": "有一个值得打开的理由",
+      "actions": ["聊天里约时间", "想起上次一起做过的事"],
+      "touchpoints": ["微信/当面", "上次留痕的记忆"],
+      "emotion": 1,
+      "emotion_label": "轻期待",
+      "pain": "说不清今晚能一起做什么",
+      "evidence": "inferred",
+      "signals": [],
+      "opportunities": ["共处动词可见预告（非任务列表）"],
+      "breakpoint": false
+    },
+    {
+      "id": "enter",
+      "name": "各自打开",
+      "goal": "进入同一小世界，准备碰面",
+      "actions": ["打开网页/PWA", "加载存档", "看到自己的角色"],
+      "touchpoints": ["竖屏主视图", "角色创建（首次）"],
+      "emotion": 0,
+      "emotion_label": "平 / 略慌",
+      "pain": "HUD 杂、世界要平移；若没有「我」则承诺已碎",
+      "evidence": "audit-7,14 + SIG-02/04",
+      "signals": ["SIG-02", "SIG-04"],
+      "opportunities": ["3 步角色创建", "HUD 收敛", "世界 1–1.5 屏"],
+      "breakpoint": true,
+      "breakpoint_reason": "看不到自己的角色 → 多人叙事破产"
+    },
+    {
+      "id": "meet",
+      "name": "相遇（前 30 秒）",
+      "goal": "立刻感到「你也在」",
+      "actions": ["看见对方角色", "碰面反馈 / 打招呼"],
+      "touchpoints": ["双角色同屏", "相遇特效/台词"],
+      "emotion": 2,
+      "emotion_label": "开心峰值（目标态）",
+      "pain": "现状只有一个雯宝，无第二人代理",
+      "evidence": "probe.S1 + SIG-02",
+      "signals": ["SIG-02"],
+      "opportunities": ["相遇仪式感", "本地假多人先验"],
+      "breakpoint": true,
+      "breakpoint_reason": "打开后仍是单角色 → 信任破灭（dropout-risk）"
+    },
+    {
+      "id": "coplay",
+      "name": "共处中段",
+      "goal": "一起做 ≥5 种有爽感的事",
+      "actions": ["打招呼", "一起坐", "递物", "其他共处动词", "点角色 juice"],
+      "touchpoints": ["角色间互动", "粒子/挤压拉伸"],
+      "emotion": -2,
+      "emotion_label": "现状低谷：无聊",
+      "pain": "能做的太少；点了没反馈",
+      "evidence": "probe.S2 + SIG-01/03 + audit-1",
+      "signals": ["SIG-01", "SIG-03"],
+      "opportunities": ["共处动词表 ≥5", "每击 juice ≤100ms", "动作差异化"],
+      "breakpoint": true,
+      "breakpoint_reason": "约好打开后约 2 分钟仍无聊 → 不再约（最高危断点）"
+    },
+    {
+      "id": "close",
+      "name": "结束 / 一人离开",
+      "goal": "不空、不催、有结束感",
+      "actions": ["道别互动", "留下痕迹", "关闭"],
+      "touchpoints": ["留痕写入", "轻提示"],
+      "emotion": 0,
+      "emotion_label": "平淡收束",
+      "pain": "关掉像从没一起玩过",
+      "evidence": "inferred from probe moment_map",
+      "signals": [],
+      "opportunities": ["对方可见留痕", "短道别仪式"],
+      "breakpoint": false
+    },
+    {
+      "id": "solo",
+      "name": "单人偶尔回看",
+      "goal": "低压力陪伴，不催每日",
+      "actions": ["偶尔打开", "看对方留下的痕迹", "自己的角色还在"],
+      "touchpoints": ["痕迹回看", "自己的角色"],
+      "emotion": 1,
+      "emotion_label": "淡淡牵挂（目标态）",
+      "pain": "若做成签到会反感；若完全空则冷清",
+      "evidence": "probe.S3 + SIG-05",
+      "signals": ["SIG-05"],
+      "opportunities": ["痕迹层 = 青蛙式牵挂；禁止 daily 红点"],
+      "breakpoint": false
+    }
+  ],
+  "emotion_curve": [
+    { "stage_id": "invite", "value": 1 },
+    { "stage_id": "enter", "value": 0 },
+    { "stage_id": "meet", "value": 2 },
+    { "stage_id": "coplay", "value": -2 },
+    { "stage_id": "close", "value": 0 },
+    { "stage_id": "solo", "value": 1 }
+  ],
+  "emotion_curve_note": "meet 的 +2 与 coplay 的 -2 为「目标峰值 vs 现状低谷」对照：现状无相遇峰值，共处中段已是低谷；改版后 coplay 应抬升到 +1~+2",
+  "key_moments": [
+    {
+      "type": "dropout-risk",
+      "stage_id": "coplay",
+      "title": "共处 2 分钟仍无聊",
+      "severity": "critical",
+      "fix": "方向 B 动词 ≥5 + 方向 A juice"
+    },
+    {
+      "type": "dropout-risk",
+      "stage_id": "meet",
+      "title": "看不到对方角色",
+      "severity": "critical",
+      "fix": "方向 A/B：双角色在场 + 相遇仪式"
+    },
+    {
+      "type": "delight",
+      "stage_id": "meet",
+      "title": "碰面的第一下",
+      "severity": "high",
+      "fix": "仪式感反馈（目标情感峰值）"
+    },
+    {
+      "type": "retention-soft",
+      "stage_id": "solo",
+      "title": "看到对方留下的痕迹",
+      "severity": "medium",
+      "fix": "留痕可见；禁止改成每日任务"
+    }
+  ],
+  "target_curve_after_redesign": [
+    { "stage_id": "invite", "value": 1 },
+    { "stage_id": "enter", "value": 1 },
+    { "stage_id": "meet", "value": 2 },
+    { "stage_id": "coplay", "value": 2 },
+    { "stage_id": "close", "value": 1 },
+    { "stage_id": "solo", "value": 1 }
+  ],
+  "priority_fixes": [
+    {
+      "rank": 1,
+      "from_stages": ["coplay"],
+      "fix": "共处动词 ≥5 + 每击 juice",
+      "lifts": "把 coplay 情绪从 -2 抬到 +2"
+    },
+    {
+      "rank": 2,
+      "from_stages": ["enter", "meet"],
+      "fix": "角色创建 + 双角色在场 + 相遇仪式",
+      "lifts": "兑现「多人」承诺，制造 meet 峰值"
+    },
+    {
+      "rank": 3,
+      "from_stages": ["enter"],
+      "fix": "HUD 收敛 + 单屏可见",
+      "lifts": "降低进入摩擦，让注意力在角色上"
+    },
+    {
+      "rank": 4,
+      "from_stages": ["close", "solo"],
+      "fix": "对方可见留痕；单人只回看",
+      "lifts": "软留存，不违背打开时机"
+    }
+  ],
+  "html_path": "spark-output/journey/wenbebi.html",
+  "summary": "主旅程=一局共玩会话。最高危断点在共处中段（能做的太少）；次危在相遇看不到对方。改版目标：抬升 coplay 情绪，保留 solo 低压力痕迹层。"
+}

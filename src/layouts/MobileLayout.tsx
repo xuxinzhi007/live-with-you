@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { wenbebi } from "../game/data/pet";
 import { requestCompanionChat, requestCompanionStatus } from "../game/companion";
 import {
@@ -14,9 +14,18 @@ import {
   getSpriteForAction,
   getDialogueForMood,
 } from "../mobile/data/pet-actions";
+import { getPlayerLook } from "../mobile/data/player-looks";
+import { COPLAY_ACTIONS } from "../mobile/data/coplay-actions";
+import { preferredSlot } from "../mobile/data/slots";
 import { getInteractionBlockMessage, relationshipLevel } from "../mobile/engine/game-rules";
 import { useGameEngine } from "../mobile/engine/GameEngine";
+import { poseStyle } from "../mobile/engine/stage-motion";
+import { useStagePresence } from "../mobile/engine/useStagePresence";
+import { useCoupleRoom } from "../mobile/multiplayer/useCoupleRoom";
+import { persistRoomId, readStoredRoomId } from "../mobile/multiplayer/room-code";
 import { SPRITES } from "../mobile/data/pixel-sprites";
+import { CharacterCreate } from "../mobile/CharacterCreate";
+import { FindPartnerSheet } from "../mobile/FindPartnerSheet";
 import "../mobile/mobile-layout.css";
 
 // ============ 主组件 ============
@@ -29,8 +38,51 @@ export function MobileLayout() {
     closeActionMenu,
     interactWithFurniture,
     petThePet,
+    createPlayer,
+    doCoplay,
   } = useGameEngine();
   const [tab, setTab] = useState<"home" | "collection" | "journal" | "chat">("home");
+  const [petJuice, setPetJuice] = useState(false);
+  const [selfJuice, setSelfJuice] = useState(false);
+  const [peerJuice, setPeerJuice] = useState(false);
+  const [coplayJuice, setCoplayJuice] = useState<string | null>(null);
+  const [coplayOpen, setCoplayOpen] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
+  const [roomId, setRoomId] = useState<string | null>(() => readStoredRoomId());
+  const [metFlash, setMetFlash] = useState(false);
+  const juiceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const peerActionSeen = useRef("");
+  const localIdentity = useMemo(
+    () => (state.player
+      ? { playerId: state.player.playerId, name: state.player.name, lookId: state.player.lookId }
+      : null),
+    [state.player],
+  );
+  const room = useCoupleRoom(localIdentity, state.currentScene, roomId);
+  const partner = room.peersInScene[0] ?? null;
+  const hasPartner = Boolean(partner);
+  const partnerLook = partner ? getPlayerLook(partner.lookId) : null;
+  const homeOtherSlot = partner
+    ? preferredSlot(partner.playerId, [state.player?.playerId ?? ""])
+    : "R";
+  const stage = useStagePresence(room.localSlot, homeOtherSlot);
+
+  const enterRoom = useCallback((nextRoomId: string) => {
+    setRoomId(nextRoomId);
+    persistRoomId(nextRoomId);
+  }, []);
+
+  const leaveRoom = useCallback(() => {
+    setRoomId(null);
+    persistRoomId(null);
+  }, []);
+
+  const goScene = useCallback((sceneId: SceneId) => {
+    if (sceneId === state.currentScene) return;
+    closeActionMenu();
+    setCoplayOpen(false);
+    stage.runSceneChange(() => switchScene(sceneId));
+  }, [state.currentScene, closeActionMenu, stage, switchScene]);
   const [chatInput, setChatInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
   const [chatError, setChatError] = useState("");
@@ -61,25 +113,109 @@ export function MobileLayout() {
 
   useEffect(() => () => {
     if (dialogueTimer.current) clearTimeout(dialogueTimer.current);
+    if (juiceTimer.current) clearTimeout(juiceTimer.current);
   }, []);
+
+  const triggerPetJuice = useCallback(() => {
+    setPetJuice(true);
+    if (juiceTimer.current) clearTimeout(juiceTimer.current);
+    juiceTimer.current = setTimeout(() => setPetJuice(false), 480);
+  }, []);
+
+  const triggerCoplayJuice = useCallback((juice: string | null, withPeer = false) => {
+    if (!juice) return;
+    setCoplayJuice(juice);
+    setSelfJuice(true);
+    if (withPeer) setPeerJuice(true);
+    else setPetJuice(true);
+    if (juiceTimer.current) clearTimeout(juiceTimer.current);
+    juiceTimer.current = setTimeout(() => {
+      setPetJuice(false);
+      setSelfJuice(false);
+      setPeerJuice(false);
+      setCoplayJuice(null);
+    }, 520);
+  }, []);
+
+  const handleCoplay = useCallback((actionId: string) => {
+    const result = doCoplay(actionId);
+    if (result.blockedMessage) {
+      showDialogue(result.blockedMessage);
+      return;
+    }
+    setCoplayOpen(false);
+    const action = COPLAY_ACTIONS.find((item) => item.id === actionId);
+    if (action) {
+      stage.approachCoplay(action.juice, state.currentScene, furniture, true);
+    }
+    room.broadcastCoplay(actionId);
+    // 短位移后再出 juice，避免「走很久」
+    window.setTimeout(() => {
+      triggerCoplayJuice(result.juice, hasPartner);
+      if (result.dialogue) showDialogue(result.dialogue);
+    }, stage.approachMs);
+  }, [
+    doCoplay,
+    showDialogue,
+    triggerCoplayJuice,
+    room.broadcastCoplay,
+    hasPartner,
+    stage,
+    state.currentScene,
+    furniture,
+  ]);
+
+  const playerLook = state.player ? getPlayerLook(state.player.lookId) : null;
+
+  useEffect(() => {
+    if (!room.joinedFlashName) return;
+    setMetFlash(true);
+    showDialogue(`${room.joinedFlashName} 来了。`);
+    const timer = setTimeout(() => setMetFlash(false), 1600);
+    return () => clearTimeout(timer);
+  }, [room.joinedFlashName, showDialogue]);
+
+  useEffect(() => {
+    if (!partner || partner.action === "idle") return;
+    const key = `${partner.playerId}:${partner.action}:${partner.actionStartedAt}`;
+    if (key === peerActionSeen.current) return;
+    peerActionSeen.current = key;
+    const action = COPLAY_ACTIONS.find((item) => item.id === partner.action);
+    if (action) {
+      stage.approachCoplay(action.juice, state.currentScene, furniture, true);
+      window.setTimeout(() => {
+        triggerCoplayJuice(action.juice, true);
+        showDialogue(`${partner.name}：${action.dialogue}`);
+      }, stage.approachMs);
+    } else {
+      setPeerJuice(true);
+      if (juiceTimer.current) clearTimeout(juiceTimer.current);
+      juiceTimer.current = setTimeout(() => setPeerJuice(false), 480);
+    }
+  }, [partner, showDialogue, triggerCoplayJuice, stage, state.currentScene, furniture]);
 
   const handleFurnitureClick = useCallback(
     (item: FurnitureItem, event: React.MouseEvent<HTMLDivElement>) => {
+      setCoplayOpen(false);
       if (item.type === "portal" && item.targetScene) {
-        switchScene(item.targetScene);
+        goScene(item.targetScene);
         if (item.dialogue) showDialogue(item.dialogue);
         return;
       }
       if (item.actions.length > 0) {
+        // 先短位移到锚点，再出菜单；菜单开着时先别自动回位
+        stage.approachFurniture(item, hasPartner, { sticky: true });
         const rect = sceneAreaRef.current?.getBoundingClientRect();
-        selectFurniture(item.id, {
-          x: event.clientX - (rect?.left || 0),
-          y: event.clientY - (rect?.top || 0),
-        });
+        window.setTimeout(() => {
+          selectFurniture(item.id, {
+            x: event.clientX - (rect?.left || 0),
+            y: event.clientY - (rect?.top || 0),
+          });
+        }, Math.min(stage.approachMs, 420));
         if (item.dialogue) showDialogue(item.dialogue);
       }
     },
-    [switchScene, selectFurniture, showDialogue]
+    [goScene, selectFurniture, showDialogue, stage, hasPartner]
   );
 
   const handleAction = useCallback(
@@ -96,11 +232,27 @@ export function MobileLayout() {
         closeActionMenu();
         return;
       }
+      stage.approachFurniture(selectedItem, hasPartner);
       interactWithFurniture(ui.selectedFurniture, action.id);
       showDialogue(action.dialogue || getDialogueForMood(action.mood));
+      closeActionMenu();
     },
-    [ui.selectedFurniture, state, furniture, interactWithFurniture, closeActionMenu, showDialogue]
+    [
+      ui.selectedFurniture,
+      state,
+      furniture,
+      interactWithFurniture,
+      closeActionMenu,
+      showDialogue,
+      stage,
+      hasPartner,
+    ]
   );
+
+  const handleCloseActionMenu = useCallback(() => {
+    closeActionMenu();
+    stage.scheduleReturnHome();
+  }, [closeActionMenu, stage]);
 
   const currentFurniture = ui.selectedFurniture
     ? furniture.find((item) => item.id === ui.selectedFurniture)
@@ -186,19 +338,68 @@ export function MobileLayout() {
         ? modelAvailable ? `已连接 · ${modelName}` : `已连接，但未找到 ${modelName}`
         : "等待连接模型";
 
+  if (!state.player) {
+    return (
+      <div id="mobile-game-root">
+        <CharacterCreate companionName={wenbebi.name} onCreate={createPlayer} />
+      </div>
+    );
+  }
+
+  const presenceLabel = hasPartner
+    ? partner!.presence === "away"
+      ? `${partner!.name} 暂时离开`
+      : `${partner!.name} 在场`
+    : room.isInRoom
+      ? "等待对方加入"
+      : "点此找对方";
+
   return (
     <>
 
       <div id="mobile-game-root">
         <header className="m-hud">
           <div className="m-hud-brand">
-            <img className="m-hud-avatar" src={`assets/${wenbebi.sprites.idle}.webp`} alt="" draggable={false} />
+            <img
+              className="m-hud-avatar"
+              src={playerLook?.src ?? `assets/${wenbebi.sprites.idle}.webp`}
+              alt=""
+              style={playerLook ? { filter: playerLook.filter } : undefined}
+              draggable={false}
+            />
             <div className="m-hud-name">
-              <strong>{wenbebi.name}</strong>
-              <small>Lv.{level} · {relationshipName}</small>
+              <strong>{state.player.name}</strong>
+              <button
+                type="button"
+                className="m-hud-presence m-hud-presence-btn"
+                aria-expanded={findOpen}
+                aria-controls="m-find-sheet"
+                onClick={() => {
+                  setCoplayOpen(false);
+                  setFindOpen(true);
+                }}
+              >
+                <span
+                  className={`m-dot${hasPartner ? (partner!.presence === "away" ? " m-dot--away" : " m-dot--online") : " m-dot--wait"}`}
+                  aria-hidden="true"
+                />
+                {presenceLabel}
+              </button>
             </div>
           </div>
           <div className="m-hud-right">
+            <button
+              type="button"
+              className={`m-find-entry${room.isInRoom ? " m-in-room" : ""}`}
+              aria-expanded={findOpen}
+              aria-controls="m-find-sheet"
+              onClick={() => {
+                setCoplayOpen(false);
+                setFindOpen(true);
+              }}
+            >
+              {hasPartner ? "同房" : "找对方"}
+            </button>
             <div className="m-currency" aria-label={`零钱 ${state.coins}`}><span aria-hidden="true">🪙</span><strong>{state.coins}</strong></div>
             <button className="m-header-action" type="button" aria-label="打开手账" title="打开手账" onClick={() => setTab("journal")}>▤</button>
           </div>
@@ -206,9 +407,10 @@ export function MobileLayout() {
 
         <main className="m-main">
           {tab === "home" && (
-            <div className="m-scene-area" ref={sceneAreaRef}>
+            <div className={`m-scene-area${stage.sceneFade ? " m-scene-fading" : ""}`} ref={sceneAreaRef}>
               <div className="m-scene-bg" style={{ background: bg.wall }} />
               <div className="m-floor" style={{ background: bg.floor }} />
+              <div className="m-scene-fade" aria-hidden="true" />
 
               <nav className="m-location-nav" aria-label="选择地点">
                 {SCENES.map((scene) => (
@@ -217,7 +419,7 @@ export function MobileLayout() {
                     type="button"
                     className={`m-location-btn${scene.id === state.currentScene ? " m-active" : ""}`}
                     aria-current={scene.id === state.currentScene ? "location" : undefined}
-                    onClick={() => switchScene(scene.id)}
+                    onClick={() => goScene(scene.id)}
                   >
                     <span aria-hidden="true">{scene.icon}</span>{scene.name}
                   </button>
@@ -265,21 +467,134 @@ export function MobileLayout() {
                 );
               })}
 
-              <button
-                type="button"
-                className={`m-pet-wrap${state.pet.currentAction === "jump" || state.pet.currentAction === "happy" ? " m-pet-action" : ""}`}
-                aria-label={`摸摸${wenbebi.name}`}
-                onClick={() => {
-                  petThePet();
-                  showDialogue(getDialogueForMood("happy"));
-                }}
+              <div
+                className={`m-presence m-presence--slotted${metFlash ? " m-presence--meet" : ""}${coplayJuice ? ` m-presence--${coplayJuice}` : ""}`}
+                aria-label="场景中的角色"
               >
-                <img src={`assets/${petSprite}.webp`} alt={wenbebi.name} className="m-pet-img" draggable={false} />
-                <span className="m-pet-shadow" />
-              </button>
+                <div
+                  className={`m-self-wrap m-actor-tween${selfJuice ? " m-self-juice" : ""}`}
+                  style={poseStyle(stage.selfPose)}
+                  aria-label={`你：${state.player.name}`}
+                >
+                  <img
+                    src={playerLook!.src}
+                    alt={state.player.name}
+                    className="m-self-img"
+                    style={{ filter: playerLook!.filter }}
+                    draggable={false}
+                  />
+                  <span className="m-role-tag">我</span>
+                  <span className="m-pet-shadow" />
+                </div>
+
+                {hasPartner && partnerLook && (
+                  <div
+                    className={`m-peer-wrap m-actor-tween${peerJuice ? " m-peer-juice" : ""}${partner!.presence === "away" ? " m-peer-away" : ""}`}
+                    style={{
+                      ...poseStyle(stage.otherPose),
+                      ["--peer-color" as string]: partner!.color,
+                    }}
+                    aria-label={`${partner!.name}${partner!.presence === "away" ? "（离开）" : ""}`}
+                  >
+                    <img
+                      src={partnerLook.src}
+                      alt={partner!.name}
+                      className="m-self-img"
+                      style={{ filter: partnerLook.filter }}
+                      draggable={false}
+                    />
+                    <span className="m-role-tag m-role-tag--peer">{partner!.name}</span>
+                    <span className="m-pet-shadow" />
+                  </div>
+                )}
+
+                {!hasPartner && (
+                  <button
+                    type="button"
+                    className={`m-pet-wrap m-pet-wrap--paired m-actor-tween${petJuice || state.pet.currentAction === "jump" || state.pet.currentAction === "happy" ? " m-pet-action" : ""}${petJuice ? " m-pet-juice" : ""}`}
+                    style={poseStyle(stage.otherPose)}
+                    aria-label={`摸摸${wenbebi.name}`}
+                    onClick={() => {
+                      petThePet();
+                      triggerPetJuice();
+                      showDialogue(getDialogueForMood("happy"));
+                    }}
+                  >
+                    <img src={`assets/${petSprite}.webp`} alt={wenbebi.name} className="m-pet-img" draggable={false} />
+                    <span className="m-role-tag m-role-tag--her">{wenbebi.name}</span>
+                    <span className="m-pet-shadow" />
+                  </button>
+                )}
+              </div>
+
+              <div className="m-scene-actions">
+                {!hasPartner && (
+                  <button
+                    type="button"
+                    className="m-find-fab"
+                    onClick={() => {
+                      closeActionMenu();
+                      setCoplayOpen(false);
+                      setFindOpen(true);
+                    }}
+                  >
+                    找对方
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={`m-coplay-entry${coplayOpen ? " m-open" : ""}`}
+                  aria-expanded={coplayOpen}
+                  aria-controls="m-coplay-sheet"
+                  onClick={() => {
+                    closeActionMenu();
+                    setFindOpen(false);
+                    setCoplayOpen((open) => !open);
+                  }}
+                >
+                  一起做
+                </button>
+              </div>
+
+              {coplayOpen && (
+                <div className="m-coplay-layer" role="presentation">
+                  <button
+                    type="button"
+                    className="m-coplay-scrim"
+                    aria-label="关闭一起做"
+                    onClick={() => setCoplayOpen(false)}
+                  />
+                  <div
+                    id="m-coplay-sheet"
+                    className="m-coplay-sheet"
+                    role="dialog"
+                    aria-label="选择一起做的事"
+                  >
+                    <div className="m-coplay-sheet-head">
+                      <p>{hasPartner ? `和 ${partner!.name} 一起` : `和 ${wenbebi.name} 一起`}</p>
+                      <button type="button" className="m-coplay-close" aria-label="关闭" onClick={() => setCoplayOpen(false)}>
+                        ×
+                      </button>
+                    </div>
+                    <div className="m-coplay-grid">
+                      {COPLAY_ACTIONS.map((action) => (
+                        <button
+                          key={action.id}
+                          type="button"
+                          className="m-coplay-cell"
+                          onClick={() => handleCoplay(action.id)}
+                        >
+                          <span className="m-coplay-cell-icon" aria-hidden="true">{action.icon}</span>
+                          <span>{action.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {dialogue && (
-                <div className="m-dialogue" style={{ left: "50%", bottom: "calc(10% + 132px)", transform: "translateX(-50%)" }} aria-live="polite">
+                <div className="m-dialogue" style={{ left: "50%", bottom: "18%", transform: "translateX(-50%)" }} aria-live="polite">
                   {dialogue}
                 </div>
               )}
@@ -293,7 +608,7 @@ export function MobileLayout() {
                       <span>{action.label}</span>
                     </button>
                   ))}
-                  <button type="button" className="m-action-btn" onClick={(event) => { event.stopPropagation(); closeActionMenu(); }}>
+                  <button type="button" className="m-action-btn" onClick={(event) => { event.stopPropagation(); handleCloseActionMenu(); }}>
                     <span className="m-action-icon" aria-hidden="true">×</span><span>收起</span>
                   </button>
                 </div>
@@ -386,19 +701,32 @@ export function MobileLayout() {
         </main>
 
         <nav className="m-tabbar" aria-label="游戏导航">
-          <button type="button" className={`m-tab-btn${tab === "home" ? " m-active" : ""}`} aria-current={tab === "home" ? "page" : undefined} onClick={() => setTab("home")}>
+          <button type="button" className={`m-tab-btn${tab === "home" ? " m-active" : ""}`} aria-current={tab === "home" ? "page" : undefined} onClick={() => { setCoplayOpen(false); setFindOpen(false); setTab("home"); }}>
             <span className="m-tab-icon" aria-hidden="true">🏠</span><span>陪伴</span>
           </button>
-          <button type="button" className={`m-tab-btn${tab === "collection" ? " m-active" : ""}`} aria-current={tab === "collection" ? "page" : undefined} onClick={() => setTab("collection")}>
+          <button type="button" className={`m-tab-btn${tab === "collection" ? " m-active" : ""}`} aria-current={tab === "collection" ? "page" : undefined} onClick={() => { setCoplayOpen(false); setFindOpen(false); setTab("collection"); }}>
             <span className="m-tab-icon" aria-hidden="true">🎒</span><span>收藏</span>
           </button>
-          <button type="button" className={`m-tab-btn${tab === "journal" ? " m-active" : ""}`} aria-current={tab === "journal" ? "page" : undefined} onClick={() => setTab("journal")}>
+          <button type="button" className={`m-tab-btn${tab === "journal" ? " m-active" : ""}`} aria-current={tab === "journal" ? "page" : undefined} onClick={() => { setCoplayOpen(false); setFindOpen(false); setTab("journal"); }}>
             <span className="m-tab-icon" aria-hidden="true">📔</span><span>手账</span>
           </button>
-          <button type="button" className={`m-tab-btn${tab === "chat" ? " m-active" : ""}`} aria-current={tab === "chat" ? "page" : undefined} onClick={() => setTab("chat")}>
+          <button type="button" className={`m-tab-btn${tab === "chat" ? " m-active" : ""}`} aria-current={tab === "chat" ? "page" : undefined} onClick={() => { setCoplayOpen(false); setFindOpen(false); setTab("chat"); }}>
             <span className="m-tab-icon" aria-hidden="true">💬</span><span>聊聊</span>
           </button>
         </nav>
+
+        {/* 盖住底栏：避免短码面板被 tabbar 裁切 */}
+        <FindPartnerSheet
+          open={findOpen}
+          roomId={roomId}
+          hasPartner={hasPartner}
+          partnerName={partner?.name}
+          onClose={() => setFindOpen(false)}
+          onEnterRoom={(nextId) => {
+            enterRoom(nextId);
+          }}
+          onLeaveRoom={leaveRoom}
+        />
       </div>
     </>
   );

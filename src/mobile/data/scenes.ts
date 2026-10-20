@@ -50,6 +50,8 @@ export const SCENE_FURNITURE: Record<SceneId, FurnitureItem[]> = {
       left: 6, bottom: 55, w: 26, h: 24,
       actions: ["look"],
       dialogue: "外面的天气真好呢",
+      // 脚底仍在玩法带，只是站到窗下
+      anchors: { L: { left: 14, bottom: 12 }, R: { left: 26, bottom: 12 } },
     },
     {
       id: "window-b",
@@ -78,6 +80,7 @@ export const SCENE_FURNITURE: Record<SceneId, FurnitureItem[]> = {
       left: 7, bottom: 14, w: 28, h: 18,
       actions: ["sleep", "rest"],
       dialogue: "想休息一下吗？",
+      anchors: { L: { left: 14, bottom: 12 }, R: { left: 28, bottom: 12 } },
       sprite: "rest",
     },
     {
@@ -97,6 +100,7 @@ export const SCENE_FURNITURE: Record<SceneId, FurnitureItem[]> = {
       left: 40, bottom: 14, w: 20, h: 15,
       actions: ["sit", "relax"],
       dialogue: "坐一会儿吧～",
+      anchors: { L: { left: 42, bottom: 12 }, R: { left: 56, bottom: 12 } },
     },
     {
       id: "record-player",
@@ -132,6 +136,7 @@ export const SCENE_FURNITURE: Record<SceneId, FurnitureItem[]> = {
       actions: ["treat"],
       dialogue: "好吃～",
       sprite: "happy",
+      anchors: { L: { left: 66, bottom: 12 }, R: { left: 78, bottom: 12 } },
       effects: {
         treat: { cost: { coins: 3 }, insufficientMessage: "零钱不够，先去街区转转吧。" },
       },
@@ -166,6 +171,7 @@ export const SCENE_FURNITURE: Record<SceneId, FurnitureItem[]> = {
       left: 28, bottom: 14, w: 30, h: 18,
       actions: ["sit", "relax"],
       dialogue: "坐着吹风好舒服",
+      anchors: { L: { left: 34, bottom: 12 }, R: { left: 50, bottom: 12 } },
     },
     {
       id: "railing",
@@ -258,6 +264,7 @@ export const SCENE_FURNITURE: Record<SceneId, FurnitureItem[]> = {
       left: 32, bottom: 42, w: 30, h: 16,
       actions: ["sit", "rest"],
       dialogue: "坐这儿喝咖啡吧",
+      anchors: { L: { left: 36, bottom: 12 }, R: { left: 52, bottom: 12 } },
     },
     {
       id: "cafe-exit",
@@ -283,6 +290,11 @@ export interface FurnitureItem {
   dialogue?: string;
   targetScene?: SceneId;
   sprite?: string;
+  /** 共处走近时的左右子槽（竖屏百分比）；缺省可由 furnitureNearSlots 推导 */
+  anchors?: {
+    L: { left: number; bottom: number };
+    R: { left: number; bottom: number };
+  };
   effects?: Record<string, FurnitureActionEffect>;
 }
 

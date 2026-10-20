@@ -1,0 +1,110 @@
+{
+  "skill": "scope",
+  "generated_at": "2026-10-20T23:10:00+0800",
+  "project_name": "雯宝多人共处小世界",
+  "prd_source": {
+    "type": "file",
+    "reference": "spark-output/context/brief.json + spark-output/context/frame.json + 现网 src/layouts/MobileLayout.tsx + src/mobile/engine/*"
+  },
+  "product_summary": "在现有竖屏 Mobile 壳（MobileLayout + GameEngine）上，改成「我 + 雯宝同屏共处」：先角色创建与 juice，再共处动词；实时联机后置。桌面 App.tsx 仍为旧单宠路径，本期主战场是 Mobile。",
+  "goals": {
+    "business": [
+      "对象愿意主动说「一起玩」",
+      "不阻塞在后端实时通道上，前端可验收共处"
+    ],
+    "product": [
+      "一起可做的事 ≥ 5（已落 6 个共处动词）",
+      "互动反馈可感知（创建后摸她 / 共处条均有 juice）",
+      "390px 竖屏单手完成创建与共处"
+    ]
+  },
+  "target_users": [
+    "情侣双方，主打开时机=一起玩",
+    "对象：偶尔单人回看，不靠每日任务"
+  ],
+  "features": [
+    {
+      "name": "玩家角色创建",
+      "description": "CharacterCreate 3 步；GameState.player；旧档 null 进创建流",
+      "priority": "p0",
+      "explicit_in_prd": true,
+      "code": ["src/mobile/CharacterCreate.tsx", "src/mobile/engine/types.ts", "src/mobile/engine/storage.ts"]
+    },
+    {
+      "name": "双角色同屏",
+      "description": "场景内「我」+ 雯宝；HUD 显示我的名字",
+      "priority": "p0",
+      "explicit_in_prd": true,
+      "code": ["src/layouts/MobileLayout.tsx"]
+    },
+    {
+      "name": "共处动词 ≥5",
+      "description": "打招呼/一起坐/递点心/击掌/一起看/并肩靠；写日记与 bond",
+      "priority": "p0",
+      "explicit_in_prd": true,
+      "code": ["src/mobile/data/coplay-actions.ts", "src/mobile/engine/game-rules.ts", "src/layouts/MobileLayout.tsx"]
+    },
+    {
+      "name": "互动 juice",
+      "description": "摸她挤压；共处条触发双方短动画；进场相遇轻反馈",
+      "priority": "p0",
+      "explicit_in_prd": true,
+      "code": ["src/mobile/mobile-layout.css"]
+    },
+    {
+      "name": "共处留痕",
+      "description": "共处写入 journal；bondedMoments 记 coplay:*",
+      "priority": "p1",
+      "explicit_in_prd": true,
+      "code": ["src/mobile/engine/game-rules.ts"]
+    },
+    {
+      "name": "真·第二玩家 / 实时同步",
+      "description": "本期不做；本地雯宝代理另一方",
+      "priority": "p2",
+      "explicit_in_prd": true,
+      "code": []
+    }
+  ],
+  "constraints": [
+    "主改 MobileLayout 路径；不先重写桌面 App.tsx",
+    "localStorage 键 wenbebi-mobile-game-v2，兼容无 player 旧档",
+    "不新增地点 / 不大改家具系统",
+    "美术用现有 webp；Avatar 定妆后置替换 player-looks",
+    "无每日任务 / 红点"
+  ],
+  "out_of_scope": [
+    "本期实时联机",
+    "桌面旧 App 共处改造（可后跟）",
+    "大规模美术替换",
+    "Capacitor 上架",
+    "用今日片段当北极星"
+  ],
+  "design_implications": [
+    "验收看 Mobile ?mobile：创建 → 同屏 → 共处条 6 键均有反馈与手账",
+    "共处条占底部，角色区上移，避免挡角色",
+    "下一刀：共处动词差异化动画加强 + 递点心等可消耗资源的可选深化",
+    "再下一刀：真第二角色数据（非雯宝代理）仍前端假多人"
+  ],
+  "gaps": [
+    {
+      "field": "partner_is_wenbebi_proxy",
+      "why_needed": "对象的角色目前仍是雯宝宠物代理，不是独立玩家角色",
+      "suggested_next_step": "GameState.partner 或第二 PlayerProfile；创建流可后置"
+    },
+    {
+      "field": "desktop_parity",
+      "why_needed": "桌面 App.tsx 仍是单宠，和 Mobile 体验分叉",
+      "suggested_next_step": "确认是否 Mobile-only 验收，或排期桌面跟进"
+    },
+    {
+      "field": "avatar_asset_wire",
+      "why_needed": "Avatar 定妆 PNG 未接入 player-looks",
+      "suggested_next_step": "拷入 public/assets 后改 look src"
+    }
+  ],
+  "implementation_status": {
+    "done": ["player 创建", "双人同屏", "6 共处动词", "基础 juice", "journal 留痕"],
+    "next": ["partner 独立角色", "juice 加强", "桌面策略"]
+  }
+}

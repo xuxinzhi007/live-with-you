@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SCENE_FURNITURE, type SceneId } from "../data/scenes";
 import { PET_ACTIONS, type PetAction } from "../data/pet-actions";
-import { interactWithFurniture as applyFurnitureInteraction, petCompanion, switchScene as applySceneChange } from "./game-rules";
-import { INITIAL_GAME_UI_STATE, type GameState, type GameUIState } from "./types";
-import { loadGameState, saveGameState } from "./storage";
+import {
+  applyCoplay,
+  interactWithFurniture as applyFurnitureInteraction,
+  petCompanion,
+  switchScene as applySceneChange,
+} from "./game-rules";
+import type { PlayerLookId } from "../data/player-looks";
+import { INITIAL_GAME_UI_STATE, type GameState, type GameUIState, type PlayerProfile } from "./types";
+import { createPlayerId, loadGameState, saveGameState } from "./storage";
 
 function scheduleIdle(
   timer: { current: ReturnType<typeof setTimeout> | null },
@@ -64,6 +70,45 @@ export function useGameEngine() {
     scheduleIdle(actionTimer, setState, 1800);
   }, []);
 
+  /** 方向 A：3 步创建「我」的角色，写入存档后进入共处场景 */
+  const createPlayer = useCallback((name: string, lookId: PlayerLookId, now = Date.now()) => {
+    const trimmed = name.trim().slice(0, 12);
+    if (!trimmed) return false;
+    const player: PlayerProfile = {
+      playerId: createPlayerId(),
+      name: trimmed,
+      lookId,
+      createdAt: now,
+    };
+    setState((previous) => ({
+      ...previous,
+      player,
+      journal: [
+        {
+          id: `player-${now}`,
+          text: `${trimmed} 走进了这个小世界。`,
+          time: now,
+        },
+        ...previous.journal,
+      ].slice(0, 48),
+    }));
+    return true;
+  }, []);
+
+  /** 方向 B：共处动词；事件里 setState updater 同步跑，可立刻取文案/juice */
+  const doCoplay = useCallback((actionId: string) => {
+    let result!: ReturnType<typeof applyCoplay>;
+    setState((previous) => {
+      result = applyCoplay(previous, actionId);
+      return result.state;
+    });
+    return {
+      dialogue: result.action?.dialogue ?? "",
+      blockedMessage: result.blockedMessage,
+      juice: result.action?.juice ?? null,
+    };
+  }, []);
+
   return {
     state,
     ui,
@@ -72,6 +117,8 @@ export function useGameEngine() {
     closeActionMenu,
     interactWithFurniture,
     petThePet,
+    createPlayer,
+    doCoplay,
   };
 }
 

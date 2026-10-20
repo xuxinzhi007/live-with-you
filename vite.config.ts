@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { handleCompanion } from "./netlify/functions/companion-scene.mjs";
+import { coupleRoomDevPlugin } from "./vite-plugins/couple-room-dev";
 
 function readBody(req: { on: (event: string, cb: (chunk?: Buffer) => void) => void }): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -51,7 +52,7 @@ function companionDevPlugin(env: Record<string, string>): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   return {
-    plugins: [react(), companionDevPlugin(env)],
+    plugins: [react(), companionDevPlugin(env), coupleRoomDevPlugin()],
     server: {
       host: true,
       port: 5173,

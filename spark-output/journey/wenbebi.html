@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Journey — 雯宝多人共处小世界</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #dcdcda;
+      --surface: #f7f7f4;
+      --card: #fff;
+      --ink: #26251e;
+      --muted: #8c8981;
+      --body: #5a5852;
+      --border: #e8e8e4;
+      --accent: #f54e00;
+      --danger: #dc2626;
+      --ok: #059669;
+      --font: "DM Sans", "Noto Sans SC", sans-serif;
+      --mono: "JetBrains Mono", monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--ink);
+      padding: 28px 20px 80px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    .hero {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px 32px;
+      margin-bottom: 20px;
+    }
+    .crumb { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+    h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .sub { font-size: 14px; color: var(--body); line-height: 1.55; max-width: 52em; }
+    .meta { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      font-size: 12px; padding: 4px 10px; border-radius: 999px;
+      background: #fff; border: 1px solid var(--border); color: var(--body);
+    }
+    .chip strong { color: var(--ink); font-weight: 600; }
+    .chip.warn { border-color: #fecaca; background: #fef2f2; color: var(--danger); }
+    .chip.ok { border-color: #a7f3d0; background: #ecfdf5; color: var(--ok); }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 24px;
+      margin-bottom: 16px;
+    }
+    .panel h2 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .panel .hint { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+
+    .curve-wrap { position: relative; height: 160px; margin: 8px 0 4px; }
+    .curve-svg { width: 100%; height: 100%; overflow: visible; }
+    .curve-labels {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 6px;
+    }
+    .curve-labels span.bp { color: var(--danger); font-weight: 600; }
+
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 14px;
+      font-size: 12px; color: var(--body); margin-top: 12px;
+    }
+    .legend i {
+      display: inline-block; width: 18px; height: 3px; border-radius: 2px;
+      vertical-align: middle; margin-right: 6px;
+    }
+    .legend .now { background: var(--danger); }
+    .legend .target { background: var(--ok); }
+
+    .stages {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 12px;
+    }
+    .stage {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 220px;
+    }
+    .stage.break {
+      border-color: #fca5a5;
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.06);
+    }
+    .stage-top { display: flex; align-items: center; gap: 8px; }
+    .num {
+      font-family: var(--mono); font-size: 11px; color: var(--muted);
+      min-width: 1.5em;
+    }
+    .stage h3 { font-size: 15px; font-weight: 600; flex: 1; }
+    .emo {
+      font-family: var(--mono); font-size: 11px; font-weight: 600;
+      padding: 2px 8px; border-radius: 6px; background: #fff; border: 1px solid var(--border);
+    }
+    .emo.neg { color: var(--danger); border-color: #fecaca; background: #fef2f2; }
+    .emo.pos { color: var(--ok); border-color: #a7f3d0; background: #ecfdf5; }
+    .emo.flat { color: var(--body); }
+    .bp-tag {
+      font-size: 11px; font-weight: 600; color: var(--danger);
+      letter-spacing: 0.02em;
+    }
+    .row { font-size: 12px; color: var(--body); line-height: 1.45; }
+    .row b { color: var(--ink); font-weight: 600; display: block; margin-bottom: 2px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+    .ops { margin-top: auto; padding-top: 8px; border-top: 1px dashed var(--border); }
+    .ops li { font-size: 12px; color: var(--ink); margin-left: 1.1em; margin-bottom: 3px; }
+    .ops li::marker { color: var(--accent); }
+
+    .fixes { display: grid; gap: 8px; }
+    .fix {
+      display: grid; grid-template-columns: 36px 1fr; gap: 12px;
+      align-items: start; padding: 12px 14px;
+      border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
+    }
+    .fix .r {
+      font-family: var(--mono); font-size: 18px; font-weight: 700; color: var(--accent);
+      line-height: 1;
+    }
+    .fix .t { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+    .fix .d { font-size: 12px; color: var(--body); }
+
+    footer {
+      margin-top: 20px; font-size: 11px; color: var(--muted);
+      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .stage { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="crumb">Spark · Journey · 02 Define</div>
+      <h1>共玩会话旅程</h1>
+      <p class="sub">
+        主旅程不是「每日登录」，而是<strong>约好一起玩的一局</strong>。
+        核心任务：让双方角色在小世界里一起做几件事，感到彼此真的在一起。
+        情感曲线对比<strong>现状低谷</strong>与<strong>改版目标</strong>；断点对齐 Signal / Probe / Audit。
+      </p>
+      <div class="meta">
+        <span class="chip"><strong>Persona</strong> 情侣双方</span>
+        <span class="chip"><strong>Job</strong> 一起待着 · 共处互动</span>
+        <span class="chip warn">断点 ×3（含 2 个 dropout-risk）</span>
+        <span class="chip ok">改版后 coplay 目标 +2</span>
+      </div>
+    </header>
+
+    <section class="panel">
+      <h2>情感曲线</h2>
+      <p class="hint">纵轴 −2〜+2 · 红=现状（共处中段已是低谷）· 绿=改版目标（抬升共处、保留单人淡牵挂）</p>
+      <div class="curve-wrap">
+        <svg class="curve-svg" viewBox="0 0 600 160" preserveAspectRatio="none" aria-hidden="true">
+          <!-- grid -->
+          <line x1="0" y1="80" x2="600" y2="80" stroke="#e8e8e4" stroke-width="1" />
+          <line x1="0" y1="20" x2="600" y2="20" stroke="#f0f0ec" stroke-width="1" stroke-dasharray="4 4" />
+          <line x1="0" y1="140" x2="600" y2="140" stroke="#f0f0ec" stroke-width="1" stroke-dasharray="4 4" />
+          <!-- now: invite1, enter0, meet2, coplay-2, close0, solo1 → y = 80 - v*30 -->
+          <polyline
+            fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"
+            points="50,50 150,80 250,20 350,140 450,80 550,50" />
+          <g fill="#dc2626">
+            <circle cx="50" cy="50" r="4" /><circle cx="150" cy="80" r="4" />
+            <circle cx="250" cy="20" r="4" /><circle cx="350" cy="140" r="5" />
+            <circle cx="450" cy="80" r="4" /><circle cx="550" cy="50" r="4" />
+          </g>
+          <!-- target: 1,1,2,2,1,1 -->
+          <polyline
+            fill="none" stroke="#059669" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"
+            stroke-dasharray="6 4"
+            points="50,50 150,50 250,20 350,20 450,50 550,50" />
+          <g fill="#059669">
+            <circle cx="50" cy="50" r="3.5" /><circle cx="150" cy="50" r="3.5" />
+            <circle cx="250" cy="20" r="3.5" /><circle cx="350" cy="20" r="3.5" />
+            <circle cx="450" cy="50" r="3.5" /><circle cx="550" cy="50" r="3.5" />
+          </g>
+        </svg>
+      </div>
+      <div class="curve-labels">
+        <span>约一起玩</span>
+        <span class="bp">各自打开 ✦</span>
+        <span class="bp">相遇 ✦</span>
+        <span class="bp">共处中段 ✦</span>
+        <span>结束</span>
+        <span>单人回看</span>
+      </div>
+      <div class="legend">
+        <span><i class="now"></i>现状曲线（meet 虚高为目标态对照；现实中无相遇峰值）</span>
+        <span><i class="target"></i>改版目标曲线</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>六阶段</h2>
+      <p class="hint">✦ = 断点 · 机会点直接喂给 Stories / Flow</p>
+      <div class="stages">
+
+        <article class="stage">
+          <div class="stage-top">
+            <span class="num">01</span>
+            <h3>约一起玩</h3>
+            <span class="emo pos">+1</span>
+          </div>
+          <div class="row"><b>目标</b>有一个值得打开的理由</div>
+          <div class="row"><b>痛点</b>说不清今晚能一起做什么</div>
+          <ul class="ops">
+            <li>共处动词可见预告（非任务列表）</li>
+          </ul>
+        </article>
+
+        <article class="stage break">
+          <div class="stage-top">
+            <span class="num">02</span>
+            <h3>各自打开</h3>
+            <span class="emo flat">0</span>
+          </div>
+          <div class="bp-tag">断点 · SIG-02 / SIG-04</div>
+          <div class="row"><b>目标</b>进入同一世界，看到「我」</div>
+          <div class="row"><b>痛点</b>无我 / HUD 杂 / 世界要平移</div>
+          <ul class="ops">
+            <li>3 步角色创建</li>
+            <li>HUD 收敛 · 世界 1–1.5 屏</li>
+          </ul>
+        </article>
+
+        <article class="stage break">
+          <div class="stage-top">
+            <span class="num">03</span>
+            <h3>相遇（前 30 秒）</h3>
+            <span class="emo pos">+2 目标</span>
+          </div>
+          <div class="bp-tag">dropout-risk · SIG-02</div>
+          <div class="row"><b>目标</b>立刻感到「你也在」</div>
+          <div class="row"><b>痛点</b>现状只有一个雯宝</div>
+          <ul class="ops">
+            <li>双角色同屏</li>
+            <li>相遇仪式感反馈</li>
+          </ul>
+        </article>
+
+        <article class="stage break">
+          <div class="stage-top">
+            <span class="num">04</span>
+            <h3>共处中段</h3>
+            <span class="emo neg">−2 现状</span>
+          </div>
+          <div class="bp-tag">最高危 dropout · SIG-01 / SIG-03</div>
+          <div class="row"><b>目标</b>一起做 ≥5 种有爽感的事</div>
+          <div class="row"><b>痛点</b>能做的太少 · 点了没反馈</div>
+          <ul class="ops">
+            <li>共处动词表 ≥5</li>
+            <li>每击 juice ≤100ms</li>
+          </ul>
+        </article>
+
+        <article class="stage">
+          <div class="stage-top">
+            <span class="num">05</span>
+            <h3>结束 / 一人离开</h3>
+            <span class="emo flat">0</span>
+          </div>
+          <div class="row"><b>目标</b>不空、不催、有结束感</div>
+          <div class="row"><b>痛点</b>关掉像从没一起玩过</div>
+          <ul class="ops">
+            <li>对方可见留痕</li>
+            <li>短道别仪式</li>
+          </ul>
+        </article>
+
+        <article class="stage">
+          <div class="stage-top">
+            <span class="num">06</span>
+            <h3>单人偶尔回看</h3>
+            <span class="emo pos">+1</span>
+          </div>
+          <div class="row"><b>目标</b>低压力陪伴，不催每日</div>
+          <div class="row"><b>痛点</b>签到会反感；全空则冷清 · SIG-05</div>
+          <ul class="ops">
+            <li>痕迹层 = 牵挂</li>
+            <li>禁止 daily 红点</li>
+          </ul>
+        </article>
+
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>优先修复（情绪 × 频率）</h2>
+      <p class="hint">不是「最难受的先做」，而是抬升曲线所需的最小顺序 — 对齐 Frame A→B</p>
+      <div class="fixes">
+        <div class="fix">
+          <div class="r">1</div>
+          <div>
+            <div class="t">共处动词 ≥5 + 每击 juice</div>
+            <div class="d">抬升共处中段 −2 → +2 · 方向 B + A 的手感</div>
+          </div>
+        </div>
+        <div class="fix">
+          <div class="r">2</div>
+          <div>
+            <div class="t">角色创建 + 双角色在场 + 相遇仪式</div>
+            <div class="d">兑现「多人」· 制造相遇峰值 · 方向 A→B 地基</div>
+          </div>
+        </div>
+        <div class="fix">
+          <div class="r">3</div>
+          <div>
+            <div class="t">HUD 收敛 + 单屏可见</div>
+            <div class="d">降低进入摩擦，注意力回到角色</div>
+          </div>
+        </div>
+        <div class="fix">
+          <div class="r">4</div>
+          <div>
+            <div class="t">对方可见留痕 · 单人只回看</div>
+            <div class="d">软留存，不违背「一起玩才打开」</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <span>spark-output/journey/wenbebi.html · 同源 journey.json</span>
+      <span>上游：frame · scope · audit · probe · signal · brief</span>
+    </footer>
+  </div>
+</body>
+</html>

@@ -1,5 +1,7 @@
 import { SCENES, type FurnitureItem, type SceneId } from "../data/scenes.ts";
 import type { PetAction } from "../data/pet-actions";
+import { getCoplayAction, type CoplayAction } from "../data/coplay-actions.ts";
+import { wenbebi } from "../../game/data/pet.js";
 import type { GameState, JournalEntry } from "./types.ts";
 
 const BOND_PER_LEVEL = 24;
@@ -120,4 +122,46 @@ export function petCompanion(state: GameState, now = Date.now()): GameState {
     },
   };
   return addBondForMoment(next, "pet", 1, now);
+}
+
+export interface CoplayResult {
+  state: GameState;
+  action: CoplayAction | null;
+  blockedMessage: string;
+}
+
+/** 共处动词：需要已创建 player；本地把雯宝当作同屏另一方。 */
+export function applyCoplay(state: GameState, actionId: string, now = Date.now()): CoplayResult {
+  if (!state.player) {
+    return { state, action: null, blockedMessage: "先创建自己的角色，才能一起做点什么。" };
+  }
+
+  const action = getCoplayAction(actionId);
+  if (!action) {
+    return { state, action: null, blockedMessage: "还没有这种共处互动。" };
+  }
+
+  const me = state.player.name;
+  const her = wenbebi.name;
+  let next: GameState = {
+    ...state,
+    lastCoplayId: action.id,
+    lastCoplayAt: now,
+    pet: {
+      ...state.pet,
+      currentAction: action.petAction,
+      mood: action.petAction === "sleep" || action.petAction === "rest" ? "sleepy" : "happy",
+      happiness: Math.min(100, state.pet.happiness + 5),
+      lastInteraction: now,
+    },
+  };
+
+  next = addBondForMoment(next, `coplay:${action.id}`, action.bond, now);
+  next = addJournal(
+    next,
+    action.journal.replaceAll("{me}", me).replaceAll("{her}", her),
+    now,
+  );
+
+  return { state: next, action, blockedMessage: "" };
 }
