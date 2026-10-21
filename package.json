@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
+    "pixi.js": "^8.22.0",
     "react": "latest",
     "react-dom": "latest",
     "react-pageflip": "^2.0.3",

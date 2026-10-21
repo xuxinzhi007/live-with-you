@@ -15,17 +15,16 @@ import {
   getDialogueForMood,
 } from "../mobile/data/pet-actions";
 import { getPlayerLook } from "../mobile/data/player-looks";
-import { COPLAY_ACTIONS } from "../mobile/data/coplay-actions";
+import { COPLAY_ACTIONS, type CoplayJuice } from "../mobile/data/coplay-actions";
 import { preferredSlot } from "../mobile/data/slots";
 import { getInteractionBlockMessage, relationshipLevel } from "../mobile/engine/game-rules";
 import { useGameEngine } from "../mobile/engine/GameEngine";
-import { poseStyle } from "../mobile/engine/stage-motion";
 import { useStagePresence } from "../mobile/engine/useStagePresence";
 import { useCoupleRoom } from "../mobile/multiplayer/useCoupleRoom";
 import { persistRoomId, readStoredRoomId } from "../mobile/multiplayer/room-code";
-import { SPRITES } from "../mobile/data/pixel-sprites";
 import { CharacterCreate } from "../mobile/CharacterCreate";
 import { FindPartnerSheet } from "../mobile/FindPartnerSheet";
+import { SceneStage } from "../mobile/SceneStage";
 import "../mobile/mobile-layout.css";
 
 // ============ 主组件 ============
@@ -45,7 +44,7 @@ export function MobileLayout() {
   const [petJuice, setPetJuice] = useState(false);
   const [selfJuice, setSelfJuice] = useState(false);
   const [peerJuice, setPeerJuice] = useState(false);
-  const [coplayJuice, setCoplayJuice] = useState<string | null>(null);
+  const [coplayJuice, setCoplayJuice] = useState<CoplayJuice | null>(null);
   const [coplayOpen, setCoplayOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const [roomId, setRoomId] = useState<string | null>(() => readStoredRoomId());
@@ -122,7 +121,7 @@ export function MobileLayout() {
     juiceTimer.current = setTimeout(() => setPetJuice(false), 480);
   }, []);
 
-  const triggerCoplayJuice = useCallback((juice: string | null, withPeer = false) => {
+  const triggerCoplayJuice = useCallback((juice: CoplayJuice | null, withPeer = false) => {
     if (!juice) return;
     setCoplayJuice(juice);
     setSelfJuice(true);
@@ -195,7 +194,7 @@ export function MobileLayout() {
   }, [partner, showDialogue, triggerCoplayJuice, stage, state.currentScene, furniture]);
 
   const handleFurnitureClick = useCallback(
-    (item: FurnitureItem, event: React.MouseEvent<HTMLDivElement>) => {
+    (item: FurnitureItem, x: number, y: number) => {
       setCoplayOpen(false);
       if (item.type === "portal" && item.targetScene) {
         goScene(item.targetScene);
@@ -205,12 +204,8 @@ export function MobileLayout() {
       if (item.actions.length > 0) {
         // 先短位移到锚点，再出菜单；菜单开着时先别自动回位
         stage.approachFurniture(item, hasPartner, { sticky: true });
-        const rect = sceneAreaRef.current?.getBoundingClientRect();
         window.setTimeout(() => {
-          selectFurniture(item.id, {
-            x: event.clientX - (rect?.left || 0),
-            y: event.clientY - (rect?.top || 0),
-          });
+          selectFurniture(item.id, { x, y });
         }, Math.min(stage.approachMs, 420));
         if (item.dialogue) showDialogue(item.dialogue);
       }
@@ -408,8 +403,34 @@ export function MobileLayout() {
         <main className="m-main">
           {tab === "home" && (
             <div className={`m-scene-area${stage.sceneFade ? " m-scene-fading" : ""}`} ref={sceneAreaRef}>
-              <div className="m-scene-bg" style={{ background: bg.wall }} />
-              <div className="m-floor" style={{ background: bg.floor }} />
+              <SceneStage
+                sceneId={state.currentScene}
+                furniture={furniture}
+                wall={bg.wall}
+                floor={bg.floor}
+                selfPose={stage.selfPose}
+                otherPose={stage.otherPose}
+                selfName={state.player.name}
+                selfLook={playerLook ? { src: playerLook.src, filter: playerLook.filter } : null}
+                hasPartner={hasPartner}
+                partnerLook={partnerLook ? { src: partnerLook.src, filter: partnerLook.filter } : null}
+                partnerName={partner?.name ?? ""}
+                partnerColor={partner?.color ?? "#6b7fd7"}
+                partnerAway={partner?.presence === "away"}
+                petSprite={petSprite}
+                petName={wenbebi.name}
+                selfJuice={selfJuice}
+                peerJuice={peerJuice}
+                petJuice={petJuice}
+                coplayJuice={coplayJuice}
+                metFlash={metFlash}
+                onFurnitureClick={handleFurnitureClick}
+                onPetClick={() => {
+                  petThePet();
+                  triggerPetJuice();
+                  showDialogue(getDialogueForMood("happy"));
+                }}
+              />
               <div className="m-scene-fade" aria-hidden="true" />
 
               <nav className="m-location-nav" aria-label="选择地点">
@@ -425,107 +446,6 @@ export function MobileLayout() {
                   </button>
                 ))}
               </nav>
-
-              {furniture.map((item) => {
-                const furnClass = item.id === "rug" ? " m-furn--rug" : item.id === "sky-view" ? " m-furn--sky" : "";
-                const spriteSrc = SPRITES[item.id];
-                const accessibleName = item.label || item.id.replaceAll("-", " ");
-                return (
-                  <div
-                    key={item.id}
-                    className={`m-furn${item.type === "interactive" ? " m-furn--interactive" : ""}${item.type === "portal" ? " m-furn--portal" : ""}${furnClass}`}
-                    data-type={item.type}
-                    role={item.actions.length ? "button" : undefined}
-                    tabIndex={item.actions.length ? 0 : undefined}
-                    aria-label={item.actions.length ? accessibleName : undefined}
-                    style={{
-                      left: `${item.left}%`,
-                      bottom: `${item.bottom}%`,
-                      width: `${item.w}%`,
-                      height: `${item.h}%`,
-                    }}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleFurnitureClick(item, event);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        const rect = event.currentTarget.getBoundingClientRect();
-                        handleFurnitureClick(item, {
-                          clientX: rect.left + rect.width / 2,
-                          clientY: rect.top + rect.height / 2,
-                        } as React.MouseEvent<HTMLDivElement>);
-                      }
-                    }}
-                  >
-                    <div className="m-furn-img-wrap">
-                      {spriteSrc && <img src={spriteSrc} alt="" className="m-furn-img" draggable={false} />}
-                    </div>
-                    {item.type === "portal" && <span className="m-furn-label">{item.label}</span>}
-                  </div>
-                );
-              })}
-
-              <div
-                className={`m-presence m-presence--slotted${metFlash ? " m-presence--meet" : ""}${coplayJuice ? ` m-presence--${coplayJuice}` : ""}`}
-                aria-label="场景中的角色"
-              >
-                <div
-                  className={`m-self-wrap m-actor-tween${selfJuice ? " m-self-juice" : ""}`}
-                  style={poseStyle(stage.selfPose)}
-                  aria-label={`你：${state.player.name}`}
-                >
-                  <img
-                    src={playerLook!.src}
-                    alt={state.player.name}
-                    className="m-self-img"
-                    style={{ filter: playerLook!.filter }}
-                    draggable={false}
-                  />
-                  <span className="m-role-tag">我</span>
-                  <span className="m-pet-shadow" />
-                </div>
-
-                {hasPartner && partnerLook && (
-                  <div
-                    className={`m-peer-wrap m-actor-tween${peerJuice ? " m-peer-juice" : ""}${partner!.presence === "away" ? " m-peer-away" : ""}`}
-                    style={{
-                      ...poseStyle(stage.otherPose),
-                      ["--peer-color" as string]: partner!.color,
-                    }}
-                    aria-label={`${partner!.name}${partner!.presence === "away" ? "（离开）" : ""}`}
-                  >
-                    <img
-                      src={partnerLook.src}
-                      alt={partner!.name}
-                      className="m-self-img"
-                      style={{ filter: partnerLook.filter }}
-                      draggable={false}
-                    />
-                    <span className="m-role-tag m-role-tag--peer">{partner!.name}</span>
-                    <span className="m-pet-shadow" />
-                  </div>
-                )}
-
-                {!hasPartner && (
-                  <button
-                    type="button"
-                    className={`m-pet-wrap m-pet-wrap--paired m-actor-tween${petJuice || state.pet.currentAction === "jump" || state.pet.currentAction === "happy" ? " m-pet-action" : ""}${petJuice ? " m-pet-juice" : ""}`}
-                    style={poseStyle(stage.otherPose)}
-                    aria-label={`摸摸${wenbebi.name}`}
-                    onClick={() => {
-                      petThePet();
-                      triggerPetJuice();
-                      showDialogue(getDialogueForMood("happy"));
-                    }}
-                  >
-                    <img src={`assets/${petSprite}.webp`} alt={wenbebi.name} className="m-pet-img" draggable={false} />
-                    <span className="m-role-tag m-role-tag--her">{wenbebi.name}</span>
-                    <span className="m-pet-shadow" />
-                  </button>
-                )}
-              </div>
 
               <div className="m-scene-actions">
                 {!hasPartner && (

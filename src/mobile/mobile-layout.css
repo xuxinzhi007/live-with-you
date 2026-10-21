@@ -31,6 +31,12 @@
   width: 100% !important;
   min-height: 0 !important;
 }
+.m-pixi-stage {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 1 !important;
+  overflow: hidden !important;
+}
 .m-scene-bg {
   position: absolute !important;
   inset: 0 !important;
