@@ -37,11 +37,9 @@ export interface GameState {
 export interface GameUIState {
   selectedFurniture: string | null;
   showActionMenu: boolean;
-  actionMenuPosition: { x: number; y: number } | null;
 }
 
 export const INITIAL_GAME_UI_STATE: GameUIState = {
   selectedFurniture: null,
   showActionMenu: false,
-  actionMenuPosition: null,
 };

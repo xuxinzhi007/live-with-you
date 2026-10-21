@@ -43,8 +43,8 @@ export function useGameEngine() {
     setUI(INITIAL_GAME_UI_STATE);
   }, []);
 
-  const selectFurniture = useCallback((furnitureId: string, position: { x: number; y: number }) => {
-    setUI({ selectedFurniture: furnitureId, showActionMenu: true, actionMenuPosition: position });
+  const selectFurniture = useCallback((furnitureId: string) => {
+    setUI({ selectedFurniture: furnitureId, showActionMenu: true });
   }, []);
 
   const closeActionMenu = useCallback(() => {

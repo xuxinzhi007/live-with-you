@@ -11,7 +11,6 @@ import {
 import {
   PET_ACTIONS,
   PetAction,
-  getSpriteForAction,
   getDialogueForMood,
 } from "../mobile/data/pet-actions";
 import { getPlayerLook } from "../mobile/data/player-looks";
@@ -41,9 +40,9 @@ export function MobileLayout() {
     doCoplay,
   } = useGameEngine();
   const [tab, setTab] = useState<"home" | "collection" | "journal" | "chat">("home");
-  const [petJuice, setPetJuice] = useState(false);
   const [selfJuice, setSelfJuice] = useState(false);
   const [peerJuice, setPeerJuice] = useState(false);
+  const [patJuice, setPatJuice] = useState(false);
   const [coplayJuice, setCoplayJuice] = useState<CoplayJuice | null>(null);
   const [coplayOpen, setCoplayOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
@@ -99,7 +98,6 @@ export function MobileLayout() {
   const currentScene = SCENES.find((s) => s.id === state.currentScene)!;
   const furniture = SCENE_FURNITURE[state.currentScene] || [];
   const bg = SCENE_BACKGROUNDS[state.currentScene];
-  const petSprite = getSpriteForAction(state.pet.currentAction);
   const level = relationshipLevel(state.bond);
   const levelProgress = Math.round((state.bond % 24) / 24 * 100);
   const relationshipName = level >= 8 ? "最好的朋友" : level >= 5 ? "形影不离" : level >= 2 ? "小伙伴" : "刚认识";
@@ -115,25 +113,23 @@ export function MobileLayout() {
     if (juiceTimer.current) clearTimeout(juiceTimer.current);
   }, []);
 
-  const triggerPetJuice = useCallback(() => {
-    setPetJuice(true);
-    if (juiceTimer.current) clearTimeout(juiceTimer.current);
-    juiceTimer.current = setTimeout(() => setPetJuice(false), 480);
-  }, []);
-
   const triggerCoplayJuice = useCallback((juice: CoplayJuice | null, withPeer = false) => {
     if (!juice) return;
     setCoplayJuice(juice);
     setSelfJuice(true);
     if (withPeer) setPeerJuice(true);
-    else setPetJuice(true);
     if (juiceTimer.current) clearTimeout(juiceTimer.current);
     juiceTimer.current = setTimeout(() => {
-      setPetJuice(false);
       setSelfJuice(false);
       setPeerJuice(false);
       setCoplayJuice(null);
     }, 520);
+  }, []);
+
+  const triggerPatJuice = useCallback(() => {
+    setPatJuice(true);
+    if (juiceTimer.current) clearTimeout(juiceTimer.current);
+    juiceTimer.current = setTimeout(() => setPatJuice(false), 480);
   }, []);
 
   const handleCoplay = useCallback((actionId: string) => {
@@ -194,7 +190,7 @@ export function MobileLayout() {
   }, [partner, showDialogue, triggerCoplayJuice, stage, state.currentScene, furniture]);
 
   const handleFurnitureClick = useCallback(
-    (item: FurnitureItem, x: number, y: number) => {
+    (item: FurnitureItem) => {
       setCoplayOpen(false);
       if (item.type === "portal" && item.targetScene) {
         goScene(item.targetScene);
@@ -202,11 +198,9 @@ export function MobileLayout() {
         return;
       }
       if (item.actions.length > 0) {
-        // 先短位移到锚点，再出菜单；菜单开着时先别自动回位
+        // 短位移与菜单并行：边走边出底部 sheet，不等待走位完成
         stage.approachFurniture(item, hasPartner, { sticky: true });
-        window.setTimeout(() => {
-          selectFurniture(item.id, { x, y });
-        }, Math.min(stage.approachMs, 420));
+        selectFurniture(item.id);
         if (item.dialogue) showDialogue(item.dialogue);
       }
     },
@@ -255,14 +249,6 @@ export function MobileLayout() {
   const availableActions = currentFurniture
     ? PET_ACTIONS.filter((action) => currentFurniture.actions.includes(action.id))
     : [];
-  const sceneRect = sceneAreaRef.current?.getBoundingClientRect();
-  const menuWidth = Math.min(280, (sceneRect?.width || window.innerWidth) - 24);
-  const menuStyle: React.CSSProperties = ui.actionMenuPosition
-    ? {
-        left: Math.max(12, Math.min(ui.actionMenuPosition.x - menuWidth / 2, (sceneRect?.width || window.innerWidth) - menuWidth - 12)),
-        top: Math.max(126, Math.min(ui.actionMenuPosition.y - 96, (sceneRect?.height || window.innerHeight) - 190)),
-      }
-    : { left: "50%", top: "50%", transform: "translate(-50%, -50%)" };
 
   const checkCompanionStatus = useCallback(async () => {
     setCompanionStatusState("loading");
@@ -417,17 +403,15 @@ export function MobileLayout() {
                 partnerName={partner?.name ?? ""}
                 partnerColor={partner?.color ?? "#6b7fd7"}
                 partnerAway={partner?.presence === "away"}
-                petSprite={petSprite}
-                petName={wenbebi.name}
                 selfJuice={selfJuice}
                 peerJuice={peerJuice}
-                petJuice={petJuice}
+                patJuice={patJuice}
                 coplayJuice={coplayJuice}
                 metFlash={metFlash}
                 onFurnitureClick={handleFurnitureClick}
-                onPetClick={() => {
+                onSelfClick={() => {
                   petThePet();
-                  triggerPetJuice();
+                  triggerPatJuice();
                   showDialogue(getDialogueForMood("happy"));
                 }}
               />
@@ -520,17 +504,33 @@ export function MobileLayout() {
               )}
 
               {ui.showActionMenu && currentFurniture && availableActions.length > 0 && (
-                <div className="m-action-menu" style={menuStyle} role="group" aria-label={`${currentFurniture.label || currentFurniture.id}的互动`}>
-                  <div className="m-action-heading">{currentFurniture.label || accessibleFurnitureName(currentFurniture.id)}</div>
-                  {availableActions.map((action) => (
-                    <button key={action.id} type="button" className="m-action-btn" onClick={(event) => { event.stopPropagation(); handleAction(action); }}>
-                      <span className="m-action-icon" aria-hidden="true">{action.icon}</span>
-                      <span>{action.label}</span>
-                    </button>
-                  ))}
-                  <button type="button" className="m-action-btn" onClick={(event) => { event.stopPropagation(); handleCloseActionMenu(); }}>
-                    <span className="m-action-icon" aria-hidden="true">×</span><span>收起</span>
-                  </button>
+                <div className="m-coplay-layer" role="presentation">
+                  <button
+                    type="button"
+                    className="m-coplay-scrim"
+                    aria-label="关闭互动"
+                    onClick={handleCloseActionMenu}
+                  />
+                  <div
+                    className="m-action-menu"
+                    role="dialog"
+                    aria-label={`${currentFurniture.label || accessibleFurnitureName(currentFurniture.id)}的互动`}
+                  >
+                    <div className="m-coplay-sheet-head">
+                      <p>{currentFurniture.label || accessibleFurnitureName(currentFurniture.id)}</p>
+                      <button type="button" className="m-coplay-close" aria-label="关闭" onClick={handleCloseActionMenu}>
+                        ×
+                      </button>
+                    </div>
+                    <div className="m-coplay-grid">
+                      {availableActions.map((action) => (
+                        <button key={action.id} type="button" className="m-coplay-cell" onClick={(event) => { event.stopPropagation(); handleAction(action); }}>
+                          <span className="m-coplay-cell-icon" aria-hidden="true">{action.icon}</span>
+                          <span>{action.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

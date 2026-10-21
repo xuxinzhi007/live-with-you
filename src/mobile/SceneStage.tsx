@@ -27,15 +27,13 @@ interface SceneStageProps {
   partnerName: string;
   partnerColor: string;
   partnerAway: boolean;
-  petSprite: string;
-  petName: string;
   selfJuice: boolean;
   peerJuice: boolean;
-  petJuice: boolean;
+  patJuice: boolean;
   coplayJuice: CoplayJuice | null;
   metFlash: boolean;
   onFurnitureClick: (item: FurnitureItem, x: number, y: number) => void;
-  onPetClick: () => void;
+  onSelfClick: () => void;
 }
 
 function coplayKind(juice: CoplayJuice): { self: JuiceKind; other: JuiceKind } {
@@ -94,15 +92,6 @@ export function SceneStage(props: SceneStageProps) {
         pose: props.otherPose,
         away: props.partnerAway,
       });
-    } else {
-      inputs.push({
-        key: "pet",
-        src: `assets/${props.petSprite}.webp`,
-        name: props.petName,
-        tagColor: "#dc795f",
-        pose: props.otherPose,
-        clickable: true,
-      });
     }
     engine.syncActors(inputs);
   }, [
@@ -113,13 +102,11 @@ export function SceneStage(props: SceneStageProps) {
     props.partnerName,
     props.partnerColor,
     props.partnerAway,
-    props.petSprite,
-    props.petName,
   ]);
 
   useEffect(() => {
     engineRef.current?.setPose("self", props.selfPose);
-    engineRef.current?.setPose(props.hasPartner ? "peer" : "pet", props.otherPose);
+    if (props.hasPartner) engineRef.current?.setPose("peer", props.otherPose);
   }, [props.selfPose, props.otherPose, props.hasPartner]);
 
   useEffect(() => {
@@ -128,18 +115,13 @@ export function SceneStage(props: SceneStageProps) {
     const cp = props.coplayJuice ? coplayKind(props.coplayJuice) : null;
     if (props.selfJuice) engine.juice("self", cp?.self ?? "pop");
     if (props.peerJuice) engine.juice("peer", cp?.other ?? "pop");
-    if (props.petJuice) engine.juice("pet", cp?.other ?? "pop");
-  }, [props.selfJuice, props.peerJuice, props.petJuice, props.coplayJuice]);
-
-  useEffect(() => {
-    if (props.petSprite === "jump") engineRef.current?.juice("pet", "bounce");
-  }, [props.petSprite]);
+    if (props.patJuice) engine.juice("self", "bounce");
+  }, [props.selfJuice, props.peerJuice, props.patJuice, props.coplayJuice]);
 
   useEffect(() => {
     if (!props.metFlash) return;
     engineRef.current?.juice("self", "meet");
     if (props.hasPartner) engineRef.current?.juice("peer", "meet");
-    else engineRef.current?.juice("pet", "meet");
   }, [props.metFlash, props.hasPartner]);
 
   useEffect(() => {
@@ -147,8 +129,8 @@ export function SceneStage(props: SceneStageProps) {
   }, [props.onFurnitureClick]);
 
   useEffect(() => {
-    if (engineRef.current) engineRef.current.onPetClick = props.onPetClick;
-  }, [props.onPetClick]);
+    if (engineRef.current) engineRef.current.onSelfClick = props.onSelfClick;
+  }, [props.onSelfClick]);
 
   return <div className="m-pixi-stage" ref={hostRef} aria-hidden="true" />;
 }

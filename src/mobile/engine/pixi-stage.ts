@@ -11,7 +11,7 @@ import type { FurnitureItem } from "../data/scenes";
 import { SPRITES } from "../data/pixel-sprites";
 import type { SlotPose } from "../data/slots";
 
-export type ActorKey = "self" | "peer" | "pet";
+export type ActorKey = "self" | "peer";
 export type JuiceKind = "pop" | "meet" | "sit" | "pass" | "look" | "bounce";
 
 export interface ActorInput {
@@ -21,13 +21,17 @@ export interface ActorInput {
   tagColor: string;
   pose: SlotPose;
   away?: boolean;
-  clickable?: boolean;
 }
 
 const APPROACH_MS = 720;
 const MAX_CAM = WORLD_W - 100;
 const WALL_PARALLAX = 0.35;
 const FLOOR_H_FRAC = 0.1;
+const TAP_MAX_MS = 300;
+const TAP_MAX_DIST = 8;
+const FLING_TAU = 120;
+const FLING_MIN_VELOCITY = 0.03;
+const FLING_BOUNCE = 0.3;
 
 interface Tween {
   elapsed: number;
@@ -44,7 +48,6 @@ interface ActorSprite {
   tag: Text;
   pose: SlotPose;
   away: boolean;
-  clickable: boolean;
   moving: boolean;
   moveFrom: { x: number; y: number };
   moveTo: { x: number; y: number };
@@ -131,7 +134,7 @@ function furnRank(item: FurnitureItem): number {
 
 export class SceneStage {
   onFurnitureClick?: (item: FurnitureItem, x: number, y: number) => void;
-  onPetClick?: () => void;
+  onSelfClick?: () => void;
 
   private app!: Application;
   private host!: HTMLElement;
@@ -168,6 +171,11 @@ export class SceneStage {
   private dragStartX = 0;
   private dragStartY = 0;
   private dragStartCam = 0;
+  private dragStartTime = 0;
+  private lastMoveX = 0;
+  private lastMoveTime = 0;
+  private flingVelocity = 0;
+  private flinging = false;
 
   private gen = 0;
   private observer: ResizeObserver | null = null;
@@ -283,7 +291,6 @@ export class SceneStage {
         existing.tag.text = input.name;
         existing.tag.style.fill = input.tagColor;
         existing.away = Boolean(input.away);
-        existing.clickable = Boolean(input.clickable);
         if (existing.src !== input.src) {
           this.applyActorTexture(existing, input.src, gen);
         }
@@ -317,7 +324,6 @@ export class SceneStage {
         tag,
         pose: { left: 0, bottom: 0 },
         away: Boolean(input.away),
-        clickable: Boolean(input.clickable),
         moving: false,
         moveFrom: { x: 0, y: 0 },
         moveTo: { x: 0, y: 0 },
@@ -540,9 +546,8 @@ export class SceneStage {
   }
 
   private layoutActor(actor: ActorSprite): void {
-    const isPet = actor.key === "pet";
-    const boxH = this.screenH * (isPet ? 0.2 : 0.17);
-    const boxW = this.screenH * (isPet ? 0.14 : 0.12);
+    const boxH = this.screenH * 0.17;
+    const boxW = this.screenH * 0.12;
     const size = containFit(actor.sprite.texture, boxW, boxH);
     actor.sprite.width = size.w;
     actor.sprite.height = size.h;
@@ -560,7 +565,6 @@ export class SceneStage {
     const keys: ActorKey[] = [];
     if (this.actors.has("self")) keys.push("self");
     if (this.actors.has("peer")) keys.push("peer");
-    else if (this.actors.has("pet")) keys.push("pet");
     if (keys.length === 0) return null;
     let sum = 0;
     for (const key of keys) {
@@ -574,8 +578,26 @@ export class SceneStage {
     if (this.disposed) return;
     const dt = this.app.ticker.deltaMS;
 
-    // 相机跟随：聚焦角色中点，带滞回避免抖动
-    if (!this.dragging) {
+    // 惯性滑行：松手后按残留速度继续移动，逐帧阻尼衰减，撞边界轻微反弹
+    if (this.flinging) {
+      this.camX -= this.flingVelocity * dt;
+      if (this.camX < 0) {
+        this.camX = 0;
+        this.flingVelocity = -this.flingVelocity * FLING_BOUNCE;
+      } else if (this.camX > MAX_CAM) {
+        this.camX = MAX_CAM;
+        this.flingVelocity = -this.flingVelocity * FLING_BOUNCE;
+      }
+      this.flingVelocity *= Math.exp(-dt / FLING_TAU);
+      this.camTarget = this.camX;
+      if (Math.abs(this.flingVelocity) < FLING_MIN_VELOCITY) {
+        this.flinging = false;
+        this.flingVelocity = 0;
+      }
+    }
+
+    // 相机跟随：聚焦角色中点，带滞回避免抖动（拖拽/滑行期间挂起）
+    if (!this.dragging && !this.flinging) {
       const focus = this.computeFocusX();
       if (this.snapCamera && focus != null) {
         this.camX = this.camTarget = clamp(focus - 50, 0, MAX_CAM);
@@ -618,9 +640,14 @@ export class SceneStage {
   private onPointerDown = (e: PointerEvent): void => {
     this.pointerDown = true;
     this.dragging = false;
+    this.flinging = false;
+    this.flingVelocity = 0;
     this.dragStartX = e.clientX;
     this.dragStartY = e.clientY;
+    this.dragStartTime = e.timeStamp;
     this.dragStartCam = this.camX;
+    this.lastMoveX = e.clientX;
+    this.lastMoveTime = e.timeStamp;
   };
 
   private onPointerMove = (e: PointerEvent): void => {
@@ -629,6 +656,11 @@ export class SceneStage {
     const dy = e.clientY - this.dragStartY;
     if (!this.dragging && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) this.dragging = true;
     if (this.dragging) {
+      const dtMs = Math.max(1, e.timeStamp - this.lastMoveTime);
+      const instVel = -(e.clientX - this.lastMoveX) / this.scaleX / dtMs;
+      this.flingVelocity = this.flingVelocity * 0.4 + instVel * 0.6;
+      this.lastMoveX = e.clientX;
+      this.lastMoveTime = e.timeStamp;
       this.camX = this.camTarget = clamp(this.dragStartCam - dx / this.scaleX, 0, MAX_CAM);
     }
   };
@@ -637,7 +669,16 @@ export class SceneStage {
     const wasDrag = this.dragging;
     this.pointerDown = false;
     this.dragging = false;
-    if (!wasDrag) this.handleTap(e);
+    if (wasDrag) {
+      this.flinging = Math.abs(this.flingVelocity) > FLING_MIN_VELOCITY;
+      return;
+    }
+    const duration = e.timeStamp - this.dragStartTime;
+    const dx = Math.abs(e.clientX - this.dragStartX);
+    const dy = Math.abs(e.clientY - this.dragStartY);
+    if (duration < TAP_MAX_MS && dx < TAP_MAX_DIST && dy < TAP_MAX_DIST) {
+      this.handleTap(e);
+    }
   };
 
   private handleTap(e: PointerEvent): void {
@@ -654,12 +695,12 @@ export class SceneStage {
       }
     }
 
-    const pet = this.actors.get("pet");
-    if (pet && pet.clickable && !pet.away) {
-      const half = pet.width / 2;
-      if (wx >= pet.container.x - half && wx <= pet.container.x + half
-        && localY >= pet.container.y - pet.height && localY <= pet.container.y) {
-        this.onPetClick?.();
+    const self = this.actors.get("self");
+    if (self && !self.away) {
+      const half = self.width / 2;
+      if (wx >= self.container.x - half && wx <= self.container.x + half
+        && localY >= self.container.y - self.height && localY <= self.container.y) {
+        this.onSelfClick?.();
       }
     }
   }
