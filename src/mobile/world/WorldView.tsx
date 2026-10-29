@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
-import { PLAYER_STAND_H, WorldRuntime } from "./runtime";
+import { PLAYER_STAND_H, WorldRuntime, type PlayerPose } from "./runtime";
 import { getRoom, propBounds, type RoomProp } from "./rooms";
 import {
   BLOOM_ASSETS,
@@ -19,6 +19,8 @@ const DRAG_THRESHOLD = 8;
 
 export interface WorldViewHandle {
   activateNearest: () => void;
+  /** 播一个角色姿态（sit / sleep / react…），到时自动回 idle。 */
+  playPose: (pose: PlayerPose, durationMs: number) => void;
 }
 
 interface WorldViewProps {
@@ -86,8 +88,13 @@ class WorldRenderer {
   private landingRing = new Graphics();
   private groundFx = new Container();
   private charFrames: Texture[] = [];
+  private breatheFrames: Texture[] = [];
   private reactFrame: Texture = Texture.WHITE;
+  private sitFrame: Texture = Texture.WHITE;
+  private sleepFrame: Texture = Texture.WHITE;
   private idleFrame: Texture = Texture.WHITE;
+  /** 待机呼吸的累计时间（秒） */
+  private animTime = 0;
   private skin: CharacterSkin = getCharacterSkin(undefined);
   private charGen = 0;
   private propViews: PropView[] = [];
@@ -217,17 +224,24 @@ class WorldRenderer {
 
   private async loadCharacter(skin: CharacterSkin): Promise<void> {
     const gen = ++this.charGen;
-    const textures = await Promise.all([
+    const [idle, react, breathe, walk, sit, sleep] = await Promise.all([
       loadTexture(skin.idle),
       loadTexture(skin.react),
-      ...skin.walk.map((src) => loadTexture(src)),
+      Promise.all(skin.breathe.map((src) => loadTexture(src))),
+      Promise.all(skin.walk.map((src) => loadTexture(src))),
+      skin.sit ? loadTexture(skin.sit) : Promise.resolve<Texture | null>(null),
+      skin.sleep ? loadTexture(skin.sleep) : Promise.resolve<Texture | null>(null),
     ]);
     if (this.disposed || gen !== this.charGen) return;
 
     this.skin = skin;
-    this.idleFrame = textures[0];
-    this.reactFrame = textures[1];
-    this.charFrames = textures.slice(2);
+    this.idleFrame = idle;
+    this.reactFrame = react;
+    this.breatheFrames = breathe;
+    this.charFrames = walk;
+    this.sitFrame = sit ?? Texture.WHITE;
+    this.sleepFrame = sleep ?? Texture.WHITE;
+    this.animTime = 0;
     this.charSprite.texture = this.idleFrame;
     this.charSprite.anchor.set(0.5, skin.metrics.baseline);
   }
@@ -322,6 +336,7 @@ class WorldRenderer {
       );
     }
     this.plotTimer += dt;
+    this.animTime += dt / 1000;
     this.updatePlotVisuals();
     this.render();
   };
@@ -333,13 +348,7 @@ class WorldRenderer {
 
     this.charBox.position.set(player.x, player.y);
     this.charBox.zIndex = player.y;
-    const frame = this.reduceMotion
-      ? this.idleFrame
-      : player.pose === "react"
-        ? this.reactFrame
-        : player.pose === "walk" && this.charFrames.length
-          ? this.charFrames[Math.floor(player.phase * 2) % this.charFrames.length]
-          : this.idleFrame;
+    const frame = this.pickFrame(player);
     if (this.charSprite.texture !== frame) this.charSprite.texture = frame;
     const base = PLAYER_STAND_H / this.skin.metrics.visibleHeight;
     const targetX = base * player.facing;
@@ -381,6 +390,45 @@ class WorldRenderer {
       this.lastLandingKey = landingKey;
       this.drawLandingRing(landing ?? null, Boolean(ball?.bounce));
     }
+  }
+
+  /**
+   * 姿态取帧。皮肤缺少某个姿势时按 sit → react → idle 回落，
+   * 所以女仆（只有 idle/react/walk）不会因为坐下而变成空白。
+   */
+  private pickFrame(player: WorldRuntime["player"]): Texture {
+    switch (player.pose) {
+      case "sleep":
+        return this.firstTexture(this.sleepFrame, this.sitFrame, this.reactFrame, this.idleFrame);
+      case "sit":
+        return this.firstTexture(this.sitFrame, this.reactFrame, this.idleFrame);
+      case "react":
+        return this.firstTexture(this.reactFrame, this.idleFrame);
+      case "walk":
+        if (this.charFrames.length) {
+          return this.charFrames[Math.floor(player.phase * 2) % this.charFrames.length];
+        }
+        return this.firstTexture(this.idleFrame);
+      default: {
+        if (this.reduceMotion || this.breatheFrames.length === 0) {
+          return this.firstTexture(this.idleFrame);
+        }
+        // 约 0.42s 一帧，缓慢起伏，不做高频闪烁。
+        const index = Math.floor(this.animTime / 0.42) % this.breatheFrames.length;
+        return this.firstTexture(this.breatheFrames[index], this.idleFrame);
+      }
+    }
+  }
+
+  private firstTexture(...frames: Texture[]): Texture {
+    for (const frame of frames) {
+      if (frame && frame !== Texture.WHITE) return frame;
+    }
+    return Texture.WHITE;
+  }
+
+  playPose(pose: PlayerPose, durationMs: number): void {
+    this.runtime.playPose(pose, durationMs);
   }
 
   private drawNearestRing(prop: RoomProp | null): void {
@@ -564,6 +612,7 @@ export const WorldView = forwardRef<WorldViewHandle, WorldViewProps>(function Wo
 
   useImperativeHandle(ref, () => ({
     activateNearest: () => rendererRef.current?.activateNearest(),
+    playPose: (pose, durationMs) => rendererRef.current?.playPose(pose, durationMs),
   }), []);
 
   useEffect(() => {
@@ -575,7 +624,7 @@ export const WorldView = forwardRef<WorldViewHandle, WorldViewProps>(function Wo
     rendererRef.current = renderer;
 
     runtime.onArrive = (prop) => {
-      runtime.playPose("react", 620);
+      // 具体姿态由动作结果决定（坐下 / 躺下 / 短交互），见 poseForProp。
       latest.current.onAction(prop);
     };
     runtime.onDoor = (prop) => {

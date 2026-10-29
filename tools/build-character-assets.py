@@ -4,19 +4,34 @@
 Skins
 -----
 original (default)  the white-dress 雯宝 that predates the V2 rewrite:
-                    public/assets/idle.webp (idle) + jump.webp (react)
+
+                      idle.webp  -> idle   standing
+                      jump.webp  -> react  short hop / interact
+                      rest.webp  -> sit    sitting / kneeling
+                      sleep.webp -> sleep  lying down
+
 maid                the blue-white maid ("小鲸鱼"):
-                    spark-output/wenbao-maid-wave.png + wenbao-maid-curtsy.png
 
-Both skins are written with the same frame convention so the renderer can swap
-them at runtime without changing scale or foot line:
+                      wenbao-maid-wave.png   -> idle
+                      wenbao-maid-curtsy.png -> react
 
-  <out>/idle.webp
-  <out>/react.webp        short interaction pose (used for tap / arrive)
-  <out>/walk-1..4.webp    four-frame walk cycle
-  <out>/avatar.webp       160x160 HUD portrait
+Frame convention (shared by every skin and every pose, so the renderer can swap
+textures at runtime without a size jump):
 
-  canvas 760x760, visible height 714, feet on y=748, centered on x=380.
+  canvas 760x760, feet on y=748, visual centre on x=380
+
+Every pose of one skin is scaled by the *same* factor, derived from the idle
+height. That keeps the body size consistent: a lying pose is naturally shorter
+than a standing one instead of being blown up to the same height.
+
+Output per skin:
+  <out>/idle.webp       standing
+  <out>/breathe-1..4.webp  idle breathing loop
+  <out>/react.webp      short interaction pose (tap / arrive)
+  <out>/sit.webp        sitting pose      (only when the skin has one)
+  <out>/sleep.webp      lying pose        (only when the skin has one)
+  <out>/walk-1..4.webp  four-frame walk cycle
+  <out>/avatar.webp     160x160 HUD portrait
 
 Opaque sources (the maid PNGs) get a border flood-fill to remove the flat white
 background. Sources that already carry alpha (the original webp frames) are used
@@ -38,19 +53,25 @@ OUT_ROOT = os.path.join(ROOT, "public", "assets", "characters")
 
 SKINS = {
     "original": {
-        "idle": os.path.join(ROOT, "public", "assets", "idle.webp"),
-        "react": os.path.join(ROOT, "public", "assets", "jump.webp"),
         "cutout": False,
+        "sources": {
+            "idle": os.path.join(ROOT, "public", "assets", "idle.webp"),
+            "react": os.path.join(ROOT, "public", "assets", "jump.webp"),
+            "sit": os.path.join(ROOT, "public", "assets", "rest.webp"),
+            "sleep": os.path.join(ROOT, "public", "assets", "sleep.webp"),
+        },
     },
     "maid": {
-        "idle": os.path.join(ROOT, "spark-output", "wenbao-maid-wave.png"),
-        "react": os.path.join(ROOT, "spark-output", "wenbao-maid-curtsy.png"),
         "cutout": True,
+        "sources": {
+            "idle": os.path.join(ROOT, "spark-output", "wenbao-maid-wave.png"),
+            "react": os.path.join(ROOT, "spark-output", "wenbao-maid-curtsy.png"),
+        },
     },
 }
 
 FRAME = 760          # square canvas for every animation frame
-FRAME_HEIGHT = 720   # character height inside the square
+FRAME_HEIGHT = 720   # idle height inside the square (all poses share its scale)
 BASELINE_Y = 748     # every frame puts the feet on the same line
 CENTER_X = 380       # every frame is horizontally centered on this line
 MARKER = (255, 0, 255)
@@ -111,9 +132,9 @@ def trim(img: Image.Image, padding: int = 6) -> Image.Image:
     return img.crop((x0, y0, x1, y1))
 
 
-def scale_to_height(img: Image.Image, height: int) -> Image.Image:
-    ratio = height / img.height
-    return img.resize((max(1, round(img.width * ratio)), height), Image.LANCZOS)
+def scale_by(img: Image.Image, factor: float) -> Image.Image:
+    size = (max(1, round(img.width * factor)), max(1, round(img.height * factor)))
+    return img.resize(size, Image.LANCZOS)
 
 
 def align_frame(img: Image.Image, canvas: int = FRAME) -> Image.Image:
@@ -149,6 +170,22 @@ def walk_frame(base: Image.Image, angle: float, bob: int, squeeze: float) -> Ima
     return align_frame(frame)
 
 
+def breathe_frame(frame: Image.Image, scale_y: float, lift: int) -> Image.Image:
+    """Idle breathing: scale the body slightly around its feet and lift it a touch."""
+    alpha = frame.getchannel("A").point(lambda v: 255 if v > 8 else 0)
+    bbox = alpha.getbbox()
+    if not bbox:
+        return frame
+    body = frame.crop(bbox)
+    height = max(1, round(body.height * scale_y))
+    scaled = body.resize((body.width, height), Image.LANCZOS)
+    out = Image.new("RGBA", (FRAME, FRAME), (0, 0, 0, 0))
+    x = CENTER_X - scaled.width // 2
+    y = BASELINE_Y - scaled.height - lift
+    out.alpha_composite(scaled, (x, y))
+    return out
+
+
 def build_avatar(trimmed: Image.Image) -> Image.Image:
     """HUD portrait: top 46% of the body, square crop, 160x160."""
     head_h = max(1, round(trimmed.height * 0.46))
@@ -159,7 +196,7 @@ def build_avatar(trimmed: Image.Image) -> Image.Image:
 
 
 def save_webp(img: Image.Image, path: str) -> None:
-    img.save(path, "WEBP", quality=92, method=6)
+    img.save(path, "WEBP", quality=90, method=6)
     size = os.path.getsize(path)
     alpha = np.asarray(img.getchannel("A"))
     bbox = img.getchannel("A").point(lambda v: 255 if v > 8 else 0).getbbox()
@@ -175,21 +212,37 @@ def build_skin(skin_id: str, config: dict) -> None:
     os.makedirs(out_dir, exist_ok=True)
     print(f"\n[{skin_id}] -> {os.path.relpath(out_dir, ROOT)}")
 
-    cutouts = {}
-    for key in ("idle", "react"):
-        path = config[key]
+    trims: dict[str, Image.Image] = {}
+    for pose, path in config["sources"].items():
         if not os.path.exists(path):
-            raise SystemExit(f"missing source for {skin_id}.{key}: {path}")
-        print(f"  source {key}: {os.path.relpath(path, ROOT)}")
-        cut = trim(prepare_source(path, config["cutout"]))
-        cutouts[key] = cut
-        print(f"    trimmed {cut.width}x{cut.height}")
+            raise SystemExit(f"missing source for {skin_id}.{pose}: {path}")
+        print(f"  source {pose:6s}: {os.path.relpath(path, ROOT)}")
+        trims[pose] = trim(prepare_source(path, config["cutout"]))
+        print(f"    trimmed {trims[pose].width}x{trims[pose].height}")
 
-    idle = align_frame(scale_to_height(cutouts["idle"], FRAME_HEIGHT))
-    react = align_frame(scale_to_height(cutouts["react"], FRAME_HEIGHT))
+    reference = trims["idle"]
+    factor = FRAME_HEIGHT / reference.height
+    print(f"  shared scale = {FRAME_HEIGHT}/{reference.height} = {factor:.4f}")
 
-    save_webp(idle, os.path.join(out_dir, "idle.webp"))
-    save_webp(react, os.path.join(out_dir, "react.webp"))
+    aligned_idle: Image.Image | None = None
+    for pose, img in trims.items():
+        frame = align_frame(scale_by(img, factor))
+        if pose == "idle":
+            aligned_idle = frame
+        save_webp(frame, os.path.join(out_dir, f"{pose}.webp"))
+
+    assert aligned_idle is not None
+
+    # Four-frame breathing loop: up slowly, then back down.
+    breathe_specs = [
+        (1.000, 0),
+        (1.004, 2),
+        (1.008, 3),
+        (1.004, 1),
+    ]
+    for index, (scale_y, lift) in enumerate(breathe_specs, start=1):
+        frame = breathe_frame(aligned_idle, scale_y, lift)
+        save_webp(frame, os.path.join(out_dir, f"breathe-{index}.webp"))
 
     # Four-frame procedural walk: two sway extremes and two passes through the middle.
     walk_specs = [
@@ -199,10 +252,10 @@ def build_skin(skin_id: str, config: dict) -> None:
         (0.0, 6, 0.998),
     ]
     for index, (angle, bob, squeeze) in enumerate(walk_specs, start=1):
-        frame = walk_frame(idle, angle, bob, squeeze)
+        frame = walk_frame(aligned_idle, angle, bob, squeeze)
         save_webp(frame, os.path.join(out_dir, f"walk-{index}.webp"))
 
-    save_webp(build_avatar(cutouts["idle"]), os.path.join(out_dir, "avatar.webp"))
+    save_webp(build_avatar(reference), os.path.join(out_dir, "avatar.webp"))
 
 
 def main() -> None:

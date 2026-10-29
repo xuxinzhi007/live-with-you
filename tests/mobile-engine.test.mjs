@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { existsSync, statSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { PET_ACTIONS } from "../src/mobile/data/pet-actions.ts";
 import { SCENE_FURNITURE } from "../src/mobile/data/scenes.ts";
 import { COPLAY_ACTIONS } from "../src/mobile/data/coplay-actions.ts";
@@ -278,14 +280,72 @@ test("every character skin ships the full frame set and shares one baseline", as
     assert.equal(skin.metrics.baseline, 748 / 760);
     assert.ok(skin.metrics.visibleHeight > 600 && skin.metrics.visibleHeight <= 760);
     assert.equal(skin.walk.length, 4);
+    assert.equal(skin.breathe.length, 4, `${skin.id} should ship a 4-frame breathing loop`);
     assert.ok(skin.idle.includes(`/characters/${skin.id}/`));
     assert.ok(skin.react.includes(`/characters/${skin.id}/`));
     assert.ok(skin.avatar.includes(`/characters/${skin.id}/`));
     for (const frame of skin.walk) assert.ok(frame.includes(`/characters/${skin.id}/`));
+    for (const frame of skin.breathe) assert.ok(frame.includes(`/characters/${skin.id}/`));
   }
+
+  // 白色原角色额外有 sit / sleep 两张原画；女仆暂时没有，运行时回落到 react。
+  assert.ok(CHARACTER_SKINS.original.sit?.includes("/characters/original/"));
+  assert.ok(CHARACTER_SKINS.original.sleep?.includes("/characters/original/"));
+  assert.equal(CHARACTER_SKINS.maid.sit, undefined);
+  assert.equal(CHARACTER_SKINS.maid.sleep, undefined);
 
   assert.equal(CHARACTER_SKINS.original.label, "白色");
   assert.equal(CHARACTER_SKINS.maid.label, "小鲸鱼");
+});
+
+test("every frame referenced by skins.ts exists on disk", async () => {
+  const { CHARACTER_SKIN_LIST } = await import("../src/mobile/world/skins.ts");
+  const publicRoot = new URL("../public/", import.meta.url);
+
+  for (const skin of CHARACTER_SKIN_LIST) {
+    const frames = [skin.idle, skin.react, ...skin.breathe, ...skin.walk];
+    if (skin.sit) frames.push(skin.sit);
+    if (skin.sleep) frames.push(skin.sleep);
+    frames.push(skin.avatar);
+
+    for (const frame of frames) {
+      const url = new URL(frame, publicRoot);
+      const path = fileURLToPath(url);
+      assert.equal(existsSync(path), true, `missing frame: ${frame}`);
+      assert.ok(statSync(path).size > 1000, `frame looks empty: ${frame}`);
+    }
+  }
+
+  // 白色角色的动作帧数：idle + react + breathe×4 + walk×4 + sit + sleep + avatar
+  const original = CHARACTER_SKIN_LIST.find((skin) => skin.id === "original");
+  assert.ok(original);
+  const count = 1 + 1 + original.breathe.length + original.walk.length + 2 + 1;
+  assert.equal(count, 13);
+});
+
+test("prop actions map to the right character pose", async () => {
+  const { poseForProp } = await import("../src/mobile/world/poses.ts");
+
+  const bed = getProp("home", "bed");
+  const desk = getProp("home", "desk");
+  const shelf = getProp("home", "shelf");
+  const stall = getProp("street", "flower-stall");
+  const door = getProp("home", "home-garden-door");
+  const bench = getProp("street", "street-bench");
+  const plot = getProp("garden", "plot-0");
+  const fountain = getProp("street", "fountain");
+  assert.ok(bed && desk && shelf && stall && door && bench && plot && fountain);
+
+  assert.equal(poseForProp(bed, "ok")?.pose, "sleep", "bed should lie down");
+  assert.equal(poseForProp(desk, "ok")?.pose, "sit", "desk should sit down");
+  assert.equal(poseForProp(bench, "ok")?.pose, "sit", "bench should sit down");
+  assert.equal(poseForProp(plot, "ok")?.pose, "sit", "garden plot should kneel/sit");
+  assert.equal(poseForProp(stall, "ok")?.pose, "react", "flower stall is a short interaction");
+  assert.equal(poseForProp(shelf, "ok")?.pose, "react", "shelf is a short interaction");
+  assert.equal(poseForProp(fountain, "ok")?.pose, "react", "fountain is a short interaction");
+
+  assert.equal(poseForProp(door, "ok"), null, "doors switch room instead of posing");
+  assert.equal(poseForProp(bed, "blocked"), null, "cooldown clicks do not pose");
 });
 
 test("every room keeps a clear walking lane and key props are character-scaled", () => {

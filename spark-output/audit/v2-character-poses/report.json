@@ -1,0 +1,142 @@
+{
+  "url": "http://localhost:5199/?mobile",
+  "steps": {
+    "idle": {
+      "world": {
+        "room": "home",
+        "x": 440,
+        "y": 880,
+        "pose": "idle",
+        "moving": false,
+        "nearest": null,
+        "cameraX": 190
+      }
+    },
+    "tap": {
+      "pose": "react",
+      "toast": "嗯？我在呢。"
+    },
+    "nearBed": {
+      "world": {
+        "room": "home",
+        "x": 292,
+        "y": 884,
+        "pose": "idle",
+        "moving": false,
+        "nearest": "bed",
+        "cameraX": 39
+      },
+      "cta": {
+        "text": "躺一会儿",
+        "x": 195,
+        "y": 736
+      }
+    },
+    "bed": {
+      "cta": "躺一会儿",
+      "pose": "sleep",
+      "toast": "把脸埋进枕头里，听见窗外的风。"
+    },
+    "afterBed": {
+      "pose": "idle"
+    },
+    "nearDesk": {
+      "world": {
+        "room": "home",
+        "x": 580,
+        "y": 884,
+        "pose": "idle",
+        "moving": false,
+        "nearest": "desk",
+        "cameraX": 327
+      },
+      "cta": {
+        "text": "看看书",
+        "x": 195,
+        "y": 736
+      }
+    },
+    "desk": {
+      "cta": "看看书",
+      "pose": "sit",
+      "toast": "翻到夹着花瓣的那一页。"
+    },
+    "nearBench": {
+      "world": {
+        "room": "street",
+        "x": 1060,
+        "y": 884,
+        "pose": "idle",
+        "moving": false,
+        "nearest": "street-bench",
+        "cameraX": 680
+      },
+      "cta": {
+        "text": "坐一会儿",
+        "x": 195,
+        "y": 736
+      }
+    },
+    "bench": {
+      "cta": "坐一会儿",
+      "pose": "sit",
+      "toast": "坐下来，风从耳边过去。"
+    },
+    "nearPlot": {
+      "world": {
+        "room": "garden",
+        "x": 320,
+        "y": 884,
+        "pose": "idle",
+        "moving": false,
+        "nearest": "plot-0",
+        "cameraX": 65
+      },
+      "cta": {
+        "text": "浇水",
+        "x": 195,
+        "y": 736
+      }
+    },
+    "plot": {
+      "cta": "浇水",
+      "pose": "sit",
+      "toast": "浇了水，还要 13 秒后开花。"
+    },
+    "maidBed": {
+      "skin": "maid",
+      "cta": "躺一会儿",
+      "pose": "sleep",
+      "toast": "今天也可以什么都不做。"
+    },
+    "maidAfter": {
+      "pose": "idle"
+    },
+    "reducedMotion": {
+      "world": {
+        "room": "home",
+        "x": 440,
+        "y": 880,
+        "pose": "idle",
+        "moving": false,
+        "nearest": null,
+        "cameraX": 190
+      }
+    }
+  },
+  "checks": {
+    "idleBreathingFramesDiffer": true,
+    "tapPlaysReact": true,
+    "bedLiesDown": true,
+    "bedReturnsToIdle": true,
+    "deskSits": true,
+    "benchSits": true,
+    "plotKneels": true,
+    "maidFallsBackOnBed": true,
+    "maidReturnsToIdle": true,
+    "noConsoleErrors": true,
+    "noExceptions": true
+  },
+  "consoleLines": [],
+  "exceptions": []
+}

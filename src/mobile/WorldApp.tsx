@@ -14,6 +14,7 @@ import {
   plotStage,
 } from "./world/state";
 import { CHARACTER_SKIN_LIST, getCharacterSkin } from "./world/skins";
+import { poseForProp } from "./world/poses";
 import "./world.css";
 
 type Sheet = "bag" | "journal" | "more" | null;
@@ -118,6 +119,9 @@ export function WorldApp() {
   const handleAction = useCallback((prop: RoomProp) => {
     const outcome = runProp(prop);
     if (outcome.line) showToast(outcome.line, outcome.tone);
+    // 结算完再播动作：床 = 躺下，椅子/书桌 = 坐下，其余 = 短交互。
+    const cue = poseForProp(prop, outcome.tone);
+    if (cue) viewRef.current?.playPose(cue.pose, cue.duration);
   }, [runProp, showToast]);
 
   const handleDoor = useCallback((prop: RoomProp) => {

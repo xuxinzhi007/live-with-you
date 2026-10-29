@@ -15,7 +15,8 @@
 | `src/mobile/world/state.ts` | 花圃、生长阶段、冷却、收集的纯函数与默认值 |
 | `src/mobile/world/actions.ts` | 动作结算（休息/阅读/种花/买种/许愿/接球）与文案 |
 | `src/mobile/world/useWorldGame.ts` | 存档读写、把动作结果接进 React |
-| `src/mobile/world/skins.ts` | 角色皮肤表：帧路径、头像、可见高宽与基线 |
+| `src/mobile/world/skins.ts` | 角色皮肤表：姿势帧路径、头像、可见高宽与基线 |
+| `src/mobile/world/poses.ts` | 动作 → 姿态映射（纯函数，可单测） |
 | `src/mobile/engine/storage.ts` | 存档键、旧档兼容、`normalizeGameState` |
 | `src/mobile/engine/types.ts` | `GameState` / `WorldState` 类型 |
 
@@ -24,7 +25,12 @@
 ## 角色皮肤
 
 - 皮肤 id：`original`（默认，原来的白色雯宝）、`maid`（蓝白女仆「小鲸鱼」）。
-- 帧规格统一：`760×760` 画布、脚底 `y=748`、水平居中 `x=380`；每套都有 `idle` / `react` / `walk-1..4` / `avatar`。
+- 帧规格统一：`760×760` 画布、脚底 `y=748`、水平居中 `x=380`。
+- 每套必备：`idle` / `breathe-1..4` / `walk-1..4` / `react` / `avatar`。
+- 可选：`sit`（坐下）、`sleep`（躺下）。缺少时渲染层按 `sleep → sit → react → idle` 回落，不会出现空白帧。
+- 同一皮肤的所有姿势共用 idle 推导出的缩放；躺下的图自然更矮，不会被拉成站立高度。
+- 动作映射：床 = `sleep`；书桌 / 长椅 = `sit`；花圃 = `sit`（短播）；门 = 不播姿态直接切房间；冷却中的点击 = 不播姿态。
+- `prefers-reduced-motion` 下：不切走路帧、不播呼吸、镜头直接吸附。
 - `world.skin` 持久化；`normalizeWorldState` 对缺失或非法值回落到 `original`。
 - 渲染层 `setSkin()` 只替换角色帧与锚点，不重建房间、不重置相机。
 - 点角色的判定宽度按当前皮肤的 `visibleWidth` 计算，避免换皮后点不中。
@@ -34,7 +40,7 @@
 1. 在 `types.ts` 的 `CharacterSkinId` 增加 id。
 2. 在 `state.ts` 的 `CHARACTER_SKIN_IDS` 增加 id。
 3. 在 `skins.ts` 的 `CHARACTER_SKINS` 增加条目（帧路径 + `visibleHeight` / `visibleWidth`）。
-4. 用 `tools/build-character-assets.py` 生成 `public/assets/characters/<id>/`，或在同规格下放入素材。
+4. 用 `tools/build-character-assets.py` 生成 `public/assets/characters/<id>/`，或在同规格下放入素材。新增姿势时同步 `PlayerPose` 与 `poses.ts`。
 5. 补测试：新皮肤帧齐全、基线与默认皮肤一致。
 
 ## 坐标与尺度

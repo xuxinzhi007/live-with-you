@@ -1,9 +1,17 @@
 /**
  * 角色皮肤。两套皮肤使用同一套帧规格，运行时可无缝切换：
- *   760x760 画布、可见高 714、脚底 y=748、水平居中 x=380。
+ *   760x760 画布、脚底 y=748、水平居中 x=380。
  *
  * original = 原来的白色雯宝（默认）
  * maid     = 蓝白女仆（小鲸鱼）
+ *
+ * 姿势帧：
+ *   idle      站立
+ *   breathe*  待机呼吸（4 帧循环）
+ *   walk*     走路（4 帧）
+ *   react     短交互（点她 / 到达物件）
+ *   sit       坐下（可选，缺失时回落到 react）
+ *   sleep     躺下（可选，缺失时回落到 sit）
  */
 import type { CharacterSkinId } from "../engine/types";
 import { CHARACTER_SKIN_IDS, DEFAULT_CHARACTER_SKIN } from "./state.ts";
@@ -26,9 +34,15 @@ export interface CharacterSkin {
   label: string;
   note: string;
   idle: string;
+  /** 待机呼吸帧；空数组表示只用 idle 静帧 */
+  breathe: string[];
   /** 短交互姿态（点她 / 抵达物件时） */
   react: string;
   walk: string[];
+  /** 坐下 / 蹲下（可选） */
+  sit?: string;
+  /** 躺下（可选） */
+  sleep?: string;
   avatar: string;
   metrics: CharacterSkinMetrics;
 }
@@ -44,6 +58,12 @@ export const CHARACTER_SKINS: Record<CharacterSkinId, CharacterSkin> = {
     label: "白色",
     note: "原来的她",
     idle: "assets/characters/original/idle.webp",
+    breathe: [
+      "assets/characters/original/breathe-1.webp",
+      "assets/characters/original/breathe-2.webp",
+      "assets/characters/original/breathe-3.webp",
+      "assets/characters/original/breathe-4.webp",
+    ],
     react: "assets/characters/original/react.webp",
     walk: [
       "assets/characters/original/walk-1.webp",
@@ -51,6 +71,8 @@ export const CHARACTER_SKINS: Record<CharacterSkinId, CharacterSkin> = {
       "assets/characters/original/walk-3.webp",
       "assets/characters/original/walk-4.webp",
     ],
+    sit: "assets/characters/original/sit.webp",
+    sleep: "assets/characters/original/sleep.webp",
     avatar: "assets/characters/original/avatar.webp",
     metrics: { ...METRICS, visibleHeight: 720, visibleWidth: 429 },
   },
@@ -59,6 +81,12 @@ export const CHARACTER_SKINS: Record<CharacterSkinId, CharacterSkin> = {
     label: "小鲸鱼",
     note: "蓝白女仆",
     idle: "assets/characters/maid/idle.webp",
+    breathe: [
+      "assets/characters/maid/breathe-1.webp",
+      "assets/characters/maid/breathe-2.webp",
+      "assets/characters/maid/breathe-3.webp",
+      "assets/characters/maid/breathe-4.webp",
+    ],
     react: "assets/characters/maid/react.webp",
     walk: [
       "assets/characters/maid/walk-1.webp",
