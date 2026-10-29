@@ -1,12 +1,12 @@
 {
   "name": "和你住在一起 · 雯宝的小屋",
   "short_name": "和你住在一起",
-  "description": "与雯宝一起生活、布置房间和收藏回忆的轻量陪伴游戏。",
+  "description": "玩家扮演雯宝的竖屏小世界：走动、种花、收花、踢球，把每天几分钟留在房间里。",
   "lang": "zh-CN",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#d8c7b0",
-  "theme_color": "#d8c7b0",
+  "background_color": "#fbf6ea",
+  "theme_color": "#fbf6ea",
   "orientation": "any",
   "icons": [
     {

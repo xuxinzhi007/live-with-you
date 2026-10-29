@@ -2,6 +2,7 @@ import { SCENES, type SceneId } from "../data/scenes.ts";
 import { INITIAL_PET_STATE, type PetMood } from "../data/pet-actions.ts";
 import { PLAYER_LOOKS, type PlayerLookId } from "../data/player-looks.ts";
 import type { GameState, JournalEntry, PlayerProfile } from "./types.ts";
+import { createInitialWorldState, normalizeWorldState } from "../world/state.ts";
 
 export const MOBILE_SAVE_KEY = "wenbebi-mobile-game-v2";
 const LEGACY_SAVE_KEY = "wenbebi-mobile-game-v1";
@@ -66,6 +67,7 @@ export function createInitialGameState(now = Date.now()): GameState {
     journal: [],
     lastCoplayId: null,
     lastCoplayAt: 0,
+    world: createInitialWorldState("bedroom"),
   };
 }
 
@@ -117,6 +119,7 @@ export function normalizeGameState(value: unknown, now = Date.now()): GameState 
     journal,
     lastCoplayId: typeof value.lastCoplayId === "string" ? value.lastCoplayId : null,
     lastCoplayAt: clamp(value.lastCoplayAt, 0, Number.MAX_SAFE_INTEGER),
+    world: normalizeWorldState(value.world, currentScene, now),
   };
 }
 

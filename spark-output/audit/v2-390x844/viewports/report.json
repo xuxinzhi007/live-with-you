@@ -1,0 +1,117 @@
+{
+  "url": "http://localhost:5199/?mobile",
+  "viewports": {
+    "360x640": {
+      "viewport": {
+        "w": 360,
+        "h": 640,
+        "dpr": 2
+      },
+      "canvas": {
+        "x": 0,
+        "y": 0,
+        "w": 360,
+        "h": 586
+      },
+      "nav": {
+        "x": 0,
+        "y": 586,
+        "w": 360,
+        "h": 54
+      },
+      "navItems": 3,
+      "hudContentPx": 94,
+      "hudContentPct": 14.7,
+      "topOverlayH": 68,
+      "cta": null,
+      "smallTargets": [],
+      "bodyScroll": {
+        "w": 360,
+        "h": 640
+      },
+      "character": {
+        "head": 340,
+        "feet": 516,
+        "overlapsTop": false,
+        "underNav": false,
+        "underCta": false
+      },
+      "room": "home"
+    },
+    "390x844": {
+      "viewport": {
+        "w": 390,
+        "h": 844,
+        "dpr": 2
+      },
+      "canvas": {
+        "x": 0,
+        "y": 0,
+        "w": 390,
+        "h": 780
+      },
+      "nav": {
+        "x": 0,
+        "y": 780,
+        "w": 390,
+        "h": 64
+      },
+      "navItems": 3,
+      "hudContentPx": 112,
+      "hudContentPct": 13.3,
+      "topOverlayH": 84,
+      "cta": null,
+      "smallTargets": [],
+      "bodyScroll": {
+        "w": 390,
+        "h": 844
+      },
+      "character": {
+        "head": 452,
+        "feet": 686,
+        "overlapsTop": false,
+        "underNav": false,
+        "underCta": false
+      },
+      "room": "home"
+    },
+    "430x932": {
+      "viewport": {
+        "w": 430,
+        "h": 932,
+        "dpr": 2
+      },
+      "canvas": {
+        "x": 0,
+        "y": 0,
+        "w": 430,
+        "h": 868
+      },
+      "nav": {
+        "x": 0,
+        "y": 868,
+        "w": 430,
+        "h": 64
+      },
+      "navItems": 3,
+      "hudContentPx": 112,
+      "hudContentPct": 12,
+      "topOverlayH": 84,
+      "cta": null,
+      "smallTargets": [],
+      "bodyScroll": {
+        "w": 430,
+        "h": 932
+      },
+      "character": {
+        "head": 503,
+        "feet": 764,
+        "overlapsTop": false,
+        "underNav": false,
+        "underCta": false
+      },
+      "room": "home"
+    }
+  },
+  "exceptions": []
+}

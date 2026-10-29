@@ -1,6 +1,8 @@
 # 和你住在一起 · 雯宝的小屋
 
-一个和雯宝一起慢慢生活下去的移动端陪伴游戏。使用 React、TypeScript 和 Vite；状态图会自动切到对应动作。
+一个竖屏、单手的移动端小世界生活游戏。**玩家就是雯宝**：点地面走过去，点家具、花圃和门做事，种花、收花、踢球，把每天几分钟的游玩留在房间里。React + TypeScript + Vite + PixiJS。
+
+手机上默认进入 V2 小世界；`?legacy` 打开旧的观察向界面，`?desktop` 打开桌面版。
 
 ## 怎么运行
 
@@ -73,47 +75,44 @@ sudo systemctl enable --now wenbebi-ollama-gateway
 
 4. Netlify 环境变量填 `OLLAMA_BASE_URL=http://47.106.175.49:8787`、同一串 `OLLAMA_API_TOKEN`、`OLLAMA_MODEL=qwen2.5:3b-instruct`，再 Redeploy。
 
-## 扩展入口
+## 玩法（V2）
 
-游戏的体验方向、横竖屏策略与上线验收标准见 [docs/game-direction.md](docs/game-direction.md)。
+- 点地面：雯宝走过去（自动寻路到可行走带）。
+- 点物件：走到它前面，底部出现一个情境按钮；再点按钮执行。
+- 门：走到门口即切换房间。
+- 小屋：床（休息）、书桌（阅读）、收藏架。
+- 庭院：三块花圃（种 / 浇 / 收）、小皮球（踢 / 点球接住）。
+- 街区：喷泉（许愿）、花摊（6 零钱买 2 颗种子）、长椅。
+- 底栏：背包 / 手账 / 更多；聊天与多人不在主线。
 
-- `src/game/data/pet.js`：角色名称、精灵映射与台词。
-- `src/game/data/room.js`：房间内可交互物件及其动作。
-- `src/game/data/controls.js`：控制面板中的动作按钮。
+## 代码入口
 
-新增内容应优先更新这些配置；只有出现新的运行机制时，才修改 `src/game` 中的核心模块。
+- `src/mobile/WorldApp.tsx`：页面、HUD、抽屉与提示。
+- `src/mobile/world/runtime.ts`：移动、碰撞、走近、接球、镜头（纯 TS）。
+- `src/mobile/world/rooms.ts`：房间与物件数据。
+- `src/mobile/world/state.ts` / `actions.ts`：花圃、冷却、收集与动作结算。
+- `src/mobile/world/WorldView.tsx`：Pixi 渲染与指针输入。
+- `src/mobile/world/useWorldGame.ts`：存档读写与状态钩子。
+- `tools/build-character-assets.py`、`tools/build-scene-assets.py`：角色抠图/走路帧与房间、物件素材生成。
+- `?legacy`：旧观察向移动端；`?desktop`：桌面版。
 
-## 状态图
+## 验证
 
-| 动作 | 使用图片 |
-|---|---|
-| 待机 / 散步 / 挥手 | `assets/idle.webp` |
-| 坐下（休息） | `assets/rest.webp` |
-| 睡觉 | `assets/sleep.webp` |
-| 跳跃 / 开心 | `assets/jump.webp` |
-
-中文原图会留在本地，部署只用上面这些英文小图，手机上更稳。
-
-## 操作
-
-- 点地板：雯宝走过去
-- 点头：摸摸，出爱心
-- 点身体：挥手
-- 连点三下：开心跳
-- 拖起来再放下：落地；从很高处摔下会晕一下
-- 丢玩具：她会跑去捡
-- 方向键走动，空格跳，F 丢球
-
-
-更新项目
+```bash
+npx tsc --noEmit
 npm run build
-第一次使用需要登录
+node --experimental-strip-types --test tests/mobile-engine.test.mjs
+```
+
+`npm run test:mobile` 需要 Node ≥ 22.6（已在 `package.json` 的 `engines` 声明）。
+
+最近一次 390×844 全流程验收（12 项检查 + 360/390/430 跨尺寸）：
+[spark-output/audit/v2-390x844](spark-output/audit/v2-390x844/README.md)
+
+## 部署
+
+```bash
+npm run build
 npx netlify-cli login
-部署远程
 npx netlify-cli deploy --prod --dir=dist --functions=netlify/functions
-
-# 临时关闭专用网络防火墙（测试用）
-Set-NetFirewallProfile -Profile Private -Enabled False
-
-# 测试完记得重新开启：
-# Set-NetFirewallProfile -Profile Private -Enabled True
+```

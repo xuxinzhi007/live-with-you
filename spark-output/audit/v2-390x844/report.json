@@ -1,0 +1,884 @@
+{
+  "url": "http://localhost:5199/?mobile",
+  "viewport": "390x844",
+  "steps": {
+    "intro": {
+      "title": "今天从哪儿开始？",
+      "button": {
+        "w": 294,
+        "h": 50
+      }
+    },
+    "home": {
+      "viewport": {
+        "w": 390,
+        "h": 844,
+        "dpr": 2
+      },
+      "canvas": {
+        "x": 0,
+        "y": 0,
+        "w": 390,
+        "h": 780
+      },
+      "nav": {
+        "x": 0,
+        "y": 780,
+        "w": 390,
+        "h": 64
+      },
+      "navItems": 3,
+      "hudContentPx": 112,
+      "hudContentPct": 13.3,
+      "topOverlayH": 84,
+      "smallTargets": [],
+      "bodyScroll": {
+        "w": 390,
+        "h": 844
+      },
+      "label": "雯宝\n小屋 · 下午",
+      "cta": null,
+      "world": {
+        "room": "home",
+        "x": 440,
+        "y": 880,
+        "moving": false,
+        "pose": "idle",
+        "cameraX": 190,
+        "viewW": 500,
+        "maxCameraX": 480,
+        "nearest": null,
+        "ballX": null,
+        "ballY": null,
+        "ballCombo": null,
+        "ballBounce": false,
+        "ballDistance": null
+      }
+    },
+    "tapPlayer": {
+      "world": {
+        "room": "home",
+        "x": 440,
+        "y": 880,
+        "moving": false,
+        "pose": "bow",
+        "cameraX": 190,
+        "viewW": 500,
+        "maxCameraX": 480,
+        "nearest": null,
+        "ballX": null,
+        "ballY": null,
+        "ballCombo": null,
+        "ballBounce": false,
+        "ballDistance": null
+      },
+      "toast": "点地面，我就过去。"
+    },
+    "walkMid": {
+      "world": {
+        "room": "home",
+        "x": 522,
+        "y": 874,
+        "moving": true,
+        "pose": "walk",
+        "cameraX": 238,
+        "viewW": 500,
+        "maxCameraX": 480,
+        "nearest": "desk",
+        "ballX": null,
+        "ballY": null,
+        "ballCombo": null,
+        "ballBounce": false,
+        "ballDistance": null
+      },
+      "shot": "04-walk-mid-390x844"
+    },
+    "walkEnd": {
+      "world": {
+        "room": "home",
+        "x": 610,
+        "y": 868,
+        "moving": false,
+        "pose": "idle",
+        "cameraX": 331,
+        "viewW": 500,
+        "maxCameraX": 480,
+        "nearest": "desk",
+        "ballX": null,
+        "ballY": null,
+        "ballCombo": null,
+        "ballBounce": false,
+        "ballDistance": null
+      }
+    },
+    "bedNav": {
+      "ok": true,
+      "walked": true,
+      "arrived": true,
+      "screen": {
+        "x": 227.7598305824072,
+        "y": 570.336,
+        "scale": 0.78,
+        "onScreen": true,
+        "prop": {
+          "id": "bed",
+          "x": 292,
+          "y": 832,
+          "w": 320,
+          "h": 240,
+          "action": "rest",
+          "doorTo": null
+        }
+      }
+    },
+    "nearBed": {
+      "world": {
+        "room": "home",
+        "x": 292,
+        "y": 884,
+        "moving": false,
+        "pose": "idle",
+        "cameraX": 28,
+        "viewW": 500,
+        "maxCameraX": 480,
+        "nearest": "bed",
+        "ballX": null,
+        "ballY": null,
+        "ballCombo": null,
+        "ballBounce": false,
+        "ballDistance": null
+      },
+      "cta": {
+        "text": "躺一会儿",
+        "x": 195,
+        "y": 736,
+        "w": 105,
+        "h": 56
+      }
+    },
+    "afterRest": {
+      "ctaClicked": "躺一会儿",
+      "world": {
+        "room": "home",
+        "x": 292,
+        "y": 884,
+        "moving": false,
+        "pose": "idle",
+        "cameraX": 42,
+        "viewW": 500,
+        "maxCameraX": 480,
+        "nearest": "bed",
+        "ballX": null,
+        "ballY": null,
+        "ballCombo": null,
+        "ballBounce": false,
+        "ballDistance": null
+      },
+      "cta": {
+        "text": "过一会儿\n20 秒后可再试",
+        "x": 195,
+        "y": 736,
+        "w": 188,
+        "h": 56
+      },
+      "toast": "把脸埋进枕头里，听见窗外的风。",
+      "save": {
+        "coins": 18,
+        "seeds": 1,
+        "flowers": 0,
+        "mementos": 0,
+        "energy": 88,
+        "happiness": 63,
+        "room": "home",
+        "plots": [
+          {
+            "kind": null,
+            "wateredAt": 0
+          },
+          {
+            "kind": null,
+            "wateredAt": 0
+          },
+          {
+            "kind": null,
+            "wateredAt": 0
+          }
+        ],
+        "collection": {
+          "daisy": 0,
+          "rose": 0,
+          "sunflower": 0
+        },
+        "bestCombo": 0,
+        "harvested": 0,
+        "seenIntro": true,
+        "journal": []
+      },
+      "energyDelta": 28
+    },
+    "doorNav": {
+      "ok": true,
+      "walked": true,
+      "screen": {
+        "x": 62.39998946178648,
+        "y": 536.0160000000001,
+        "scale": 0.78,
+        "onScreen": true,
+        "prop": {
+          "id": "home-garden-door",
+          "x": 92,
+          "y": 830,
+          "w": 138,
+          "h": 340,
+          "action": null,
+          "doorTo": "garden"
+        }
+      },
+      "auto": "door"
+    },
+    "garden": {
+      "world": {
+        "room": "garden",
+        "x": 195,
+        "y": 880,
+        "moving": false,
+        "pose": "idle",
+        "cameraX": 0,
+        "viewW": 500,
+        "maxCameraX": 460,
+        "nearest": null,
+        "ballX": 780,
+        "ballY": 902,
+        "ballCombo": 0,
+        "ballBounce": false,
+        "ballDistance": 585
+      },
+      "save": {
+        "coins": 21,
+        "seeds": 1,
+        "flowers": 0,
+        "mementos": 0,
+        "energy": 88,
+        "happiness": 63,
+        "room": "garden",
+        "plots": [
+          {
+            "kind": null,
+            "wateredAt": 0
+          },
+          {
+            "kind": null,
+            "wateredAt": 0
+          },
+          {
+            "kind": null,
+            "wateredAt": 0
+          }
+        ],
+        "collection": {
+          "daisy": 0,
+          "rose": 0,
+          "sunflower": 0
+        },
+        "bestCombo": 0,
+        "harvested": 0,
+        "seenIntro": true,
+        "journal": [
+          "第一次走进庭院。"
+        ]
+      },
+      "cta": null
+    },
+    "plotNav": {
+      "ok": true,
+      "walked": true,
+      "arrived": true,
+      "screen": {
+        "x": 249.60000000000002,
+        "y": 622.1904,
+        "scale": 0.78,
+        "onScreen": true,
+        "prop": {
+          "id": "plot-0",
+          "x": 320,
+          "y": 838,
+          "w": 142,
+          "h": 96,
+          "action": "plot",
+          "doorTo": null
+        }
+      }
+    },
+    "nearPlot": {
+      "world": {
+        "room": "garden",
+        "x": 320,
+        "y": 884,
+        "moving": false,
+        "pose": "idle",
+        "cameraX": 44,
+        "viewW": 500,
+        "maxCameraX": 460,
+        "nearest": "plot-0",
+        "ballX": 780,
+        "ballY": 902,
+        "ballCombo": 0,
+        "ballBounce": false,
+        "ballDistance": 460
+      },
+      "cta": {
+        "text": "种花",
+        "x": 195,
+        "y": 736,
+        "w": 74,
+        "h": 56
+      }
+    },
+    "afterPlant": {
+      "ctaClicked": "种花",
+      "world": {
+        "room": "garden",
+        "x": 320,
+        "y": 884,
+        "moving": false,
+        "pose": "idle",
+        "cameraX": 70,
+        "viewW": 500,
+        "maxCameraX": 460,
+        "nearest": "plot-0",
+        "ballX": 780,
+        "ballY": 902,
+        "ballCombo": 0,
+        "ballBounce": false,
+        "ballDistance": 460
+      },
+      "toast": "种下了雏菊，还要 1 分钟后开花。",
+      "save": {
+        "coins": 21,
+        "seeds": 0,
+        "flowers": 0,
+        "mementos": 0,
+        "energy": 88,
+        "happiness": 63,
+        "room": "garden",
+        "plots": [
+          {
+            "kind": "daisy",
+            "wateredAt": 0
+          },
+          {
+            "kind": null,
+            "wateredAt": 0
+          },
+          {
+            "kind": null,
+            "wateredAt": 0
+          }
+        ],
+        "collection": {
+          "daisy": 0,
+          "rose": 0,
+          "sunflower": 0
+        },
+        "bestCombo": 0,
+        "harvested": 0,
+        "seenIntro": true,
+        "journal": [
+          "第一次走进庭院。"
+        ]
+      },
+      "cta": {
+        "text": "浇水",
+        "x": 195,
+        "y": 736,
+        "w": 74,
+        "h": 56
+      }
+    },
+    "afterWater": {
+      "ctaClicked": "浇水",
+      "world": {
+        "room": "garden",
+        "x": 320,
+        "y": 884,
+        "moving": false,
+        "pose": "idle",
+        "cameraX": 70,
+        "viewW": 500,
+        "maxCameraX": 460,
+        "nearest": "plot-0",
+        "ballX": 780,
+        "ballY": 902,
+        "ballCombo": 0,
+        "ballBounce": false,
+        "ballDistance": 460
+      },
+      "toast": "浇了水，还要 30 秒后开花。",
+      "save": {
+        "coins": 21,
+        "seeds": 0,
+        "flowers": 0,
+        "mementos": 0,
+        "energy": 88,
+        "happiness": 63,
+        "room": "garden",
+        "plots": [
+          {
+            "kind": "daisy",
+            "wateredAt": 1793254649602
+          },
+          {
+            "kind": null,
+            "wateredAt": 0
+          },
+          {
+            "kind": null,
+            "wateredAt": 0
+          }
+        ],
+        "collection": {
+          "daisy": 0,
+          "rose": 0,
+          "sunflower": 0
+        },
+        "bestCombo": 0,
+        "harvested": 0,
+        "seenIntro": true,
+        "journal": [
+          "第一次走进庭院。"
+        ]
+      },
+      "cta": {
+        "text": "等开花\n29 秒后可再试",
+        "x": 195,
+        "y": 736,
+        "w": 173,
+        "h": 56
+      }
+    },
+    "ballNav": {
+      "ok": true,
+      "walked": true,
+      "arrived": true,
+      "screen": {
+        "x": 327.4849161414776,
+        "y": 682.5936,
+        "scale": 0.78,
+        "onScreen": true,
+        "prop": {
+          "id": "garden-ball",
+          "x": 780,
+          "y": 902,
+          "w": 64,
+          "h": 64,
+          "action": "playBall",
+          "doorTo": null
+        }
+      }
+    },
+    "nearBall": {
+      "world": {
+        "room": "garden",
+        "x": 780,
+        "y": 884,
+        "moving": false,
+        "pose": "idle",
+        "cameraX": 458,
+        "viewW": 500,
+        "maxCameraX": 460,
+        "nearest": "garden-ball",
+        "ballX": 780,
+        "ballY": 902,
+        "ballCombo": 0,
+        "ballBounce": false,
+        "ballDistance": 18
+      },
+      "cta": {
+        "text": "踢球",
+        "x": 195,
+        "y": 736,
+        "w": 74,
+        "h": 56
+      }
+    },
+    "ballKicked": {
+      "ctaClicked": "踢球",
+      "world": {
+        "room": "garden",
+        "x": 780,
+        "y": 884,
+        "moving": false,
+        "pose": "idle",
+        "cameraX": 460,
+        "viewW": 500,
+        "maxCameraX": 460,
+        "nearest": null,
+        "ballX": 868,
+        "ballY": 845,
+        "ballCombo": 0,
+        "ballBounce": false,
+        "ballDistance": 96
+      },
+      "toast": "球飞出去了，点球接住。"
+    },
+    "ballWindow": {
+      "world": {
+        "room": "garden",
+        "x": 780,
+        "y": 884,
+        "moving": false,
+        "pose": "idle",
+        "cameraX": 460,
+        "viewW": 500,
+        "maxCameraX": 460,
+        "nearest": null,
+        "ballX": 874,
+        "ballY": 848,
+        "ballCombo": 0,
+        "ballBounce": true,
+        "ballDistance": 101
+      }
+    },
+    "ballScreen": {
+      "x": 322.9200637179268,
+      "y": 655.2,
+      "canCatch": true
+    },
+    "afterCatch": {
+      "world": {
+        "room": "garden",
+        "x": 780,
+        "y": 884,
+        "moving": false,
+        "pose": "idle",
+        "cameraX": 460,
+        "viewW": 500,
+        "maxCameraX": 460,
+        "nearest": "garden-ball",
+        "ballX": 806,
+        "ballY": 884,
+        "ballCombo": 1,
+        "ballBounce": false,
+        "ballDistance": 26
+      },
+      "toast": "稳稳接住。",
+      "save": {
+        "coins": 21,
+        "seeds": 0,
+        "flowers": 0,
+        "mementos": 0,
+        "energy": 88,
+        "happiness": 64,
+        "room": "garden",
+        "plots": [
+          {
+            "kind": "daisy",
+            "wateredAt": 1793254649602
+          },
+          {
+            "kind": null,
+            "wateredAt": 0
+          },
+          {
+            "kind": null,
+            "wateredAt": 0
+          }
+        ],
+        "collection": {
+          "daisy": 0,
+          "rose": 0,
+          "sunflower": 0
+        },
+        "bestCombo": 1,
+        "harvested": 0,
+        "seenIntro": true,
+        "journal": [
+          "第一次走进庭院。"
+        ]
+      }
+    },
+    "matureNav": {
+      "ok": true,
+      "walked": true,
+      "arrived": true,
+      "screen": {
+        "x": 249.60000000000002,
+        "y": 622.1904,
+        "scale": 0.78,
+        "onScreen": true,
+        "prop": {
+          "id": "plot-0",
+          "x": 320,
+          "y": 838,
+          "w": 142,
+          "h": 96,
+          "action": "plot",
+          "doorTo": null
+        }
+      }
+    },
+    "matureCta": {
+      "world": {
+        "room": "garden",
+        "x": 320,
+        "y": 884,
+        "moving": false,
+        "pose": "idle",
+        "cameraX": 60,
+        "viewW": 500,
+        "maxCameraX": 460,
+        "nearest": "plot-0",
+        "ballX": 780,
+        "ballY": 902,
+        "ballCombo": 0,
+        "ballBounce": false,
+        "ballDistance": 460
+      },
+      "cta": {
+        "text": "收花",
+        "x": 195,
+        "y": 736,
+        "w": 74,
+        "h": 56
+      }
+    },
+    "afterHarvest": {
+      "ctaClicked": "收花",
+      "save": {
+        "coins": 18,
+        "seeds": 1,
+        "flowers": 1,
+        "mementos": 1,
+        "energy": 60,
+        "happiness": 65,
+        "room": "garden",
+        "plots": [
+          {
+            "kind": null,
+            "wateredAt": 0
+          },
+          {
+            "kind": null,
+            "wateredAt": 0
+          },
+          {
+            "kind": null,
+            "wateredAt": 0
+          }
+        ],
+        "collection": {
+          "daisy": 1,
+          "rose": 0,
+          "sunflower": 0
+        },
+        "bestCombo": 0,
+        "harvested": 1,
+        "seenIntro": true,
+        "journal": [
+          "第一朵雏菊收进了花束。"
+        ]
+      },
+      "toast": "收下了雏菊，花束里多了一朵，还留了一颗种子。",
+      "world": {
+        "room": "garden",
+        "x": 320,
+        "y": 884,
+        "moving": false,
+        "pose": "idle",
+        "cameraX": 70,
+        "viewW": 500,
+        "maxCameraX": 460,
+        "nearest": "plot-0",
+        "ballX": 780,
+        "ballY": 902,
+        "ballCombo": 0,
+        "ballBounce": false,
+        "ballDistance": 460
+      }
+    },
+    "street": {
+      "world": {
+        "room": "street",
+        "x": 205,
+        "y": 880,
+        "moving": false,
+        "pose": "idle",
+        "cameraX": 0,
+        "viewW": 500,
+        "maxCameraX": 680,
+        "nearest": null,
+        "ballX": null,
+        "ballY": null,
+        "ballCombo": null,
+        "ballBounce": false,
+        "ballDistance": null
+      }
+    },
+    "stallNav": {
+      "ok": true,
+      "walked": true,
+      "arrived": true,
+      "screen": {
+        "x": 327.53181138232185,
+        "y": 545.532,
+        "scale": 0.78,
+        "onScreen": true,
+        "prop": {
+          "id": "flower-stall",
+          "x": 840,
+          "y": 838,
+          "w": 340,
+          "h": 330,
+          "action": "buySeed",
+          "doorTo": null
+        }
+      }
+    },
+    "nearStall": {
+      "world": {
+        "room": "street",
+        "x": 840,
+        "y": 884,
+        "moving": false,
+        "pose": "idle",
+        "cameraX": 580,
+        "viewW": 500,
+        "maxCameraX": 680,
+        "nearest": "flower-stall",
+        "ballX": null,
+        "ballY": null,
+        "ballCombo": null,
+        "ballBounce": false,
+        "ballDistance": null
+      },
+      "cta": {
+        "text": "买花种 · 6 零钱",
+        "x": 195,
+        "y": 736,
+        "w": 152,
+        "h": 56
+      }
+    },
+    "afterBuy": {
+      "ctaClicked": "买花种 · 6 零钱",
+      "coins": 12,
+      "seeds": 2,
+      "coinDelta": -6,
+      "seedDelta": 2,
+      "toast": "买了两颗花种，摊主多送了一小把。",
+      "world": {
+        "room": "street",
+        "x": 840,
+        "y": 884,
+        "moving": false,
+        "pose": "idle",
+        "cameraX": 590,
+        "viewW": 500,
+        "maxCameraX": 680,
+        "nearest": "flower-stall",
+        "ballX": null,
+        "ballY": null,
+        "ballCombo": null,
+        "ballBounce": false,
+        "ballDistance": null
+      }
+    },
+    "bagSheet": {
+      "open": true,
+      "title": "背包与花圃",
+      "close": {
+        "w": 44,
+        "h": 44
+      },
+      "body": "背包与花圃\n\n街区 · 花束 0 朵\n\n×\n🪙\n零钱\n12\n🌱\n花种\n2\n💐\n花束\n0\n🎖️\n纪念\n0\n花圃\n第 1 块\n这块地还空着。\n第 2 块\n这块地还空着。\n第 3 块\n这块地还空着。\n收过的花\n还没有。去庭院种一朵。"
+    },
+    "journalSheet": {
+      "open": true,
+      "count": 0,
+      "empty": "新的一页还空着。去房间里做点什么，这里会留下记录。"
+    },
+    "moreSheet": {
+      "open": true,
+      "h": 320,
+      "pct": 37.9,
+      "text": "更多\n\n状态、提示与设置\n\n×\n精力\n60 / 100\n心情\n62 / 100\n🏅\n最高连击\n0\n🌷\n种过\n0\n✂️\n收过\n0\n⚽\n踢球\n0\n\n点地面走过去，靠近物件后点下方按钮。房间之间走门，不用切标签。这里没有每日任务，也没有体力墙。\n\n旧版界面仍在：打开旧版　桌面预览：桌面版"
+    },
+    "persistence": {
+      "save": {
+        "coins": 7,
+        "seeds": 2,
+        "flowers": 3,
+        "mementos": 0,
+        "energy": 60,
+        "happiness": 60,
+        "room": "home",
+        "plots": [
+          {
+            "kind": null,
+            "wateredAt": 0
+          },
+          {
+            "kind": null,
+            "wateredAt": 0
+          },
+          {
+            "kind": null,
+            "wateredAt": 0
+          }
+        ],
+        "collection": {
+          "daisy": 0,
+          "rose": 0,
+          "sunflower": 0
+        },
+        "bestCombo": 0,
+        "harvested": 0,
+        "seenIntro": true,
+        "journal": []
+      },
+      "world": {
+        "room": "home",
+        "x": 440,
+        "y": 880,
+        "moving": false,
+        "pose": "idle",
+        "cameraX": 190,
+        "viewW": 500,
+        "maxCameraX": 480,
+        "nearest": null,
+        "ballX": null,
+        "ballY": null,
+        "ballCombo": null,
+        "ballBounce": false,
+        "ballDistance": null
+      }
+    }
+  },
+  "checks": {},
+  "consoleLines": [],
+  "exceptions": [],
+  "screenshots": [
+    "01-intro-390x844.png",
+    "02-home-390x844.png",
+    "03-tap-player-390x844.png",
+    "04-walk-mid-390x844.png",
+    "05-walk-end-390x844.png",
+    "06-near-bed-390x844.png",
+    "07-rested-390x844.png",
+    "08-garden-390x844.png",
+    "09-near-plot-390x844.png",
+    "10-planted-390x844.png",
+    "10b-watered-390x844.png",
+    "11-ball-bounce-390x844.png",
+    "12-caught-390x844.png",
+    "13-garden-mature-390x844.png",
+    "14-harvested-390x844.png",
+    "15-street-390x844.png",
+    "16-near-stall-390x844.png",
+    "17-bought-390x844.png",
+    "18-bag-sheet-390x844.png",
+    "19-journal-sheet-390x844.png",
+    "20-more-sheet-390x844.png",
+    "21-reload-persisted-390x844.png"
+  ]
+}

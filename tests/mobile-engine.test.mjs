@@ -25,6 +25,22 @@ import {
   roomIdFromCode,
 } from "../src/mobile/multiplayer/room-code.ts";
 
+import { ROOMS, getProp } from "../src/mobile/world/rooms.ts";
+import {
+  createInitialWorldState,
+  normalizeWorldState,
+  PLOT_GROW_MS,
+  plotStage,
+} from "../src/mobile/world/state.ts";
+import {
+  applyPropAction,
+  cooldownLeftMs,
+  enterRoom,
+  recordBallCatch,
+  recordBallKick,
+} from "../src/mobile/world/actions.ts";
+import { CATCH_RANGE, WorldRuntime } from "../src/mobile/world/runtime.ts";
+
 function createMemoryStorage(seed = {}) {
   const values = new Map(Object.entries(seed));
   return {
@@ -36,6 +52,15 @@ function createMemoryStorage(seed = {}) {
     },
   };
 }
+
+function tick(runtime, ms, step = 16) {
+  let elapsed = 0;
+  while (elapsed < ms) {
+    runtime.tick(step);
+    elapsed += step;
+  }
+}
+
 
 test("new save records use schema v2 and preserve the mobile game state", () => {
   const storage = createMemoryStorage();
@@ -195,4 +220,191 @@ test("discovering a location journals it once, and repeated petting is not a pro
   const secondPet = petCompanion(firstPet, 600);
   assert.equal(firstPet.bond, 3);
   assert.equal(secondPet.bond, 3);
+});
+
+test("V2 world state is additive, migrates old scenes and clamps bad clocks", () => {
+  const fresh = normalizeGameState({}, 100);
+  assert.equal(fresh.world.room, "home");
+  assert.equal(fresh.world.plots.length, 3);
+  assert.equal(fresh.world.seenIntro, false);
+  assert.deepEqual(fresh.world.collection, { daisy: 0, rose: 0, sunflower: 0 });
+
+  const legacy = normalizeGameState({ currentScene: "balcony", coins: 4 }, 100);
+  assert.equal(legacy.world.room, "garden");
+  assert.equal(legacy.coins, 4);
+
+  const skewed = normalizeWorldState({ cooldowns: { bed: 100 + 10_000_000 } }, "bedroom", 100);
+  assert.equal(skewed.cooldowns.bed, 100 + 10 * 60_000);
+
+  const bad = normalizeWorldState({ room: "moon", plots: [{ kind: "tree" }, null] }, "bedroom", 100);
+  assert.equal(bad.room, "home");
+  assert.equal(bad.plots[0].kind, null);
+  assert.equal(bad.plots.length, 3);
+});
+
+test("every room keeps a clear walking lane and key props are character-scaled", () => {
+  for (const room of Object.values(ROOMS)) {
+    for (let x = room.walk.x0 + 10; x <= room.walk.x1 - 10; x += 10) {
+      const runtime = new WorldRuntime(room, { x, y: 880 });
+      assert.equal(runtime.canStand(x, 880), true, `${room.id} blocked at x=${x}`);
+    }
+  }
+
+  const heroHeight = 300;
+  const keyProps = [
+    ["home", "bed"],
+    ["home", "desk"],
+    ["home", "shelf"],
+    ["home", "home-street-door"],
+  ];
+  for (const [roomId, propId] of keyProps) {
+    const prop = getProp(roomId, propId);
+    assert.ok(prop, `${propId} missing`);
+    const ratio = prop.h / heroHeight;
+    assert.ok(ratio >= 0.6 && ratio <= 1.5, `${propId} ratio ${ratio.toFixed(2)}`);
+  }
+});
+
+test("walking follows the lane, stops at the target and moves the camera", () => {
+  const room = ROOMS.home;
+  const runtime = new WorldRuntime(room, room.defaultSpawn);
+  runtime.setViewport(500);
+  runtime.snapCamera();
+
+  const bed = getProp("home", "bed");
+  assert.ok(bed);
+  runtime.moveTo(bed.x, 880);
+  tick(runtime, 1600);
+
+  assert.ok(Math.abs(runtime.player.x - bed.x) < 6);
+  assert.equal(runtime.player.moving, false);
+  assert.ok(runtime.cameraX > 0);
+  assert.ok(Math.abs(runtime.cameraX - (runtime.player.x - 250)) < 46);
+});
+
+test("the garden ball can be kicked and caught while it is still moving", () => {
+  const ballProp = getProp("garden", "garden-ball");
+  assert.ok(ballProp);
+  const runtime = new WorldRuntime(ROOMS.garden, { x: ballProp.x, y: 884 });
+  runtime.setViewport(500);
+  const ball = runtime.ball;
+  assert.ok(ball);
+
+  runtime.kickBall();
+  assert.ok(ball.flight, "ball should be in flight");
+  tick(runtime, 700);
+  assert.equal(runtime.canCatch(), true);
+  assert.ok(runtime.ballDistance() <= CATCH_RANGE);
+
+  assert.equal(runtime.catchBall(), true);
+  assert.equal(ball.combo, 1);
+  assert.ok(runtime.ballDistance() <= CATCH_RANGE, "ball returns to the player");
+
+  tick(runtime, 700);
+  runtime.kickBall();
+  tick(runtime, 700);
+  assert.equal(runtime.catchBall(), true);
+  assert.equal(ball.combo, 2);
+});
+
+test("garden plant, water and harvest form a closed loop that keeps a seed", () => {
+  const plot = getProp("garden", "plot-0");
+  assert.ok(plot);
+
+  const base = { ...createInitialGameState(100), seeds: 1 };
+  const planted = applyPropAction(base, plot, 1000);
+  assert.equal(planted.tone, "ok");
+  assert.equal(planted.state.world.plots[0].kind, "daisy");
+  assert.equal(planted.state.seeds, 0);
+  assert.equal(plotStage(planted.state.world.plots[0], 2000), 1);
+
+  const watered = applyPropAction(planted.state, plot, 2000);
+  assert.ok(watered.state.world.plots[0].wateredAt > 0);
+  assert.match(watered.line, /浇了水/);
+
+  const harvested = applyPropAction(watered.state, plot, 2000 + PLOT_GROW_MS + 1);
+  assert.equal(harvested.tone, "reward");
+  assert.equal(harvested.state.flowers, 1);
+  assert.equal(harvested.state.seeds, 1, "harvest leaves a seed for the next round");
+  assert.equal(harvested.state.world.collection.daisy, 1);
+  assert.equal(harvested.state.mementos, 1);
+  assert.equal(harvested.state.world.plots[0].kind, null);
+  assert.ok(harvested.state.journal[0].text.includes("雏菊"));
+});
+
+test("prop actions apply a gentle cooldown and can never soft-lock the player", () => {
+  const bed = getProp("home", "bed");
+  assert.ok(bed);
+  const state = {
+    ...createInitialGameState(100),
+    pet: { ...createInitialGameState(100).pet, energy: 90 },
+  };
+
+  const first = applyPropAction(state, bed, 1000);
+  assert.equal(first.tone, "ok");
+  assert.equal(first.state.pet.energy, 100);
+  assert.ok(cooldownLeftMs(first.state, "bed", 1500) > 0);
+
+  const second = applyPropAction(first.state, bed, 2000);
+  assert.equal(second.tone, "blocked");
+  assert.match(second.line, /歇/);
+});
+
+test("street shop, room visits and ball milestones respect low-pressure rules", () => {
+  const stall = getProp("street", "flower-stall");
+  assert.ok(stall);
+
+  const rich = { ...createInitialGameState(100), coins: 10, seeds: 0 };
+  const bought = applyPropAction(rich, stall, 1000);
+  assert.equal(bought.state.coins, 4);
+  assert.equal(bought.state.seeds, 2);
+
+  const poor = applyPropAction({ ...createInitialGameState(200), coins: 3 }, stall, 1000);
+  assert.equal(poor.tone, "blocked");
+  assert.match(poor.line, /零钱/);
+
+  const entered = enterRoom(createInitialGameState(100), "garden", 300);
+  assert.equal(entered.currentScene, "balcony");
+  assert.equal(entered.world.room, "garden");
+  assert.equal(entered.coins, 21);
+  assert.equal(entered.journal.length, 1);
+  assert.equal(enterRoom(entered, "garden", 400).journal.length, 1);
+
+  const kicked = recordBallKick(createInitialGameState(100));
+  assert.equal(kicked.world.kicks, 1);
+  const caught = recordBallCatch(kicked, 3, 500);
+  assert.equal(caught.world.bestCombo, 3);
+  assert.equal(caught.mementos, 1);
+  assert.ok(caught.journal[0].text.includes("连续接住 3 次球"));
+});
+
+test("V2 world state round-trips through the mobile save", () => {
+  const storage = createMemoryStorage();
+  const base = createInitialGameState(100);
+  const state = {
+    ...base,
+    seeds: 2,
+    world: {
+      ...base.world,
+      room: "garden",
+      seenIntro: true,
+      planted: 1,
+      harvested: 1,
+      collection: { daisy: 2, rose: 0, sunflower: 0 },
+      plots: [
+        { kind: "rose", plantedAt: 50, wateredAt: 60 },
+        { kind: null, plantedAt: 0, wateredAt: 0 },
+        { kind: null, plantedAt: 0, wateredAt: 0 },
+      ],
+      visited: ["home", "garden"],
+    },
+  };
+
+  assert.equal(saveGameState(state, storage), true);
+  const loaded = loadGameState(storage, 200);
+  assert.equal(loaded.world.room, "garden");
+  assert.equal(loaded.world.seenIntro, true);
+  assert.equal(loaded.world.collection.daisy, 2);
+  assert.equal(loaded.world.plots[0].kind, "rose");
+  assert.deepEqual(loaded.world.visited, ["home", "garden"]);
 });

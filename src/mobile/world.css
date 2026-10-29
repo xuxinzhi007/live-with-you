@@ -1,0 +1,616 @@
+/* ============================================================
+   V2 · 可走动的单主角小世界
+   390×844 竖屏，单手。HUD 只在边缘，中间全部留给房间。
+   ============================================================ */
+
+#world-root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #3a2f28;
+  background: #e9dfcc;
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#world-root *,
+#world-root *::before,
+#world-root *::after {
+  box-sizing: border-box;
+}
+
+#world-root button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.world-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: #efe6d6;
+}
+
+.world-canvas {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.world-canvas canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+/* ---------- 顶部：身份 + 资源 ---------- */
+
+.world-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 26px;
+  background: linear-gradient(180deg, rgba(250, 244, 231, 0.94) 0%, rgba(250, 244, 231, 0.55) 58%, rgba(250, 244, 231, 0) 100%);
+  pointer-events: none;
+}
+
+.world-id {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 3px 12px 3px 3px;
+  border-radius: 999px;
+  background: rgba(255, 252, 243, 0.94);
+  border: 1px solid rgba(120, 96, 70, 0.16);
+  box-shadow: 0 4px 14px rgba(58, 44, 30, 0.1);
+}
+
+.world-id img {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #e8ddc8;
+  border: 2px solid #fffdf6;
+}
+
+.world-id div {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.world-id strong {
+  font-size: 14px;
+  line-height: 1.1;
+  color: #2f4a3d;
+}
+
+.world-id span {
+  font-size: 10px;
+  line-height: 1.2;
+  color: #8a7a66;
+  white-space: nowrap;
+}
+
+.world-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.world-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(120, 96, 70, 0.18);
+  background: rgba(255, 252, 243, 0.94);
+  color: #5c4a35;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 4px 14px rgba(58, 44, 30, 0.1);
+}
+
+.world-pill b {
+  font-weight: 700;
+  color: #3f5f4e;
+}
+
+.world-pill:active {
+  transform: scale(0.96);
+}
+
+/* ---------- 情境按钮 / 提示 / 气泡 ---------- */
+
+.world-cta {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  z-index: 9;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: #4d7a66;
+  color: #fffaf0;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 26px rgba(40, 62, 49, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  white-space: nowrap;
+}
+
+.world-cta small {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.82;
+}
+
+.world-cta:active {
+  transform: translateX(-50%) scale(0.97);
+}
+
+.world-cta.m-wait {
+  background: #b4a58d;
+  box-shadow: 0 6px 16px rgba(70, 58, 44, 0.18);
+  font-weight: 600;
+}
+
+.world-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  z-index: 7;
+  transform: translateX(-50%);
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: rgba(255, 250, 240, 0.82);
+  color: #6b5a46;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(58, 44, 30, 0.08);
+}
+
+.world-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 86px;
+  z-index: 10;
+  transform: translateX(-50%);
+  max-width: min(88%, 350px);
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(43, 35, 27, 0.9);
+  color: #fff8ea;
+  font-size: 12.5px;
+  line-height: 1.5;
+  text-align: center;
+  box-shadow: 0 8px 22px rgba(30, 22, 16, 0.22);
+  animation: world-toast-in 0.18s ease-out;
+  pointer-events: none;
+}
+
+.world-toast.m-reward {
+  background: #3f7259;
+}
+
+.world-toast.m-blocked {
+  background: #8a5a3f;
+}
+
+@keyframes world-toast-in {
+  from { opacity: 0; transform: translate(-50%, 6px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ---------- 底栏：3 项 ---------- */
+
+.world-nav {
+  position: relative;
+  z-index: 20;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: stretch;
+  height: calc(64px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: #fbf6ea;
+  border-top: 1px solid #e2d6c0;
+  box-shadow: 0 -6px 18px rgba(58, 44, 30, 0.07);
+}
+
+.world-nav button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
+  border: 0;
+  background: transparent;
+  color: #8c7a64;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.world-nav button span {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.world-nav button.m-active {
+  color: #b85f42;
+}
+
+.world-nav button:active {
+  transform: scale(0.95);
+}
+
+.world-nav button:focus-visible,
+.world-pill:focus-visible,
+.world-cta:focus-visible {
+  outline: 2px solid #d06f50;
+  outline-offset: 2px;
+}
+
+/* ---------- 半高抽屉 ---------- */
+
+.world-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.world-scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: rgba(48, 38, 28, 0.36);
+}
+
+.world-sheet {
+  position: relative;
+  z-index: 1;
+  max-height: min(62dvh, 560px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+  border-radius: 20px 20px 0 0;
+  background: #fbf6ea;
+  box-shadow: 0 -10px 34px rgba(48, 38, 28, 0.2);
+  animation: world-sheet-up 0.22s ease-out;
+}
+
+.world-sheet.m-compact {
+  max-height: min(40dvh, 320px);
+}
+
+@keyframes world-sheet-up {
+  from { transform: translateY(14px); opacity: 0.85; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.world-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.world-sheet-head h2 {
+  margin: 0;
+  color: #2f4a3d;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.world-sheet-head p {
+  margin: 3px 0 0;
+  color: #8a7a66;
+  font-size: 11px;
+}
+
+.world-sheet-close {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border: 0;
+  border-radius: 12px;
+  background: #eee7d8;
+  color: #6b5a46;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.world-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.world-stat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f2ecdd;
+  border: 1px solid #e4dac6;
+}
+
+.world-stat i {
+  font-style: normal;
+  font-size: 20px;
+}
+
+.world-stat div {
+  display: grid;
+  gap: 1px;
+}
+
+.world-stat small {
+  color: #8a7a66;
+  font-size: 10px;
+}
+
+.world-stat strong {
+  color: #3f5f4e;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.world-subhead {
+  margin: 14px 0 8px;
+  color: #7b6a55;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.world-plot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 48px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: #f4efe3;
+  border: 1px solid #e6dcc9;
+  margin-bottom: 7px;
+  font-size: 12px;
+}
+
+.world-plot-row span {
+  color: #6d5b47;
+}
+
+.world-plot-row strong {
+  color: #3f5f4e;
+  font-size: 12px;
+}
+
+.world-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.world-chip {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #e9f0df;
+  color: #4b6a58;
+  font-size: 11px;
+}
+
+.world-chip.m-muted {
+  background: #f0ebdf;
+  color: #8a7a66;
+}
+
+.world-journal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.world-journal-entry {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  background: #f4efe3;
+  border: 1px solid #e6dcc9;
+}
+
+.world-journal-entry i {
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #d07a5a;
+}
+
+.world-journal-entry p {
+  margin: 0;
+  color: #4d6358;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.world-journal-entry time {
+  display: block;
+  margin-top: 3px;
+  color: #a0937f;
+  font-size: 9px;
+}
+
+.world-empty {
+  margin: 0;
+  padding: 24px 12px;
+  color: #94866f;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.world-meter {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.world-meter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #6d5b47;
+  font-size: 11px;
+}
+
+.world-meter-track {
+  height: 8px;
+  border-radius: 999px;
+  background: #e6ddcc;
+  overflow: hidden;
+}
+
+.world-meter-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #6f9a7c;
+  transition: width 0.25s ease;
+}
+
+.world-meter-fill.m-warm {
+  background: #d9926a;
+}
+
+.world-note {
+  margin: 10px 0 0;
+  color: #94866f;
+  font-size: 10.5px;
+  line-height: 1.6;
+}
+
+/* ---------- 首次说明 ---------- */
+
+.world-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(42, 34, 27, 0.44);
+  backdrop-filter: blur(3px);
+}
+
+.world-intro-card {
+  width: min(100%, 330px);
+  padding: 20px 18px 18px;
+  border-radius: 20px;
+  background: #fbf6ea;
+  box-shadow: 0 18px 44px rgba(30, 22, 16, 0.24);
+  text-align: center;
+}
+
+.world-intro-card img {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #e8ddc8;
+  border: 3px solid #fffdf6;
+  box-shadow: 0 6px 16px rgba(48, 38, 28, 0.16);
+}
+
+.world-intro-card h2 {
+  margin: 12px 0 6px;
+  color: #2f4a3d;
+  font-size: 20px;
+}
+
+.world-intro-card p {
+  margin: 0 0 6px;
+  color: #6d5b47;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.world-intro-card button {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 14px;
+  border: 0;
+  border-radius: 12px;
+  background: #4d7a66;
+  color: #fffaf0;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.world-intro-card button:active {
+  filter: brightness(0.95);
+}
+
+/* ---------- 小屏 ---------- */
+
+@media (max-height: 700px) {
+  .world-toast { bottom: 80px; }
+  .world-sheet { max-height: min(70dvh, 520px); }
+
+  /* 360x640: keep the persistent HUD inside the 15% budget. */
+  .world-top { padding: calc(8px + env(safe-area-inset-top, 0px)) 10px 20px; }
+  .world-id { min-height: 40px; padding: 2px 10px 2px 2px; gap: 6px; }
+  .world-id img { width: 34px; height: 34px; flex-basis: 34px; }
+  .world-id strong { font-size: 13px; }
+  .world-id span { font-size: 9px; }
+  .world-pill { min-height: 40px; padding: 0 10px; font-size: 12px; }
+  .world-nav { height: calc(54px + env(safe-area-inset-bottom, 0px)); }
+  .world-nav button { min-height: 50px; }
+  .world-nav button span { font-size: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world-sheet,
+  .world-toast {
+    animation: none !important;
+  }
+  .world-meter-fill {
+    transition: none;
+  }
+}

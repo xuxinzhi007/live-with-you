@@ -1,37 +1,73 @@
-# 移动版结构与扩展约定
+# 移动版结构与扩展约定（V2）
 
-移动版是手机玩家的主体验。桌面版 `App` 暂时保留为独立预览和功能参考；新增移动玩法优先进入 `src/mobile/`，不要继续把移动端专属逻辑塞进桌面运行时。
+手机是唯一主线。玩家扮演雯宝本人，在一个横向可走动的世界里操作。
+旧的观察向移动端（`MobileLayout` + `SceneStage` + `pixi-stage`）只保留在 `?legacy`，
+不再作为新功能入口；桌面 `App` 保留在 `?desktop`。
 
 ## 模块职责
 
-- `src/layouts/MobileLayout.tsx`：页面组合、事件转发和视图状态，不保存游戏规则。
-- `src/mobile/data/scenes.ts`：地点、背景、家具位置、可用动作，以及家具互动的资源效果。
-- `src/mobile/data/pet-actions.ts`：动作名称、情绪、动画时长和角色状态变化。
-- `src/mobile/data/pixel-sprites.ts`：家具像素素材映射。
-- `src/mobile/engine/types.ts`：持久游戏状态和临时界面状态的类型。
-- `src/mobile/engine/game-rules.ts`：不依赖 React 的游戏规则，可单独测试。
-- `src/mobile/engine/storage.ts`：存档校验、旧档兼容和本地读写。
-- `src/mobile/engine/GameEngine.ts`：把规则接到 React，并管理动作计时。
+| 文件 | 职责 |
+| --- | --- |
+| `src/mobile/WorldApp.tsx` | 页面组合、HUD、抽屉、提示；不保存游戏规则 |
+| `src/mobile/world/WorldView.tsx` | Pixi 应用、贴图加载、层级与排序、指针输入、相机应用 |
+| `src/mobile/world/runtime.ts` | 玩家移动、碰撞、走近、接球、镜头；纯 TS，不依赖 React/Pixi |
+| `src/mobile/world/rooms.ts` | 房间、物件、阻挡盒、走近点、门与出生点 |
+| `src/mobile/world/state.ts` | 花圃、生长阶段、冷却、收集的纯函数与默认值 |
+| `src/mobile/world/actions.ts` | 动作结算（休息/阅读/种花/买种/许愿/接球）与文案 |
+| `src/mobile/world/useWorldGame.ts` | 存档读写、把动作结果接进 React |
+| `src/mobile/engine/storage.ts` | 存档键、旧档兼容、`normalizeGameState` |
+| `src/mobile/engine/types.ts` | `GameState` / `WorldState` 类型 |
 
-游戏进度与菜单选中状态分开保存。菜单打开、选中家具和弹窗位置属于临时界面状态，不应写入存档。
+规则（运行时、房间数据、动作结算）不得 import React 或 Pixi；渲染层不得写存档。
 
-## 添加互动
+## 坐标与尺度
 
-先在 `PET_ACTIONS` 定义动作，再在家具的 `actions` 中引用同一个动作 ID。消耗、奖励、首次互动亲密度和小记文案放在家具的 `effects` 配置中；通用引擎会检查资源并应用效果，不需要按家具 ID 增加条件分支。
+- 世界高固定 `1000`，横向按房间宽度加宽（`worldW` 960–1180）。
+- 渲染时 `scale = 场景像素高 / 1000`，相机只做横向移动。
+- 角色站立高 `300`；关键物件高度按角色身高的 0.6–1.5 倍定标。
+- 可行走带 `y ≈ 760–884`；地平线 `y = 640`。
+- 装饰物（地毯、绿植）不得有横穿可行走带的碰撞盒，也不得成为点击目标。
 
-添加地点时，在 `SCENES`、`SCENE_BACKGROUNDS`、`SCENE_FURNITURE` 中补齐对应数据，并为可互动家具配置动作。新增 UI 页面时，把页面组件与游戏规则分开，避免让 `MobileLayout` 同时承担内容数据、存档和数值结算。
+## 添加房间
+
+1. 在 `src/mobile/engine/types.ts` 的 `WorldRoomId` 增加 id。
+2. 在 `rooms.ts` 的 `ROOMS` 增加 `worldW`、`walk`、`defaultSpawn`、`props`。
+3. 在 `assets.ts` 的 `ROOM_BACKGROUND` 与 `PROP_ASSETS` 补素材。
+4. 在 `state.ts` 的 `ROOM_IDS` 增加 id；旧场景映射按需补 `sceneToRoom`。
+5. 用 `tools/build-scene-assets.py` 生成背景与物件（或在同尺寸下替换）。
+6. 补测试：可行走带不被堵死、门的 `spawn` 在目标房间内。
+
+## 添加物件
+
+1. 在 `rooms.ts` 定义 `kind`、`x/y/w/h`、`footprint`、`action` 或 `doorTo`。
+2. 在 `actions.ts` 的 `applyPropAction` 增加对应 `action` 分支（纯函数，返回 `ActionOutcome`）。
+3. 在 `WorldApp.tsx` 的 `ctaLabel` 增加按钮文案。
+4. 需要新 `PropKind` 时，同时补 `assets.ts` 的 `PROP_ASSETS` 与素材脚本。
+5. 不要按物件 id 写一次性条件分支；优先把差异放进数据。
 
 ## 存档兼容
 
-当前写入键为 `wenbebi-mobile-game-v2`，读取时仍兼容 `wenbebi-mobile-game-v1`。新增持久字段要在 `normalizeGameState` 中提供默认值并校验类型；更改既有字段时先兼容旧格式，再迁移写入。不要在升级时删除旧键。
+- 写入键仍为 `wenbebi-mobile-game-v2`，读取兼容 `wenbebi-mobile-game-v1`。
+- V2 世界状态放在 `gameState.world`，由 `normalizeWorldState` 校验：
+  - 缺失 → 按 `currentScene` 推导房间；
+  - 坏值 → 回默认值；
+  - 未来时间戳（花圃、冷却）→ 夹回当前时间，避免永久锁死。
+- 新增字段只在 `normalizeGameState` / `normalizeWorldState` 里补默认值，不删除旧键。
+- 收花会返还 1 颗种子，保证“种 → 收 → 再种”不会因为零钱断掉。
 
 ## 体验约束
 
-- 不用连续登录、每日任务、签到或限时提示驱动玩家回来。
-- 资源不足可以给出说明，但不能让玩家失去基础互动或被迫离开当前场景。
-- 场景与角色是首要内容，界面状态不持久化，也不应遮住主要互动区域。
+- 不用连续登录、每日任务、签到、红点或限时提示驱动玩家回来。
+- 短冷却只作用于同一物件，必须显示剩余秒数，且不能阻止玩家去别处玩。
+- 场景与角色优先；常驻 HUD 不超过屏高 15%（不含安全区），抽屉不超过 40dvh。
+- 触控目标 ≥ 44px；尊重 `prefers-reduced-motion`。
 
 ## 验证
 
-- `npm run test:mobile`：检查存档归一化、旧档读取、互动消费和地点探索规则。
-- `npm run build`：检查类型和网页生产构建。
+```bash
+npx tsc --noEmit
+npm run build
+node --experimental-strip-types --test tests/mobile-engine.test.mjs
+```
+
+`npm run test:mobile` 需要 Node ≥ 22.6（已在 `package.json` 的 `engines` 中声明）。
