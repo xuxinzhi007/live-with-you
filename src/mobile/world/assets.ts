@@ -9,17 +9,7 @@ export const ROOM_BACKGROUND: Record<WorldRoomId, string> = {
   street: "assets/scenes/street.webp",
 };
 
-export const CHARACTER_ASSETS = {
-  idle: "assets/characters/idle.webp",
-  bow: "assets/characters/bow.webp",
-  walk: [
-    "assets/characters/walk-1.webp",
-    "assets/characters/walk-2.webp",
-    "assets/characters/walk-3.webp",
-    "assets/characters/walk-4.webp",
-  ],
-  avatar: "assets/characters/avatar.webp",
-} as const;
+/* 角色帧不在这里：见 ./skins.ts（original / maid 两套皮肤）。 */
 
 export const PROP_ASSETS: Record<PropKind, string> = {
   door: "assets/scenes/prop-door.webp",

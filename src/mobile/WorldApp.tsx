@@ -13,7 +13,7 @@ import {
   plotRemainingMs,
   plotStage,
 } from "./world/state";
-import { CHARACTER_ASSETS } from "./world/assets";
+import { CHARACTER_SKIN_LIST, getCharacterSkin } from "./world/skins";
 import "./world.css";
 
 type Sheet = "bag" | "journal" | "more" | null;
@@ -83,9 +83,10 @@ function ctaLabel(
 }
 
 export function WorldApp() {
-  const { state, runProp, enterRoom, catchBall, recordKick, markIntroSeen } = useWorldGame();
+  const { state, runProp, enterRoom, catchBall, recordKick, setSkin, markIntroSeen } = useWorldGame();
   const world = state.world;
   const room = getRoom(world.room);
+  const skin = getCharacterSkin(world.skin);
   const viewRef = useRef<WorldViewHandle>(null);
 
   const [spawn, setSpawn] = useState<Spawn>(() => ({
@@ -172,6 +173,7 @@ export function WorldApp() {
         <WorldView
           ref={viewRef}
           roomId={world.room}
+          skin={world.skin}
           spawn={{ x: spawn.x, y: spawn.y }}
           plots={world.plots}
           onAction={handleAction}
@@ -185,7 +187,7 @@ export function WorldApp() {
 
         <header className="world-top">
           <div className="world-id">
-            <img src={CHARACTER_ASSETS.avatar} alt="" draggable={false} />
+            <img src={skin.avatar} alt="" draggable={false} />
             <div>
               <strong>雯宝</strong>
               <span>{room.name} · {dayPart(new Date(now).getHours())}</span>
@@ -316,6 +318,27 @@ export function WorldApp() {
                   <div className="world-stat"><i aria-hidden="true">✂️</i><div><small>收过</small><strong>{world.harvested}</strong></div></div>
                   <div className="world-stat"><i aria-hidden="true">⚽</i><div><small>踢球</small><strong>{world.kicks}</strong></div></div>
                 </div>
+
+                <h3 className="world-subhead">角色外观</h3>
+                <div className="world-skin-row" role="radiogroup" aria-label="角色外观">
+                  {CHARACTER_SKIN_LIST.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={world.skin === item.id}
+                      className={`world-skin-card${world.skin === item.id ? " m-active" : ""}`}
+                      onClick={() => setSkin(item.id)}
+                    >
+                      <img src={item.avatar} alt="" draggable={false} />
+                      <span>
+                        <strong>{item.label}</strong>
+                        <small>{item.note}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
                 <p className="world-note">
                   点地面走过去，靠近物件后点下方按钮。房间之间走门，不用切标签。这里没有每日任务，也没有体力墙。
                 </p>
@@ -331,7 +354,7 @@ export function WorldApp() {
       {showIntro && (
         <div className="world-intro" role="dialog" aria-modal="true" aria-labelledby="world-intro-title">
           <div className="world-intro-card">
-            <img src={CHARACTER_ASSETS.avatar} alt="" draggable={false} />
+            <img src={skin.avatar} alt="" draggable={false} />
             <h2 id="world-intro-title">今天从哪儿开始？</h2>
             <p>点地面，雯宝就会走过去。靠近床、书桌或门，下方会出现对应的按钮。</p>
             <p>庭院能种花，街区能买花种。种下后等一会儿，回来收花。</p>

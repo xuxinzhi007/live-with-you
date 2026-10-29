@@ -15,10 +15,27 @@
 | `src/mobile/world/state.ts` | 花圃、生长阶段、冷却、收集的纯函数与默认值 |
 | `src/mobile/world/actions.ts` | 动作结算（休息/阅读/种花/买种/许愿/接球）与文案 |
 | `src/mobile/world/useWorldGame.ts` | 存档读写、把动作结果接进 React |
+| `src/mobile/world/skins.ts` | 角色皮肤表：帧路径、头像、可见高宽与基线 |
 | `src/mobile/engine/storage.ts` | 存档键、旧档兼容、`normalizeGameState` |
 | `src/mobile/engine/types.ts` | `GameState` / `WorldState` 类型 |
 
 规则（运行时、房间数据、动作结算）不得 import React 或 Pixi；渲染层不得写存档。
+
+## 角色皮肤
+
+- 皮肤 id：`original`（默认，原来的白色雯宝）、`maid`（蓝白女仆「小鲸鱼」）。
+- 帧规格统一：`760×760` 画布、脚底 `y=748`、水平居中 `x=380`；每套都有 `idle` / `react` / `walk-1..4` / `avatar`。
+- `world.skin` 持久化；`normalizeWorldState` 对缺失或非法值回落到 `original`。
+- 渲染层 `setSkin()` 只替换角色帧与锚点，不重建房间、不重置相机。
+- 点角色的判定宽度按当前皮肤的 `visibleWidth` 计算，避免换皮后点不中。
+
+### 添加皮肤
+
+1. 在 `types.ts` 的 `CharacterSkinId` 增加 id。
+2. 在 `state.ts` 的 `CHARACTER_SKIN_IDS` 增加 id。
+3. 在 `skins.ts` 的 `CHARACTER_SKINS` 增加条目（帧路径 + `visibleHeight` / `visibleWidth`）。
+4. 用 `tools/build-character-assets.py` 生成 `public/assets/characters/<id>/`，或在同规格下放入素材。
+5. 补测试：新皮肤帧齐全、基线与默认皮肤一致。
 
 ## 坐标与尺度
 

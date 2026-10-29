@@ -1,20 +1,26 @@
 #!/usr/bin/env python3
-"""Build transparent character sprites for the V2 walkable world.
+"""Build transparent character sprites for every V2 character skin.
 
-Source art (untracked design exports):
-  spark-output/wenbao-maid-wave.png    idle pose
-  spark-output/wenbao-maid-curtsy.png  bow / interact pose
+Skins
+-----
+original (default)  the white-dress 雯宝 that predates the V2 rewrite:
+                    public/assets/idle.webp (idle) + jump.webp (react)
+maid                the blue-white maid ("小鲸鱼"):
+                    spark-output/wenbao-maid-wave.png + wenbao-maid-curtsy.png
 
-Output (committed):
-  public/assets/characters/idle.webp
-  public/assets/characters/bow.webp
-  public/assets/characters/walk-1.webp .. walk-4.webp
-  public/assets/characters/avatar.webp
+Both skins are written with the same frame convention so the renderer can swap
+them at runtime without changing scale or foot line:
 
-The source PNGs have a flat near-white background and no alpha.  We remove the
-background by flood-filling from the border, erode one pixel to kill the white
-halo, trim, and place every frame on the same canvas so the renderer never sees
-a size jump.
+  <out>/idle.webp
+  <out>/react.webp        short interaction pose (used for tap / arrive)
+  <out>/walk-1..4.webp    four-frame walk cycle
+  <out>/avatar.webp       160x160 HUD portrait
+
+  canvas 760x760, visible height 714, feet on y=748, centered on x=380.
+
+Opaque sources (the maid PNGs) get a border flood-fill to remove the flat white
+background. Sources that already carry alpha (the original webp frames) are used
+as-is. A one-pixel erosion kills the white fringe left by the flood fill.
 
 Run:
   python3 tools/build-character-assets.py
@@ -28,11 +34,19 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT_DIR = os.path.join(ROOT, "public", "assets", "characters")
+OUT_ROOT = os.path.join(ROOT, "public", "assets", "characters")
 
-SOURCES = {
-    "idle": os.path.join(ROOT, "spark-output", "wenbao-maid-wave.png"),
-    "bow": os.path.join(ROOT, "spark-output", "wenbao-maid-curtsy.png"),
+SKINS = {
+    "original": {
+        "idle": os.path.join(ROOT, "public", "assets", "idle.webp"),
+        "react": os.path.join(ROOT, "public", "assets", "jump.webp"),
+        "cutout": False,
+    },
+    "maid": {
+        "idle": os.path.join(ROOT, "spark-output", "wenbao-maid-wave.png"),
+        "react": os.path.join(ROOT, "spark-output", "wenbao-maid-curtsy.png"),
+        "cutout": True,
+    },
 }
 
 FRAME = 760          # square canvas for every animation frame
@@ -71,6 +85,19 @@ def flood_background(img: Image.Image, tolerance: int = 22) -> Image.Image:
     return out
 
 
+def prepare_source(path: str, cutout: bool) -> Image.Image:
+    img = Image.open(path)
+    if cutout:
+        return flood_background(img)
+
+    rgba = img.convert("RGBA")
+    alpha = np.asarray(rgba.getchannel("A"))
+    if alpha.min() > 250:
+        # Source claims alpha but is actually opaque; fall back to flood fill.
+        return flood_background(rgba)
+    return rgba
+
+
 def trim(img: Image.Image, padding: int = 6) -> Image.Image:
     alpha = img.getchannel("A").point(lambda v: 255 if v > 8 else 0)
     bbox = alpha.getbbox()
@@ -105,7 +132,6 @@ def align_frame(img: Image.Image, canvas: int = FRAME) -> Image.Image:
 
 def walk_frame(base: Image.Image, angle: float, bob: int, squeeze: float) -> Image.Image:
     """Cheap but readable walk cycle: sway + bob, pivoting near the feet."""
-    # Squeeze horizontally just a touch, keeping the bottom anchored.
     w = max(1, round(base.width * squeeze))
     scaled = base.resize((w, base.height), Image.LANCZOS)
     pivot = (scaled.width // 2, scaled.height - 2)
@@ -123,31 +149,47 @@ def walk_frame(base: Image.Image, angle: float, bob: int, squeeze: float) -> Ima
     return align_frame(frame)
 
 
-def save_webp(img: Image.Image, name: str) -> None:
-    path = os.path.join(OUT_DIR, name)
+def build_avatar(trimmed: Image.Image) -> Image.Image:
+    """HUD portrait: top 46% of the body, square crop, 160x160."""
+    head_h = max(1, round(trimmed.height * 0.46))
+    head = trimmed.crop((0, 0, trimmed.width, head_h))
+    side = min(head.width, head.height)
+    x = max(0, (head.width - side) // 2)
+    return head.crop((x, 0, x + side, side)).resize((160, 160), Image.LANCZOS)
+
+
+def save_webp(img: Image.Image, path: str) -> None:
     img.save(path, "WEBP", quality=92, method=6)
     size = os.path.getsize(path)
     alpha = np.asarray(img.getchannel("A"))
     bbox = img.getchannel("A").point(lambda v: 255 if v > 8 else 0).getbbox()
-    print(f"  {name:18s} {img.width}x{img.height}  {size / 1024:6.1f} KiB  transparent {float((alpha < 8).mean()) * 100:5.1f}%  bbox {bbox}")
+    name = os.path.basename(path)
+    print(
+        f"  {name:12s} {img.width}x{img.height}  {size / 1024:6.1f} KiB  "
+        f"transparent {float((alpha < 8).mean()) * 100:5.1f}%  bbox {bbox}"
+    )
 
 
-def main() -> None:
-    os.makedirs(OUT_DIR, exist_ok=True)
-    cutouts: dict[str, Image.Image] = {}
-    for key, path in SOURCES.items():
+def build_skin(skin_id: str, config: dict) -> None:
+    out_dir = os.path.join(OUT_ROOT, skin_id)
+    os.makedirs(out_dir, exist_ok=True)
+    print(f"\n[{skin_id}] -> {os.path.relpath(out_dir, ROOT)}")
+
+    cutouts = {}
+    for key in ("idle", "react"):
+        path = config[key]
         if not os.path.exists(path):
-            raise SystemExit(f"missing source: {path}")
-        print(f"cutting {key} from {os.path.relpath(path, ROOT)}")
-        cut = trim(flood_background(Image.open(path)))
+            raise SystemExit(f"missing source for {skin_id}.{key}: {path}")
+        print(f"  source {key}: {os.path.relpath(path, ROOT)}")
+        cut = trim(prepare_source(path, config["cutout"]))
         cutouts[key] = cut
-        print(f"  trimmed {cut.width}x{cut.height}")
+        print(f"    trimmed {cut.width}x{cut.height}")
 
     idle = align_frame(scale_to_height(cutouts["idle"], FRAME_HEIGHT))
-    bow = align_frame(scale_to_height(cutouts["bow"], FRAME_HEIGHT))
+    react = align_frame(scale_to_height(cutouts["react"], FRAME_HEIGHT))
 
-    save_webp(idle, "idle.webp")
-    save_webp(bow, "bow.webp")
+    save_webp(idle, os.path.join(out_dir, "idle.webp"))
+    save_webp(react, os.path.join(out_dir, "react.webp"))
 
     # Four-frame procedural walk: two sway extremes and two passes through the middle.
     walk_specs = [
@@ -158,16 +200,14 @@ def main() -> None:
     ]
     for index, (angle, bob, squeeze) in enumerate(walk_specs, start=1):
         frame = walk_frame(idle, angle, bob, squeeze)
-        save_webp(frame, f"walk-{index}.webp")
+        save_webp(frame, os.path.join(out_dir, f"walk-{index}.webp"))
 
-    # HUD portrait: top 46% of the body, square crop.
-    trimmed = cutouts["idle"]
-    head_h = max(1, round(trimmed.height * 0.46))
-    head = trimmed.crop((0, 0, trimmed.width, head_h))
-    side = min(head.width, head.height)
-    x = max(0, (head.width - side) // 2)
-    head = head.crop((x, 0, x + side, side)).resize((160, 160), Image.LANCZOS)
-    save_webp(head, "avatar.webp")
+    save_webp(build_avatar(cutouts["idle"]), os.path.join(out_dir, "avatar.webp"))
+
+
+def main() -> None:
+    for skin_id, config in SKINS.items():
+        build_skin(skin_id, config)
 
 
 if __name__ == "__main__":

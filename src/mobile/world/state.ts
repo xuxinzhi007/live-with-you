@@ -5,6 +5,7 @@
  * 便于单测，也避免把世界规则散进渲染层。
  */
 import type {
+  CharacterSkinId,
   FlowerKind,
   GardenPlot,
   WorldRoomId,
@@ -17,6 +18,10 @@ export const PLOT_WATERED_GROW_MS = 30_000;
 
 export const ROOM_IDS: WorldRoomId[] = ["home", "garden", "street"];
 export const FLOWER_KINDS: FlowerKind[] = ["daisy", "rose", "sunflower"];
+
+/** 角色皮肤 id；默认原来的白色雯宝。 */
+export const CHARACTER_SKIN_IDS: CharacterSkinId[] = ["original", "maid"];
+export const DEFAULT_CHARACTER_SKIN: CharacterSkinId = "original";
 
 export const FLOWER_META: Record<FlowerKind, { name: string; color: string; accent: string }> = {
   daisy: { name: "雏菊", color: "#f6efe0", accent: "#e7b84f" },
@@ -50,6 +55,7 @@ export function emptyPlot(): GardenPlot {
 export function createInitialWorldState(sceneId = "bedroom"): WorldState {
   return {
     room: sceneToRoom(sceneId),
+    skin: DEFAULT_CHARACTER_SKIN,
     plots: Array.from({ length: GARDEN_PLOT_COUNT }, emptyPlot),
     cooldowns: {},
     bestCombo: 0,
@@ -100,6 +106,9 @@ export function normalizeWorldState(
   const room = ROOM_IDS.includes(value.room as WorldRoomId)
     ? (value.room as WorldRoomId)
     : fresh.room;
+  const skin = CHARACTER_SKIN_IDS.includes(value.skin as CharacterSkinId)
+    ? (value.skin as CharacterSkinId)
+    : fresh.skin;
 
   const savedPlots = Array.isArray(value.plots) ? value.plots : [];
   const plots = Array.from({ length: GARDEN_PLOT_COUNT }, (_, index) => {
@@ -145,6 +154,7 @@ export function normalizeWorldState(
 
   return {
     room,
+    skin,
     plots,
     cooldowns,
     bestCombo: count(value.bestCombo),

@@ -225,6 +225,7 @@ test("discovering a location journals it once, and repeated petting is not a pro
 test("V2 world state is additive, migrates old scenes and clamps bad clocks", () => {
   const fresh = normalizeGameState({}, 100);
   assert.equal(fresh.world.room, "home");
+  assert.equal(fresh.world.skin, "original");
   assert.equal(fresh.world.plots.length, 3);
   assert.equal(fresh.world.seenIntro, false);
   assert.deepEqual(fresh.world.collection, { daisy: 0, rose: 0, sunflower: 0 });
@@ -240,6 +241,51 @@ test("V2 world state is additive, migrates old scenes and clamps bad clocks", ()
   assert.equal(bad.room, "home");
   assert.equal(bad.plots[0].kind, null);
   assert.equal(bad.plots.length, 3);
+});
+
+test("character skin defaults to the original white look and survives bad values", () => {
+  const fresh = normalizeGameState({}, 100);
+  assert.equal(fresh.world.skin, "original");
+
+  const maid = normalizeWorldState({ skin: "maid" }, "bedroom", 100);
+  assert.equal(maid.skin, "maid");
+
+  const unknown = normalizeWorldState({ skin: "whale" }, "bedroom", 100);
+  assert.equal(unknown.skin, "original");
+
+  const notAString = normalizeWorldState({ skin: 42 }, "bedroom", 100);
+  assert.equal(notAString.skin, "original");
+
+  const legacy = normalizeGameState({ currentScene: "balcony" }, 100);
+  assert.equal(legacy.world.skin, "original", "old saves without a skin use the white one");
+
+  const storage = createMemoryStorage();
+  const saved = { ...createInitialGameState(100) };
+  saved.world = { ...saved.world, skin: "maid" };
+  assert.equal(saveGameState(saved, storage), true);
+  assert.equal(loadGameState(storage, 200).world.skin, "maid");
+});
+
+test("every character skin ships the full frame set and shares one baseline", async () => {
+  const { CHARACTER_SKINS, CHARACTER_SKIN_LIST, DEFAULT_CHARACTER_SKIN } = await import(
+    "../src/mobile/world/skins.ts"
+  );
+  assert.equal(DEFAULT_CHARACTER_SKIN, "original");
+  assert.deepEqual(CHARACTER_SKIN_LIST.map((skin) => skin.id), ["original", "maid"]);
+
+  for (const skin of CHARACTER_SKIN_LIST) {
+    assert.equal(skin.metrics.frame, 760);
+    assert.equal(skin.metrics.baseline, 748 / 760);
+    assert.ok(skin.metrics.visibleHeight > 600 && skin.metrics.visibleHeight <= 760);
+    assert.equal(skin.walk.length, 4);
+    assert.ok(skin.idle.includes(`/characters/${skin.id}/`));
+    assert.ok(skin.react.includes(`/characters/${skin.id}/`));
+    assert.ok(skin.avatar.includes(`/characters/${skin.id}/`));
+    for (const frame of skin.walk) assert.ok(frame.includes(`/characters/${skin.id}/`));
+  }
+
+  assert.equal(CHARACTER_SKINS.original.label, "白色");
+  assert.equal(CHARACTER_SKINS.maid.label, "小鲸鱼");
 });
 
 test("every room keeps a clear walking lane and key props are character-scaled", () => {

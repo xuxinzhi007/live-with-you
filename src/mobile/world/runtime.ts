@@ -22,7 +22,7 @@ export const BALL_ARC = 210;
 export const BALL_BOUNCE_MS = 1000;
 export const BALL_BOUNCES = 4;
 
-export type PlayerPose = "idle" | "walk" | "bow";
+export type PlayerPose = "idle" | "walk" | "react";
 
 export interface PlayerState {
   x: number;

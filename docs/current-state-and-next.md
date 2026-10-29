@@ -18,7 +18,8 @@
 | 房间数据 | `src/mobile/world/rooms.ts` | 房间、物件、阻挡、门、走近点 |
 | 世界规则 | `src/mobile/world/state.ts`、`actions.ts` | 花圃、冷却、收集、小记、动作结算（纯函数） |
 | 状态钩子 | `src/mobile/world/useWorldGame.ts` | 读写存档、把动作结果接进 React |
-| 素材 | `public/assets/characters/`、`public/assets/scenes/` | 角色帧、房间背景、物件、花圃阶段 |
+| 角色皮肤 | `src/mobile/world/skins.ts` | original（默认）/ maid 两套帧、头像与统一基线 |
+| 素材 | `public/assets/characters/<skin>/`、`public/assets/scenes/` | 角色帧、房间背景、物件、花圃阶段 |
 | 素材脚本 | `tools/build-character-assets.py`、`tools/build-scene-assets.py` | 抠图、统一基线、程序化生成背景与物件 |
 
 旧移动端（`MobileLayout` + `SceneStage` + `pixi-stage`）保留在 `?legacy`，桌面 `App` 保留在 `?desktop`。
@@ -26,7 +27,8 @@
 ## 2. 已实现并验证
 
 - 三个房间：小屋 / 庭院 / 街区，世界宽 980 / 960 / 1180，横向可拖、默认跟随角色。
-- 角色：透明底立绘 + 4 帧走路 + 鞠躬交互帧，脚底基线统一；点角色有姿态与一句状态文案。
+- 角色：两套皮肤（默认「白色」原角色 / 「小鲸鱼」蓝白女仆），各有 idle + 4 帧走路 + 交互帧 + 头像，脚底基线统一；点角色有姿态与一句状态文案。
+- 皮肤切换：「更多 → 角色外观」，写入 `world.skin`，刷新后保留；旧档没有该字段时默认白色。
 - 移动：点地面自动走到可行走带；家具/装饰物阻挡；镜头平滑跟随；手动拖镜头暂停跟随。
 - 交互：点物件 → 走近 → 底部单一情境按钮；冷却时按钮变“过一会儿 + 秒数”。
 - 种植闭环：买种（6 零钱 2 颗）→ 种下 → 浇水（缩短一半）→ 开花 → 收花（+1 花束、+1 种子、首次进收藏架）。
@@ -41,18 +43,20 @@
 ```bash
 npx tsc --noEmit
 npm run build
-node --experimental-strip-types --test tests/mobile-engine.test.mjs   # Node ≥ 22.6，19 个用例
+node --experimental-strip-types --test tests/mobile-engine.test.mjs   # Node ≥ 22.6，21 个用例
 ```
 
-验收证据：[spark-output/audit/v2-390x844](../spark-output/audit/v2-390x844/README.md)
-（12 项检查全部通过；360/390/430 三档 HUD 与角色不重叠；控制台 0 错误）。
+验收证据：
+
+- [spark-output/audit/v2-390x844](../spark-output/audit/v2-390x844/README.md)：12 项玩法检查全部通过；360/390/430 三档 HUD 与角色不重叠；控制台 0 错误。
+- [spark-output/audit/v2-character-skins](../spark-output/audit/v2-character-skins/README.md)：14 项皮肤检查全部通过；默认白色、切换小鲸鱼、刷新保留、点角色仍可交互。
 
 ## 3. 仍存在的差距
 
 | 项 | 现状 | 下一步 |
 | --- | --- | --- |
 | 房间内容密度 | 小屋 4 个可交互物件，庭院 4 个，街区 4 个 | 每房间补到 5–6 个，且有独特反馈 |
-| 角色表演 | 只有 idle / walk / bow 三套姿态 | 补坐下、浇水、收花等姿态或逐帧 |
+| 角色表演 | 两套皮肤都只有 idle / walk / react 三套姿态 | 补坐下、浇水、收花等姿态或逐帧 |
 | 家具朝向与遮挡 | 统一底边锚点，无朝向差异 | 视需要加左/右朝向与前后分层 |
 | 时段与天气 | 只有顶部时段文案 | 背景光照变体（不引入新系统） |
 | 小记 | 只记录首次到访、首次收花、连击 | 增加可回看的日常片段 |

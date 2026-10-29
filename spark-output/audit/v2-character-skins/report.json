@@ -1,0 +1,223 @@
+{
+  "url": "http://localhost:5199/?mobile",
+  "steps": {
+    "default": {
+      "skin": "original",
+      "headerAvatar": "assets/characters/original/avatar.webp",
+      "characterResources": [
+        "original/avatar.webp",
+        "original/idle.webp",
+        "original/react.webp",
+        "original/walk-1.webp",
+        "original/walk-2.webp",
+        "original/walk-3.webp",
+        "original/walk-4.webp"
+      ],
+      "sheetOpen": false,
+      "sheetHeight": null,
+      "cards": [],
+      "canvasCount": 1,
+      "world": {
+        "x": 440,
+        "room": "home"
+      }
+    },
+    "moreSheet": {
+      "skin": "original",
+      "headerAvatar": "assets/characters/original/avatar.webp",
+      "characterResources": [
+        "maid/avatar.webp",
+        "original/avatar.webp",
+        "original/idle.webp",
+        "original/react.webp",
+        "original/walk-1.webp",
+        "original/walk-2.webp",
+        "original/walk-3.webp",
+        "original/walk-4.webp"
+      ],
+      "sheetOpen": true,
+      "sheetHeight": 320,
+      "cards": [
+        {
+          "label": "白色\n原来的她",
+          "active": true,
+          "checked": "true",
+          "avatar": "assets/characters/original/avatar.webp"
+        },
+        {
+          "label": "小鲸鱼\n蓝白女仆",
+          "active": false,
+          "checked": "false",
+          "avatar": "assets/characters/maid/avatar.webp"
+        }
+      ],
+      "canvasCount": 1,
+      "world": {
+        "x": 440,
+        "room": "home"
+      }
+    },
+    "afterMaidClick": {
+      "skin": "maid",
+      "headerAvatar": "assets/characters/maid/avatar.webp",
+      "characterResources": [
+        "maid/avatar.webp",
+        "maid/idle.webp",
+        "maid/react.webp",
+        "maid/walk-1.webp",
+        "maid/walk-2.webp",
+        "maid/walk-3.webp",
+        "maid/walk-4.webp",
+        "original/avatar.webp",
+        "original/idle.webp",
+        "original/react.webp",
+        "original/walk-1.webp",
+        "original/walk-2.webp",
+        "original/walk-3.webp",
+        "original/walk-4.webp"
+      ],
+      "sheetOpen": true,
+      "sheetHeight": 320,
+      "cards": [
+        {
+          "label": "白色\n原来的她",
+          "active": false,
+          "checked": "false",
+          "avatar": "assets/characters/original/avatar.webp"
+        },
+        {
+          "label": "小鲸鱼\n蓝白女仆",
+          "active": true,
+          "checked": "true",
+          "avatar": "assets/characters/maid/avatar.webp"
+        }
+      ],
+      "canvasCount": 1,
+      "world": {
+        "x": 440,
+        "room": "home"
+      }
+    },
+    "maidScene": {
+      "skin": "maid",
+      "headerAvatar": "assets/characters/maid/avatar.webp",
+      "characterResources": [
+        "maid/avatar.webp",
+        "maid/idle.webp",
+        "maid/react.webp",
+        "maid/walk-1.webp",
+        "maid/walk-2.webp",
+        "maid/walk-3.webp",
+        "maid/walk-4.webp",
+        "original/avatar.webp",
+        "original/idle.webp",
+        "original/react.webp",
+        "original/walk-1.webp",
+        "original/walk-2.webp",
+        "original/walk-3.webp",
+        "original/walk-4.webp"
+      ],
+      "sheetOpen": false,
+      "sheetHeight": null,
+      "cards": [],
+      "canvasCount": 1,
+      "world": {
+        "x": 440,
+        "room": "home"
+      }
+    },
+    "maidTap": {
+      "toast": "嗯？我在呢。",
+      "pose": "react"
+    },
+    "afterReload": {
+      "skin": "maid",
+      "headerAvatar": "assets/characters/maid/avatar.webp",
+      "characterResources": [
+        "maid/avatar.webp",
+        "maid/idle.webp",
+        "maid/react.webp",
+        "maid/walk-1.webp",
+        "maid/walk-2.webp",
+        "maid/walk-3.webp",
+        "maid/walk-4.webp",
+        "original/idle.webp"
+      ],
+      "sheetOpen": false,
+      "sheetHeight": null,
+      "cards": [],
+      "canvasCount": 1,
+      "world": {
+        "x": 440,
+        "room": "home"
+      }
+    },
+    "backToOriginal": {
+      "skin": "original",
+      "headerAvatar": "assets/characters/original/avatar.webp",
+      "characterResources": [
+        "maid/avatar.webp",
+        "maid/idle.webp",
+        "maid/react.webp",
+        "maid/walk-1.webp",
+        "maid/walk-2.webp",
+        "maid/walk-3.webp",
+        "maid/walk-4.webp",
+        "original/avatar.webp",
+        "original/idle.webp",
+        "original/react.webp",
+        "original/walk-1.webp",
+        "original/walk-2.webp",
+        "original/walk-3.webp",
+        "original/walk-4.webp"
+      ],
+      "sheetOpen": false,
+      "sheetHeight": null,
+      "cards": [],
+      "canvasCount": 1,
+      "world": {
+        "x": 440,
+        "room": "home"
+      }
+    },
+    "originalAfterReload": {
+      "skin": "original",
+      "headerAvatar": "assets/characters/original/avatar.webp",
+      "characterResources": [
+        "original/avatar.webp",
+        "original/idle.webp",
+        "original/react.webp",
+        "original/walk-1.webp",
+        "original/walk-2.webp",
+        "original/walk-3.webp",
+        "original/walk-4.webp"
+      ],
+      "sheetOpen": false,
+      "sheetHeight": null,
+      "cards": [],
+      "canvasCount": 1,
+      "world": {
+        "x": 440,
+        "room": "home"
+      }
+    }
+  },
+  "checks": {
+    "defaultIsOriginal": true,
+    "defaultHeaderAvatarOriginal": true,
+    "defaultLoadsOriginalFrames": true,
+    "pickerHasTwoSkins": true,
+    "pickerDefaultActiveOriginal": true,
+    "maidSwitchPersisted": true,
+    "maidHeaderAvatar": true,
+    "maidFramesLoaded": true,
+    "maidSurvivesReload": true,
+    "maidTapHasFeedback": true,
+    "backToOriginalPersisted": true,
+    "sheetWithinBudget": true,
+    "noConsoleErrors": true,
+    "noExceptions": true
+  },
+  "consoleLines": [],
+  "exceptions": []
+}

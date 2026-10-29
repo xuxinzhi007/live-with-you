@@ -5,7 +5,7 @@
  * 新主线只依赖这里的 GameState.world。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { GameState, WorldRoomId } from "../engine/types";
+import type { CharacterSkinId, GameState, WorldRoomId } from "../engine/types";
 import { loadGameState, saveGameState } from "../engine/storage";
 import {
   applyPropAction,
@@ -55,6 +55,15 @@ export function useWorldGame() {
     setState(next);
   }, []);
 
+  /** 切换角色外观：只写 world.skin，房间与进度不变。 */
+  const setSkin = useCallback((skin: CharacterSkinId) => {
+    const current = stateRef.current;
+    if (current.world.skin === skin) return;
+    const next = { ...current, world: { ...current.world, skin } };
+    stateRef.current = next;
+    setState(next);
+  }, []);
+
   const markIntroSeen = useCallback(() => {
     const current = stateRef.current;
     if (current.world.seenIntro) return;
@@ -69,6 +78,7 @@ export function useWorldGame() {
     enterRoom,
     catchBall,
     recordKick,
+    setSkin,
     markIntroSeen,
   };
 }

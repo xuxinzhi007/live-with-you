@@ -61,7 +61,7 @@
         "x": 440,
         "y": 880,
         "moving": false,
-        "pose": "bow",
+        "pose": "react",
         "cameraX": 190,
         "viewW": 500,
         "maxCameraX": 480,
@@ -72,16 +72,16 @@
         "ballBounce": false,
         "ballDistance": null
       },
-      "toast": "点地面，我就过去。"
+      "toast": "嗯？我在呢。"
     },
     "walkMid": {
       "world": {
         "room": "home",
-        "x": 522,
-        "y": 874,
+        "x": 495,
+        "y": 876,
         "moving": true,
         "pose": "walk",
-        "cameraX": 238,
+        "cameraX": 217,
         "viewW": 500,
         "maxCameraX": 480,
         "nearest": "desk",
@@ -100,7 +100,7 @@
         "y": 868,
         "moving": false,
         "pose": "idle",
-        "cameraX": 331,
+        "cameraX": 352,
         "viewW": 500,
         "maxCameraX": 480,
         "nearest": "desk",
@@ -116,7 +116,7 @@
       "walked": true,
       "arrived": true,
       "screen": {
-        "x": 227.7598305824072,
+        "x": 227.7598320170887,
         "y": 570.336,
         "scale": 0.78,
         "onScreen": true,
@@ -138,7 +138,7 @@
         "y": 884,
         "moving": false,
         "pose": "idle",
-        "cameraX": 28,
+        "cameraX": 29,
         "viewW": 500,
         "maxCameraX": 480,
         "nearest": "bed",
@@ -175,10 +175,10 @@
         "ballDistance": null
       },
       "cta": {
-        "text": "过一会儿\n20 秒后可再试",
+        "text": "过一会儿\n21 秒后可再试",
         "x": 195,
         "y": 736,
-        "w": 188,
+        "w": 186,
         "h": 56
       },
       "toast": "把脸埋进枕头里，听见窗外的风。",
@@ -220,7 +220,7 @@
       "ok": true,
       "walked": true,
       "screen": {
-        "x": 62.39998946178648,
+        "x": 62.3999853545007,
         "y": 536.0160000000001,
         "scale": 0.78,
         "onScreen": true,
@@ -316,7 +316,7 @@
         "y": 884,
         "moving": false,
         "pose": "idle",
-        "cameraX": 44,
+        "cameraX": 61,
         "viewW": 500,
         "maxCameraX": 460,
         "nearest": "plot-0",
@@ -425,7 +425,7 @@
         "plots": [
           {
             "kind": "daisy",
-            "wateredAt": 1793254649602
+            "wateredAt": 1793258425256
           },
           {
             "kind": null,
@@ -449,7 +449,7 @@
         ]
       },
       "cta": {
-        "text": "等开花\n29 秒后可再试",
+        "text": "等开花\n30 秒后可再试",
         "x": 195,
         "y": 736,
         "w": 173,
@@ -461,7 +461,7 @@
       "walked": true,
       "arrived": true,
       "screen": {
-        "x": 327.4849161414776,
+        "x": 327.46980310454217,
         "y": 682.5936,
         "scale": 0.78,
         "onScreen": true,
@@ -483,7 +483,7 @@
         "y": 884,
         "moving": false,
         "pose": "idle",
-        "cameraX": 458,
+        "cameraX": 455,
         "viewW": 500,
         "maxCameraX": 460,
         "nearest": "garden-ball",
@@ -513,11 +513,11 @@
         "viewW": 500,
         "maxCameraX": 460,
         "nearest": null,
-        "ballX": 868,
-        "ballY": 845,
+        "ballX": 642,
+        "ballY": 866,
         "ballCombo": 0,
         "ballBounce": false,
-        "ballDistance": 96
+        "ballDistance": 140
       },
       "toast": "球飞出去了，点球接住。"
     },
@@ -532,16 +532,16 @@
         "viewW": 500,
         "maxCameraX": 460,
         "nearest": null,
-        "ballX": 874,
-        "ballY": 848,
+        "ballX": 635,
+        "ballY": 870,
         "ballCombo": 0,
         "ballBounce": true,
-        "ballDistance": 101
+        "ballDistance": 146
       }
     },
     "ballScreen": {
-      "x": 322.9200637179268,
-      "y": 655.2,
+      "x": 136.27993617262348,
+      "y": 672.0020722869591,
       "canCatch": true
     },
     "afterCatch": {
@@ -555,7 +555,7 @@
         "viewW": 500,
         "maxCameraX": 460,
         "nearest": "garden-ball",
-        "ballX": 806,
+        "ballX": 754,
         "ballY": 884,
         "ballCombo": 1,
         "ballBounce": false,
@@ -573,7 +573,7 @@
         "plots": [
           {
             "kind": "daisy",
-            "wateredAt": 1793254649602
+            "wateredAt": 1793258425256
           },
           {
             "kind": null,
@@ -719,7 +719,7 @@
       "walked": true,
       "arrived": true,
       "screen": {
-        "x": 327.53181138232185,
+        "x": 327.5404979733079,
         "y": 545.532,
         "scale": 0.78,
         "onScreen": true,
@@ -801,7 +801,7 @@
       "open": true,
       "h": 320,
       "pct": 37.9,
-      "text": "更多\n\n状态、提示与设置\n\n×\n精力\n60 / 100\n心情\n62 / 100\n🏅\n最高连击\n0\n🌷\n种过\n0\n✂️\n收过\n0\n⚽\n踢球\n0\n\n点地面走过去，靠近物件后点下方按钮。房间之间走门，不用切标签。这里没有每日任务，也没有体力墙。\n\n旧版界面仍在：打开旧版　桌面预览：桌面版"
+      "text": "更多\n\n状态、提示与设置\n\n×\n精力\n60 / 100\n心情\n62 / 100\n🏅\n最高连击\n0\n🌷\n种过\n0\n✂️\n收过\n0\n⚽\n踢球\n0\n角色外观\n白色\n原来的她\n小鲸鱼\n蓝白女仆\n\n点地面走过去，靠近物件后点下方按钮。房间之间走门，不用切标签。这里没有每日任务，也没有体力墙。\n\n旧版界面仍在：打开旧版　桌面预览：桌面版"
     },
     "persistence": {
       "save": {

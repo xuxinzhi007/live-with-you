@@ -84,6 +84,7 @@ sudo systemctl enable --now wenbebi-ollama-gateway
 - 庭院：三块花圃（种 / 浇 / 收）、小皮球（踢 / 点球接住）。
 - 街区：喷泉（许愿）、花摊（6 零钱买 2 颗种子）、长椅。
 - 底栏：背包 / 手账 / 更多；聊天与多人不在主线。
+- 角色外观：默认「白色」（原来的她），可在「更多 → 角色外观」切换成「小鲸鱼」（蓝白女仆）；选择写入存档。
 
 ## 代码入口
 
@@ -93,6 +94,7 @@ sudo systemctl enable --now wenbebi-ollama-gateway
 - `src/mobile/world/state.ts` / `actions.ts`：花圃、冷却、收集与动作结算。
 - `src/mobile/world/WorldView.tsx`：Pixi 渲染与指针输入。
 - `src/mobile/world/useWorldGame.ts`：存档读写与状态钩子。
+- `src/mobile/world/skins.ts`：角色皮肤表（original / maid），统一的帧规格与头像路径。
 - `tools/build-character-assets.py`、`tools/build-scene-assets.py`：角色抠图/走路帧与房间、物件素材生成。
 - `?legacy`：旧观察向移动端；`?desktop`：桌面版。
 
@@ -104,10 +106,12 @@ npm run build
 node --experimental-strip-types --test tests/mobile-engine.test.mjs
 ```
 
-`npm run test:mobile` 需要 Node ≥ 22.6（已在 `package.json` 的 `engines` 声明）。
+`npm run test:mobile` 需要 Node ≥ 22.6（已在 `package.json` 的 `engines` 声明）；当前 21 个用例。
 
-最近一次 390×844 全流程验收（12 项检查 + 360/390/430 跨尺寸）：
-[spark-output/audit/v2-390x844](spark-output/audit/v2-390x844/README.md)
+- 390×844 全流程验收（12 项检查 + 360/390/430 跨尺寸）：
+  [spark-output/audit/v2-390x844](spark-output/audit/v2-390x844/README.md)
+- 角色皮肤验收（14 项检查：默认白色、切换、刷新保留）：
+  [spark-output/audit/v2-character-skins](spark-output/audit/v2-character-skins/README.md)
 
 ## 部署
 

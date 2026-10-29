@@ -20,6 +20,9 @@ export interface PlayerProfile {
 
 export type WorldRoomId = "home" | "garden" | "street";
 
+/** 角色皮肤。original = 原来的白色雯宝（默认）；maid = 蓝白女仆。 */
+export type CharacterSkinId = "original" | "maid";
+
 export type FlowerKind = "daisy" | "rose" | "sunflower";
 
 /** 庭院花圃。kind 为 null 表示空地。 */
@@ -36,6 +39,8 @@ export interface GardenPlot {
  */
 export interface WorldState {
   room: WorldRoomId;
+  /** 当前角色皮肤；旧档缺失时默认 original。 */
+  skin: CharacterSkinId;
   plots: GardenPlot[];
   /** 每件物件的冷却结束时间（绝对时间戳）。 */
   cooldowns: Record<string, number>;

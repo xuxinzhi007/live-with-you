@@ -1,26 +1,19 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
-import {
-  PLAYER_STAND_H,
-  WorldRuntime,
-} from "./runtime";
+import { PLAYER_STAND_H, WorldRuntime } from "./runtime";
 import { getRoom, propBounds, type RoomProp } from "./rooms";
 import {
   BLOOM_ASSETS,
-  CHARACTER_ASSETS,
   PLOT_ASSETS,
   PLOT_OVERLAY_ASPECT,
   PROP_ASSETS,
   ROOM_BACKGROUND,
 } from "./assets";
+import { getCharacterSkin, type CharacterSkin } from "./skins";
 import { plotStage } from "./state";
-import type { GardenPlot, WorldRoomId } from "../engine/types";
+import type { CharacterSkinId, GardenPlot, WorldRoomId } from "../engine/types";
 
 const WORLD_H = 1000;
-const CHAR_FRAME = 760;
-/** 760px 画布内角色的可见高度（见 tools/build-character-assets.py） */
-const CHAR_VISIBLE_H = 714;
-const CHAR_BASELINE = 748 / CHAR_FRAME;
 const BALL_VISUAL_H = 54;
 const DRAG_THRESHOLD = 8;
 
@@ -30,6 +23,8 @@ export interface WorldViewHandle {
 
 interface WorldViewProps {
   roomId: WorldRoomId;
+  /** 角色皮肤；切换时只换角色帧，不重建房间。 */
+  skin: CharacterSkinId;
   spawn: { x: number; y: number };
   plots: GardenPlot[];
   onAction: (prop: RoomProp) => void;
@@ -91,8 +86,10 @@ class WorldRenderer {
   private landingRing = new Graphics();
   private groundFx = new Container();
   private charFrames: Texture[] = [];
-  private bowFrame: Texture = Texture.WHITE;
+  private reactFrame: Texture = Texture.WHITE;
   private idleFrame: Texture = Texture.WHITE;
+  private skin: CharacterSkin = getCharacterSkin(undefined);
+  private charGen = 0;
   private propViews: PropView[] = [];
   private plotViews: PlotView[] = [];
   private plotTextures = new Map<string, Texture>();
@@ -112,9 +109,10 @@ class WorldRenderer {
   private plotTimer = 0;
   private reduceMotion = false;
 
-  async mount(host: HTMLElement, runtime: WorldRuntime): Promise<void> {
+  async mount(host: HTMLElement, runtime: WorldRuntime, skin: CharacterSkin): Promise<void> {
     this.host = host;
     this.runtime = runtime;
+    this.skin = skin;
     this.app = new Application();
     await this.app.init({
       backgroundAlpha: 0,
@@ -141,7 +139,7 @@ class WorldRenderer {
     this.sortable.sortableChildren = true;
     this.app.stage.addChild(this.root);
 
-    this.charSprite.anchor.set(0.5, CHAR_BASELINE);
+    this.charSprite.anchor.set(0.5, skin.metrics.baseline);
     const charShadow = new Graphics();
     charShadow.ellipse(0, 0, 44, 13);
     charShadow.fill({ color: 0x2f241a, alpha: 0.18 });
@@ -159,7 +157,7 @@ class WorldRenderer {
     window.addEventListener("pointermove", this.onPointerMove);
     window.addEventListener("pointerup", this.onPointerUp);
 
-    await this.loadScene();
+    await Promise.all([this.loadRoom(), this.loadCharacter(skin)]);
 
     if (this.disposed) return;
 
@@ -181,37 +179,23 @@ class WorldRenderer {
     return layer;
   }
 
-  private async loadScene(): Promise<void> {
+  private async loadRoom(): Promise<void> {
     const room = this.runtime.room;
-    const bgPromise = loadTexture(ROOM_BACKGROUND[room.id]);
-    const charPromise = Promise.all([
-      loadTexture(CHARACTER_ASSETS.idle),
-      loadTexture(CHARACTER_ASSETS.bow),
-      ...CHARACTER_ASSETS.walk.map((src) => loadTexture(src)),
-    ]);
     const props = room.props.filter((prop) => prop.kind !== "ball");
-    const propPromise = Promise.all(
-      props.map(async (prop) => ({ prop, tex: await loadTexture(PROP_ASSETS[prop.kind]) })),
-    );
     const ballProp = room.props.find((prop) => prop.kind === "ball");
-    const ballPromise = ballProp ? loadTexture(PROP_ASSETS.ball) : Promise.resolve<Texture | null>(null);
 
-    const [bgTex, charTex, propEntries, ballTex] = await Promise.all([
-      bgPromise,
-      charPromise,
-      propPromise,
-      ballPromise,
+    const [bgTex, propEntries, ballTex] = await Promise.all([
+      loadTexture(ROOM_BACKGROUND[room.id]),
+      Promise.all(
+        props.map(async (prop) => ({ prop, tex: await loadTexture(PROP_ASSETS[prop.kind]) })),
+      ),
+      ballProp ? loadTexture(PROP_ASSETS.ball) : Promise.resolve<Texture | null>(null),
     ]);
     if (this.disposed) return;
 
     this.bg.texture = bgTex;
     this.bg.width = room.worldW;
     this.bg.height = WORLD_H;
-
-    this.idleFrame = charTex[0];
-    this.bowFrame = charTex[1];
-    this.charFrames = charTex.slice(2);
-    this.charSprite.texture = this.idleFrame;
 
     for (const entry of propEntries) {
       const sprite = new Sprite(entry.tex);
@@ -229,6 +213,29 @@ class WorldRenderer {
       this.ballSprite.width = BALL_VISUAL_H;
       this.ballSprite.height = BALL_VISUAL_H;
     }
+  }
+
+  private async loadCharacter(skin: CharacterSkin): Promise<void> {
+    const gen = ++this.charGen;
+    const textures = await Promise.all([
+      loadTexture(skin.idle),
+      loadTexture(skin.react),
+      ...skin.walk.map((src) => loadTexture(src)),
+    ]);
+    if (this.disposed || gen !== this.charGen) return;
+
+    this.skin = skin;
+    this.idleFrame = textures[0];
+    this.reactFrame = textures[1];
+    this.charFrames = textures.slice(2);
+    this.charSprite.texture = this.idleFrame;
+    this.charSprite.anchor.set(0.5, skin.metrics.baseline);
+  }
+
+  /** 运行时换皮肤：只替换角色帧与锚点，房间和相机保持不变。 */
+  setSkin(skin: CharacterSkin): void {
+    if (this.skin.id === skin.id) return;
+    void this.loadCharacter(skin);
   }
 
   setPlots(plots: GardenPlot[]): void {
@@ -328,13 +335,13 @@ class WorldRenderer {
     this.charBox.zIndex = player.y;
     const frame = this.reduceMotion
       ? this.idleFrame
-      : player.pose === "bow"
-        ? this.bowFrame
+      : player.pose === "react"
+        ? this.reactFrame
         : player.pose === "walk" && this.charFrames.length
           ? this.charFrames[Math.floor(player.phase * 2) % this.charFrames.length]
           : this.idleFrame;
     if (this.charSprite.texture !== frame) this.charSprite.texture = frame;
-    const base = PLAYER_STAND_H / CHAR_VISIBLE_H;
+    const base = PLAYER_STAND_H / this.skin.metrics.visibleHeight;
     const targetX = base * player.facing;
     if (Math.abs(this.charSprite.scale.x - targetX) > 1e-4) {
       this.charSprite.scale.x = targetX;
@@ -374,7 +381,6 @@ class WorldRenderer {
       this.lastLandingKey = landingKey;
       this.drawLandingRing(landing ?? null, Boolean(ball?.bounce));
     }
-
   }
 
   private drawNearestRing(prop: RoomProp | null): void {
@@ -409,10 +415,6 @@ class WorldRenderer {
 
   activateNearest(): void {
     this.runtime.activateNearest();
-  }
-
-  catchBall(): boolean {
-    return this.runtime.catchBall();
   }
 
   private onPointerDown = (event: PointerEvent): void => {
@@ -484,7 +486,15 @@ class WorldRenderer {
     let hitPlayer = false;
 
     // Body only — feet level is floor, otherwise walking near her breaks.
-    if (Math.abs(wx - player.x) < 62 && wy > player.y - 296 && wy < player.y - 30) {
+    // Width follows the active skin so the white and maid looks are both tappable.
+    const charBase = PLAYER_STAND_H / this.skin.metrics.visibleHeight;
+    // visibleWidth is measured in frame pixels; convert to world units first.
+    const halfWidth = clamp(
+      (this.skin.metrics.visibleWidth * charBase) / 2,
+      48,
+      132,
+    );
+    if (Math.abs(wx - player.x) < halfWidth && wy > player.y - 296 && wy < player.y - 30) {
       hitPlayer = true;
       bestDepth = playerDepth;
     }
@@ -515,7 +525,7 @@ class WorldRenderer {
       return;
     }
     if (hitPlayer) {
-      runtime.playPose("bow", 650);
+      runtime.playPose("react", 650);
       this.onTapPlayer?.();
       return;
     }
@@ -550,7 +560,7 @@ export const WorldView = forwardRef<WorldViewHandle, WorldViewProps>(function Wo
   const rendererRef = useRef<WorldRenderer | null>(null);
   const latest = useRef(props);
   latest.current = props;
-  const { roomId, spawn } = props;
+  const { roomId, spawn, skin } = props;
 
   useImperativeHandle(ref, () => ({
     activateNearest: () => rendererRef.current?.activateNearest(),
@@ -565,14 +575,14 @@ export const WorldView = forwardRef<WorldViewHandle, WorldViewProps>(function Wo
     rendererRef.current = renderer;
 
     runtime.onArrive = (prop) => {
-      runtime.playPose("bow", 620);
+      runtime.playPose("react", 620);
       latest.current.onAction(prop);
     };
     runtime.onDoor = (prop) => {
       latest.current.onDoor(prop);
     };
     runtime.onCatch = (combo) => {
-      runtime.playPose("bow", 420);
+      runtime.playPose("react", 420);
       latest.current.onCatch(combo);
     };
     runtime.onMiss = (combo) => {
@@ -585,7 +595,7 @@ export const WorldView = forwardRef<WorldViewHandle, WorldViewProps>(function Wo
     renderer.onKick = () => latest.current.onKick();
     renderer.onTapPlayer = () => latest.current.onTapPlayer();
 
-    void renderer.mount(host, runtime).then(() => {
+    void renderer.mount(host, runtime, getCharacterSkin(skin)).then(() => {
       if (!disposed) renderer.setPlots(latest.current.plots);
     });
 
@@ -597,6 +607,10 @@ export const WorldView = forwardRef<WorldViewHandle, WorldViewProps>(function Wo
     // spawn is intentionally keyed by the parent; a room change remounts the view.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, spawn.x, spawn.y]);
+
+  useEffect(() => {
+    rendererRef.current?.setSkin(getCharacterSkin(skin));
+  }, [skin]);
 
   useEffect(() => {
     rendererRef.current?.setPlots(props.plots);
