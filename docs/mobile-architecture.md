@@ -37,6 +37,10 @@
 
 ### 添加皮肤
 
+> 想从「一套皮肤 = 一套整帧」升级到「底模 + 部件 + 任意组合」，
+> 先读 [角色底模与部件化方案](./character-rig-design.md)。那里定义了画布/关键点/槽位/容差，
+> 并说明了为什么不能直接拿一张画好的整图去切件。
+
 1. 在 `types.ts` 的 `CharacterSkinId` 增加 id。
 2. 在 `state.ts` 的 `CHARACTER_SKIN_IDS` 增加 id。
 3. 在 `skins.ts` 的 `CHARACTER_SKINS` 增加条目（帧路径 + `visibleHeight` / `visibleWidth`）。

@@ -98,6 +98,7 @@ sudo systemctl enable --now wenbebi-ollama-gateway
 - `src/mobile/world/skins.ts`：角色皮肤表（original / maid），统一的帧规格、姿势帧与头像路径。
 - `src/mobile/world/poses.ts`：动作 → 姿态映射（床=躺下、椅子/书桌=坐下、其余=短交互）。
 - `tools/build-character-assets.py`、`tools/build-scene-assets.py`：角色抠图/走路帧与房间、物件素材生成。
+- [docs/character-rig-design.md](docs/character-rig-design.md)：角色底模、部件拆分与外观组合的**设计提案**（未改代码）。
 - `?legacy`：旧观察向移动端；`?desktop`：桌面版。
 
 ## 验证
