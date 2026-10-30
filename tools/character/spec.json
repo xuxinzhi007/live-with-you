@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "note": "角色帧规格的唯一来源。build-character-assets.py 与 verify.py 都读这里。改这里，不要改脚本常量。",
+
+  "frame": {
+    "canvas": 760,
+    "baselineY": 748,
+    "centerX": 380
+  },
+
+  "measure": {
+    "alphaThreshold": 8,
+    "note": "量测唯一口径：alpha > threshold 取 bbox。禁止使用裸 Image.getbbox()，它会把半透明边缘计入。"
+  },
+
+  "tolerance": {
+    "visibleHeight": 7,
+    "feetY": 0,
+    "centerX": 2,
+    "heads": 0.2,
+    "headHeight": 6,
+    "widthPct": 0.02
+  },
+
+  "poses": {
+    "stand": {
+      "visibleHeight": [706, 726],
+      "note": "idle / breathe / walk / react 前的基准；脚底固定 baselineY"
+    },
+    "sit": {
+      "visibleHeight": [400, 726],
+      "note": "坐下。允许接近站立高（现有 original/sit 实测 715），不强求变矮"
+    },
+    "lie": {
+      "visibleHeight": [180, 520],
+      "note": "躺下，必须明显矮于站立"
+    }
+  },
+
+  "skins": {
+    "original": {
+      "heads": 1.87,
+      "headHeight": 386,
+      "visibleHeight": 720,
+      "pose": "stand",
+      "cutout": false
+    },
+    "maid": {
+      "heads": 2.06,
+      "headHeight": 345,
+      "visibleHeight": 714,
+      "pose": "stand",
+      "cutout": true
+    }
+  }
+}

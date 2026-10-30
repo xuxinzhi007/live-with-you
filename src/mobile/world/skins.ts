@@ -14,6 +14,7 @@
  *   sleep     躺下（可选，缺失时回落到 sit）
  */
 import type { CharacterSkinId } from "../engine/types";
+import { CHARACTER_METRICS } from "./character-metrics.ts";
 import { CHARACTER_SKIN_IDS, DEFAULT_CHARACTER_SKIN } from "./state.ts";
 
 export { CHARACTER_SKIN_IDS, DEFAULT_CHARACTER_SKIN };
@@ -47,10 +48,19 @@ export interface CharacterSkin {
   metrics: CharacterSkinMetrics;
 }
 
-const METRICS = {
-  frame: 760,
-  baseline: 748 / 760,
-} as const;
+const FRAME_SIZE = 760 as const;
+
+/** 尺寸取自构建产物 character-metrics.ts（源：tools/character/spec.json）。 */
+function metricsFor(id: CharacterSkinId): CharacterSkinMetrics {
+  const m = CHARACTER_METRICS[id];
+  if (!m) throw new Error(`no character metrics for skin ${id}; run tools/character/verify.py`);
+  return {
+    frame: FRAME_SIZE,
+    visibleHeight: m.visibleHeight,
+    visibleWidth: m.visibleWidth,
+    baseline: m.baseline,
+  };
+}
 
 export const CHARACTER_SKINS: Record<CharacterSkinId, CharacterSkin> = {
   original: {
@@ -74,7 +84,7 @@ export const CHARACTER_SKINS: Record<CharacterSkinId, CharacterSkin> = {
     sit: "assets/characters/original/sit.webp",
     sleep: "assets/characters/original/sleep.webp",
     avatar: "assets/characters/original/avatar.webp",
-    metrics: { ...METRICS, visibleHeight: 720, visibleWidth: 429 },
+    metrics: metricsFor("original"),
   },
   maid: {
     id: "maid",
@@ -95,7 +105,7 @@ export const CHARACTER_SKINS: Record<CharacterSkinId, CharacterSkin> = {
       "assets/characters/maid/walk-4.webp",
     ],
     avatar: "assets/characters/maid/avatar.webp",
-    metrics: { ...METRICS, visibleHeight: 714, visibleWidth: 554 },
+    metrics: metricsFor("maid"),
   },
 };
 

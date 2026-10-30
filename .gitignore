@@ -8,3 +8,5 @@ source-assets/
 
 # Local Netlify folder
 .netlify
+.agents/skills/data-workflow/
+.cursor/skills/data-workflow/

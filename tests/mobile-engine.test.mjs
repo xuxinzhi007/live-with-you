@@ -41,7 +41,7 @@ import {
   recordBallCatch,
   recordBallKick,
 } from "../src/mobile/world/actions.ts";
-import { CATCH_RANGE, WorldRuntime } from "../src/mobile/world/runtime.ts";
+import { CATCH_RANGE, PLAYER_STAND_H, WorldRuntime } from "../src/mobile/world/runtime.ts";
 
 function createMemoryStorage(seed = {}) {
   const values = new Map(Object.entries(seed));
@@ -323,6 +323,39 @@ test("every frame referenced by skins.ts exists on disk", async () => {
   assert.equal(count, 13);
 });
 
+test("skin metrics come from the generated spec, not hand-typed numbers", async () => {
+  const { CHARACTER_METRICS } = await import("../src/mobile/world/character-metrics.ts");
+  const { CHARACTER_SKIN_LIST } = await import("../src/mobile/world/skins.ts");
+  const { readFileSync } = await import("node:fs");
+
+  const specPath = fileURLToPath(new URL("../tools/character/spec.json", import.meta.url));
+  const spec = JSON.parse(readFileSync(specPath, "utf8"));
+
+  for (const skin of CHARACTER_SKIN_LIST) {
+    const generated = CHARACTER_METRICS[skin.id];
+    assert.ok(generated, `${skin.id} missing from generated metrics`);
+    assert.equal(skin.metrics.visibleHeight, generated.visibleHeight);
+    assert.equal(skin.metrics.visibleWidth, generated.visibleWidth);
+    assert.equal(skin.metrics.baseline, generated.baseline);
+    assert.ok(skin.metrics.visibleHeight > 0, `${skin.id} visibleHeight must be positive`);
+    assert.ok(skin.metrics.visibleWidth > 0, `${skin.id} visibleWidth must be positive`);
+
+    // spec 声明的站立高必须和生成物一致，否则改了 spec 忘了重跑 verify.py。
+    const declared = spec.skins[skin.id]?.visibleHeight;
+    if (declared !== undefined) {
+      assert.equal(
+        skin.metrics.visibleHeight,
+        declared,
+        `${skin.id}: spec says ${declared} but metrics says ${skin.metrics.visibleHeight}; rerun tools/character/verify.py`,
+      );
+    }
+  }
+
+  assert.equal(spec.frame.canvas, 760, "canvas is the shared contract");
+  assert.equal(spec.frame.baselineY, 748, "feet line is the shared contract");
+  assert.equal(spec.frame.centerX, 380, "center line is the shared contract");
+});
+
 test("prop actions map to the right character pose", async () => {
   const { poseForProp } = await import("../src/mobile/world/poses.ts");
 
@@ -356,7 +389,7 @@ test("every room keeps a clear walking lane and key props are character-scaled",
     }
   }
 
-  const heroHeight = 300;
+  const heroHeight = PLAYER_STAND_H;
   const keyProps = [
     ["home", "bed"],
     ["home", "desk"],

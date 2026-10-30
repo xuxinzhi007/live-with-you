@@ -43,6 +43,7 @@ Run:
 
 from __future__ import annotations
 
+import json
 import os
 
 import numpy as np
@@ -70,10 +71,14 @@ SKINS = {
     },
 }
 
-FRAME = 760          # square canvas for every animation frame
-FRAME_HEIGHT = 720   # idle height inside the square (all poses share its scale)
-BASELINE_Y = 748     # every frame puts the feet on the same line
-CENTER_X = 380       # every frame is horizontally centered on this line
+SPEC_PATH = os.path.join(ROOT, "tools", "character", "spec.json")
+with open(SPEC_PATH, encoding="utf-8") as _fh:
+    SPEC = json.load(_fh)
+
+FRAME = SPEC["frame"]["canvas"]          # square canvas for every animation frame
+FRAME_HEIGHT = SPEC["skins"]["original"]["visibleHeight"]  # idle height; per-skin override below
+BASELINE_Y = SPEC["frame"]["baselineY"]   # every frame puts the feet on the same line
+CENTER_X = SPEC["frame"]["centerX"]       # every frame is horizontally centered on this line
 MARKER = (255, 0, 255)
 
 
@@ -221,8 +226,9 @@ def build_skin(skin_id: str, config: dict) -> None:
         print(f"    trimmed {trims[pose].width}x{trims[pose].height}")
 
     reference = trims["idle"]
-    factor = FRAME_HEIGHT / reference.height
-    print(f"  shared scale = {FRAME_HEIGHT}/{reference.height} = {factor:.4f}")
+    target_h = SPEC["skins"].get(skin_id, {}).get("visibleHeight", FRAME_HEIGHT)
+    factor = target_h / reference.height
+    print(f"  shared scale = {target_h}/{reference.height} = {factor:.4f}")
 
     aligned_idle: Image.Image | None = None
     for pose, img in trims.items():

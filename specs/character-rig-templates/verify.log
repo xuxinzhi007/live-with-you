@@ -1,0 +1,38 @@
+exit 0
+cmd npm run test:mobile
+
+> live-with-you@0.1.0 test:mobile
+> node --experimental-strip-types --test tests/mobile-engine.test.mjs
+
+✔ new save records use schema v2 and preserve the mobile game state (2.157083ms)
+✔ legacy mobile saves are normalized without daily task state (0.090542ms)
+✔ coplay verbs require a player and leave journal traces for all six actions (0.218541ms)
+✔ player profile is preserved and invalid player falls back to null (needs create flow) (6.935792ms)
+✔ coplay furniture hints stay scene-local for short approaches (1.50275ms)
+✔ room short codes normalize and map to stable room ids (1.86275ms)
+✔ standing slots assign L/R stably by playerId and furniture near slots prefer anchors (0.091791ms)
+✔ save normalization clamps values and drops invalid scenes (0.062584ms)
+✔ furniture costs and rewards are data-driven and one interaction cannot be bonded repeatedly (0.136875ms)
+✔ insufficient resources block the configured furniture action (0.126417ms)
+✔ discovering a location journals it once, and repeated petting is not a progression task (0.098791ms)
+✔ V2 world state is additive, migrates old scenes and clamps bad clocks (0.09975ms)
+✔ character skin defaults to the original white look and survives bad values (0.115208ms)
+✔ every character skin ships the full frame set and shares one baseline (1.479709ms)
+✔ every frame referenced by skins.ts exists on disk (0.920917ms)
+✔ skin metrics come from the generated spec, not hand-typed numbers (0.222208ms)
+✔ prop actions map to the right character pose (0.60125ms)
+✔ every room keeps a clear walking lane and key props are character-scaled (0.401791ms)
+✔ walking follows the lane, stops at the target and moves the camera (0.404667ms)
+✔ the garden ball can be kicked and caught while it is still moving (0.347083ms)
+✔ garden plant, water and harvest form a closed loop that keeps a seed (0.230125ms)
+✔ prop actions apply a gentle cooldown and can never soft-lock the player (0.04975ms)
+✔ street shop, room visits and ball milestones respect low-pressure rules (0.08425ms)
+✔ V2 world state round-trips through the mobile save (0.067458ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 170.755917
