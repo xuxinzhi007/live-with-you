@@ -1,14 +1,20 @@
-import { SCENES, type SceneId } from "../data/scenes.ts";
-import { INITIAL_PET_STATE, type PetMood } from "../data/pet-actions.ts";
-import { PLAYER_LOOKS, type PlayerLookId } from "../data/player-looks.ts";
-import type { GameState, JournalEntry, PlayerProfile } from "./types.ts";
+import {
+  INITIAL_PET_STATE,
+  type GameState,
+  type JournalEntry,
+  type PetMood,
+  type PlayerLookId,
+  type PlayerProfile,
+  type SceneId,
+} from "./types.ts";
 import { createInitialWorldState, normalizeWorldState } from "../world/state.ts";
 
 export const MOBILE_SAVE_KEY = "wenbebi-mobile-game-v2";
 const LEGACY_SAVE_KEY = "wenbebi-mobile-game-v1";
 const JOURNAL_LIMIT = 48;
 const MOODS: PetMood[] = ["happy", "normal", "sleepy", "excited", "curious"];
-const LOOK_IDS = new Set(PLAYER_LOOKS.map((look) => look.id));
+const SCENE_IDS: SceneId[] = ["bedroom", "balcony", "street", "cafe"];
+const LOOK_IDS: PlayerLookId[] = ["soft", "bright", "calm", "warm"];
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
 
@@ -23,7 +29,7 @@ function clamp(value: unknown, fallback: number, max = 9_999_999) {
 }
 
 function isSceneId(value: unknown): value is SceneId {
-  return SCENES.some((scene) => scene.id === value);
+  return SCENE_IDS.includes(value as SceneId);
 }
 
 function ensurePlayerId(value: unknown): string {
@@ -37,9 +43,9 @@ function normalizePlayer(value: unknown, now: number): PlayerProfile | null {
   if (typeof value.name !== "string") return null;
   const name = value.name.trim().slice(0, 12);
   if (!name) return null;
-  const lookId = LOOK_IDS.has(value.lookId as PlayerLookId)
+  const lookId = LOOK_IDS.includes(value.lookId as PlayerLookId)
     ? (value.lookId as PlayerLookId)
-    : PLAYER_LOOKS[0].id;
+    : LOOK_IDS[0];
   return {
     playerId: ensurePlayerId(value.playerId),
     name,
@@ -58,7 +64,7 @@ export function createInitialGameState(now = Date.now()): GameState {
     pet: { ...INITIAL_PET_STATE, lastInteraction: now },
     player: null,
     coins: 18,
-    seeds: 1,
+    seeds: 2,
     flowers: 0,
     mementos: 0,
     bond: 0,
@@ -103,7 +109,7 @@ export function normalizeGameState(value: unknown, now = Date.now()): GameState 
     pet: {
       ...fresh.pet,
       currentAction: "idle",
-      mood: MOODS.includes(savedPet.mood as PetMood) ? savedPet.mood as PetMood : "normal",
+      mood: MOODS.includes(savedPet.mood as PetMood) ? (savedPet.mood as PetMood) : "normal",
       energy: clamp(savedPet.energy, fresh.pet.energy, 100),
       happiness: clamp(savedPet.happiness, fresh.pet.happiness, 100),
       lastInteraction: clamp(savedPet.lastInteraction, now, Number.MAX_SAFE_INTEGER),

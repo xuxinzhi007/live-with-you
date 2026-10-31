@@ -196,3 +196,30 @@ export function describeRemaining(ms: number): string {
   if (seconds < 60) return `还要 ${seconds} 秒`;
   return `还要 ${Math.ceil(seconds / 60)} 分钟`;
 }
+
+export interface RoomLighting {
+  period: "lateNight" | "dawn" | "day" | "dusk" | "night";
+  label: string;
+  /** Pixi 背景层色温 tint（0xffffff 为无滤色） */
+  bgTint: number;
+  /** 是否点亮街区路灯与室内书桌暖光晕 */
+  lampGlow: boolean;
+}
+
+/** 根据小时数（0–23）计算场景光影与暖灯开关。 */
+export function lightingForHour(hour: number): RoomLighting {
+  const h = ((Math.floor(hour) % 24) + 24) % 24;
+  if (h < 6) {
+    return { period: "lateNight", label: "深夜", bgTint: 0xc8d0e8, lampGlow: true };
+  }
+  if (h < 10) {
+    return { period: "dawn", label: "清晨", bgTint: 0xfff8ef, lampGlow: false };
+  }
+  if (h < 17) {
+    return { period: "day", label: h < 12 ? "上午" : h < 14 ? "午后" : "下午", bgTint: 0xffffff, lampGlow: false };
+  }
+  if (h < 20) {
+    return { period: "dusk", label: "傍晚", bgTint: 0xf7dfca, lampGlow: true };
+  }
+  return { period: "night", label: "夜里", bgTint: 0xd2d8ee, lampGlow: true };
+}

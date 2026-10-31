@@ -111,6 +111,17 @@ export class WorldRuntime {
   private target: { x: number; y: number } | null = null;
   private targetPropId: string | null = null;
 
+  /** 当前正在走向的目标物件（若只是点地面走动则为 null）。 */
+  get pendingProp(): RoomProp | null {
+    if (!this.targetPropId) return null;
+    return getProp(this.room.id, this.targetPropId) ?? null;
+  }
+
+  /** 当前移动目标点（用于渲染层画地面落点反馈）。 */
+  get walkTarget(): { x: number; y: number } | null {
+    return this.target ? { x: this.target.x, y: this.target.y } : null;
+  }
+
   constructor(room: RoomDef, spawn: { x: number; y: number }) {
     this.room = room;
     this.player = {
@@ -248,20 +259,27 @@ export class WorldRuntime {
   }
 
   /**
-   * 点物件：已经走近就直接执行；还没走近就只走过去，停在物件前，
-   * 由底部情境按钮决定要不要做。门和球例外——它们本身就是“过去”的动作。
+   * 交互式瞬达：点击任意物件或从底部互动面板选择物件时，
+   * 雯宝直接就位到物件前方并立即触发动作（无需漫长跑腿等待），镜头自动平滑聚焦。
+   */
+  interactInstant(prop: RoomProp): void {
+    const at = this.approachFor(prop);
+    this.player.facing = at.x >= this.player.x ? 1 : -1;
+    this.player.x = at.x;
+    this.player.y = at.y;
+    this.player.moving = false;
+    this.target = null;
+    this.targetPropId = null;
+    this.cameraFollow = true;
+    this.updateNearest();
+    this.triggerProp(prop);
+  }
+
+  /**
+   * 点物件：V3 交互式玩法下，点击场景内的物件直接就位并触发互动，不再让玩家干等跑腿。
    */
   requestProp(prop: RoomProp): void {
-    if (this.isNear(prop)) {
-      this.target = null;
-      this.targetPropId = null;
-      this.player.moving = false;
-      this.triggerProp(prop);
-      return;
-    }
-    const at = this.approachFor(prop);
-    const autoOnArrival = Boolean(prop.doorTo);
-    this.moveTo(at.x, at.y, autoOnArrival ? prop.id : null);
+    this.interactInstant(prop);
   }
 
   private triggerProp(prop: RoomProp): void {

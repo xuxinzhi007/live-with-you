@@ -1,11 +1,10 @@
 /**
- * V2 世界状态钩子：包一层 localStorage 读写，供 WorldApp 使用。
- *
- * 旧 MobileLayout / GameEngine 保持不变（可作为 ?legacy 回滚入口），
- * 新主线只依赖这里的 GameState.world。
+ * V3 世界状态与操作钩子：
+ * - 统一管理 GameState 本地存储
+ * - 暴露高频陪伴互动（摸摸头/吃点心/送花）、自选花种播种、出售花束、喷泉扭蛋、街区奇遇二选一、聊天记手账
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CharacterSkinId, GameState, WorldRoomId } from "../engine/types";
+import type { CharacterSkinId, FlowerKind, GameState, WorldRoomId } from "../engine/types";
 import { loadGameState, saveGameState } from "../engine/storage";
 import {
   applyPropAction,
@@ -14,7 +13,35 @@ import {
   recordBallKick,
   type ActionOutcome,
 } from "./actions";
+import {
+  drawFountainWish,
+  getBondLevelInfo,
+  interactWithCompanion,
+  plantChosenFlower,
+  resolveEncounterChoice,
+  sellFlowerBouquet,
+  type StreetEncounter,
+  type WishDrawResult,
+} from "./codex";
 import type { RoomProp } from "./rooms";
+
+export interface ActionDelta {
+  bondDelta: number;
+  coinsDelta: number;
+  leveledUp: boolean;
+  newLevel: number;
+}
+
+function computeDelta(prev: GameState, next: GameState): ActionDelta {
+  const prevLv = getBondLevelInfo(prev.bond).level;
+  const nextLv = getBondLevelInfo(next.bond).level;
+  return {
+    bondDelta: next.bond - prev.bond,
+    coinsDelta: next.coins - prev.coins,
+    leveledUp: nextLv > prevLv,
+    newLevel: nextLv,
+  };
+}
 
 export function useWorldGame() {
   const [state, setState] = useState<GameState>(() => loadGameState());
@@ -30,47 +57,99 @@ export function useWorldGame() {
     };
   }, [state]);
 
-  const runProp = useCallback((prop: RoomProp): ActionOutcome => {
-    const outcome = applyPropAction(stateRef.current, prop);
-    stateRef.current = outcome.state;
-    setState(outcome.state);
-    return outcome;
+  const commit = useCallback((next: GameState): ActionDelta => {
+    const prev = stateRef.current;
+    stateRef.current = next;
+    setState(next);
+    return computeDelta(prev, next);
   }, []);
 
-  const enterRoom = useCallback((room: WorldRoomId) => {
+  const runProp = useCallback((prop: RoomProp): ActionOutcome & { delta: ActionDelta } => {
+    const prev = stateRef.current;
+    const outcome = applyPropAction(prev, prop);
+    const delta = commit(outcome.state);
+    return { ...outcome, delta };
+  }, [commit]);
+
+  const enterRoom = useCallback((room: WorldRoomId): ActionDelta => {
     const next = enterRoomState(stateRef.current, room);
-    stateRef.current = next;
-    setState(next);
-  }, []);
+    return commit(next);
+  }, [commit]);
 
-  const catchBall = useCallback((combo: number) => {
+  const catchBall = useCallback((combo: number): ActionDelta => {
     const next = recordBallCatch(stateRef.current, combo);
-    stateRef.current = next;
-    setState(next);
-  }, []);
+    return commit(next);
+  }, [commit]);
 
-  const recordKick = useCallback(() => {
+  const recordKick = useCallback((): ActionDelta => {
     const next = recordBallKick(stateRef.current);
-    stateRef.current = next;
-    setState(next);
-  }, []);
+    return commit(next);
+  }, [commit]);
 
-  /** 切换角色外观：只写 world.skin，房间与进度不变。 */
   const setSkin = useCallback((skin: CharacterSkinId) => {
     const current = stateRef.current;
     if (current.world.skin === skin) return;
-    const next = { ...current, world: { ...current.world, skin } };
-    stateRef.current = next;
-    setState(next);
-  }, []);
+    commit({ ...current, world: { ...current.world, skin } });
+  }, [commit]);
 
   const markIntroSeen = useCallback(() => {
     const current = stateRef.current;
     if (current.world.seenIntro) return;
-    const next = { ...current, world: { ...current.world, seenIntro: true } };
-    stateRef.current = next;
-    setState(next);
-  }, []);
+    commit({ ...current, world: { ...current.world, seenIntro: true } });
+  }, [commit]);
+
+  const appendJournal = useCallback((text: string) => {
+    const clean = text.trim();
+    if (!clean) return;
+    const current = stateRef.current;
+    if (current.journal[0]?.text === clean) return;
+    const now = Date.now();
+    const entry = {
+      id: `${now}-${current.journal.length}`,
+      text: clean,
+      time: now,
+    };
+    commit({
+      ...current,
+      journal: [entry, ...current.journal].slice(0, 48),
+    });
+  }, [commit]);
+
+  /** 高频陪伴动作：摸摸头 / 吃曲奇 / 送花 */
+  const companionAct = useCallback((act: "pat" | "snack" | "giftFlower", wishBonus = false) => {
+    const res = interactWithCompanion(stateRef.current, act, wishBonus);
+    commit(res.state);
+    return res;
+  }, [commit]);
+
+  /** 自选花种播种 */
+  const plantSeed = useCallback((plotIndex: number, kind: FlowerKind) => {
+    const res = plantChosenFlower(stateRef.current, plotIndex, kind);
+    const delta = commit(res.state);
+    return { ...res, delta };
+  }, [commit]);
+
+  /** 花摊卖花束换零钱 */
+  const sellBouquet = useCallback(() => {
+    const res = sellFlowerBouquet(stateRef.current);
+    const delta = commit(res.state);
+    return { ...res, delta };
+  }, [commit]);
+
+  /** 喷泉许愿扭蛋 */
+  const wishGacha = useCallback((payWith: "coins" | "flower" = "coins"): { ok: false; reason: string } | { ok: true; result: WishDrawResult } => {
+    const res = drawFountainWish(stateRef.current, payWith);
+    if (!res.ok) return { ok: false, reason: res.reason };
+    commit(res.result.state);
+    return res;
+  }, [commit]);
+
+  /** 街区奇遇二选一结算 */
+  const chooseEncounter = useCallback((encounter: StreetEncounter, choiceIndex: 0 | 1) => {
+    const res = resolveEncounterChoice(stateRef.current, encounter, choiceIndex);
+    commit(res.state);
+    return res;
+  }, [commit]);
 
   return {
     state,
@@ -80,5 +159,11 @@ export function useWorldGame() {
     recordKick,
     setSkin,
     markIntroSeen,
+    appendJournal,
+    companionAct,
+    plantSeed,
+    sellBouquet,
+    wishGacha,
+    chooseEncounter,
   };
 }

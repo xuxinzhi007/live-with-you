@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:lan": "vite --host 0.0.0.0",
+    "gen:comfy": "node tools/generate-comfy-assets.mjs",
     "test:mobile": "node --experimental-strip-types --test tests/mobile-engine.test.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview"

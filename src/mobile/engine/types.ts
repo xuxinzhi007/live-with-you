@@ -1,6 +1,22 @@
-import type { SceneId } from "../data/scenes";
-import type { PetState } from "../data/pet-actions";
-import type { PlayerLookId } from "../data/player-looks";
+export type SceneId = "bedroom" | "balcony" | "street" | "cafe";
+export type PetMood = "happy" | "normal" | "sleepy" | "excited" | "curious";
+export type PlayerLookId = "soft" | "bright" | "calm" | "warm";
+
+export interface PetState {
+  currentAction: string;
+  mood: PetMood;
+  energy: number;
+  happiness: number;
+  lastInteraction: number;
+}
+
+export const INITIAL_PET_STATE: PetState = {
+  currentAction: "idle",
+  mood: "normal",
+  energy: 80,
+  happiness: 70,
+  lastInteraction: Date.now(),
+};
 
 export interface JournalEntry {
   id: string;
@@ -8,15 +24,12 @@ export interface JournalEntry {
   time: number;
 }
 
-/** 玩家自己的角色（独立身份）。null = 尚未创建，需走创建流。 */
 export interface PlayerProfile {
   playerId: string;
   name: string;
   lookId: PlayerLookId;
   createdAt: number;
 }
-
-/* ============ V2：可走动的单主角小世界 ============ */
 
 export type WorldRoomId = "home" | "garden" | "street";
 
@@ -33,10 +46,6 @@ export interface GardenPlot {
   wateredAt: number;
 }
 
-/**
- * V2 世界状态。与 currentScene / pet 并存：旧移动端与桌面仍读取旧字段，
- * 新主线只读写这里，避免破坏旧存档与旧测试。
- */
 export interface WorldState {
   room: WorldRoomId;
   /** 当前角色皮肤；旧档缺失时默认 original。 */
@@ -58,7 +67,6 @@ export interface WorldState {
 export interface GameState {
   currentScene: SceneId;
   pet: PetState;
-  /** 我在场；旧档 normalize 后为 null，进入创建流 */
   player: PlayerProfile | null;
   coins: number;
   seeds: number;
@@ -68,19 +76,7 @@ export interface GameState {
   exploredScenes: SceneId[];
   bondedMoments: string[];
   journal: JournalEntry[];
-  /** 最近一次共处动词 id，供 UI juice / 相遇提示 */
   lastCoplayId: string | null;
   lastCoplayAt: number;
-  /** V2 世界状态；旧档由 normalizeGameState 补默认值。 */
   world: WorldState;
 }
-
-export interface GameUIState {
-  selectedFurniture: string | null;
-  showActionMenu: boolean;
-}
-
-export const INITIAL_GAME_UI_STATE: GameUIState = {
-  selectedFurniture: null,
-  showActionMenu: false,
-};

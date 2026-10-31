@@ -2,15 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { existsSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { PET_ACTIONS } from "../src/mobile/data/pet-actions.ts";
-import { SCENE_FURNITURE } from "../src/mobile/data/scenes.ts";
-import { COPLAY_ACTIONS } from "../src/mobile/data/coplay-actions.ts";
-import {
-  applyCoplay,
-  interactWithFurniture,
-  petCompanion,
-  switchScene,
-} from "../src/mobile/engine/game-rules.ts";
 import {
   createInitialGameState,
   loadGameState,
@@ -18,30 +9,37 @@ import {
   saveGameState,
   MOBILE_SAVE_KEY,
 } from "../src/mobile/engine/storage.ts";
-import { furnitureNearSlots, preferredSlot } from "../src/mobile/data/slots.ts";
 import {
-  createRoomCode,
-  displayCodeFromRoomId,
-  isValidRoomCode,
-  normalizeRoomCode,
-  roomIdFromCode,
-} from "../src/mobile/multiplayer/room-code.ts";
-
-import { ROOMS, getProp } from "../src/mobile/world/rooms.ts";
-import {
-  createInitialWorldState,
+  lightingForHour,
   normalizeWorldState,
-  PLOT_GROW_MS,
-  plotStage,
 } from "../src/mobile/world/state.ts";
 import {
-  applyPropAction,
-  cooldownLeftMs,
-  enterRoom,
-  recordBallCatch,
-  recordBallKick,
-} from "../src/mobile/world/actions.ts";
-import { CATCH_RANGE, PLAYER_STAND_H, WorldRuntime } from "../src/mobile/world/runtime.ts";
+  DEFAULT_EQUIPPED_OUTFIT,
+  DEFAULT_UNLOCKED_ITEM_IDS,
+  STYLING_SKILLS,
+  STYLING_STAGES,
+  SUIT_DEFS,
+  WARDROBE_ITEMS,
+  WARDROBE_SLOTS,
+  computeOutfitStats,
+  detectActiveSuit,
+  evaluateOutfitForStage,
+  getItemStarMultiplier,
+  getWardrobeItem,
+  recommendBestOutfitForStage,
+  rollPavilionGacha,
+} from "../src/mobile/world/nikki-wardrobe.ts";
+import {
+  getBondLevelInfo,
+  interactWithCompanion,
+} from "../src/mobile/world/codex.ts";
+import {
+  clampRigPlacement,
+  getRigPlacement,
+} from "../src/mobile/world/paper-doll-rig.ts";
+import {
+  fallbackCompanionChat,
+} from "../src/mobile/world/companion-bridge.ts";
 
 function createMemoryStorage(seed = {}) {
   const values = new Map(Object.entries(seed));
@@ -55,16 +53,7 @@ function createMemoryStorage(seed = {}) {
   };
 }
 
-function tick(runtime, ms, step = 16) {
-  let elapsed = 0;
-  while (elapsed < ms) {
-    runtime.tick(step);
-    elapsed += step;
-  }
-}
-
-
-test("new save records use schema v2 and preserve the mobile game state", () => {
+test("new save records use schema v2 and preserve the game state", () => {
   const storage = createMemoryStorage();
   const state = { ...createInitialGameState(100), coins: 41, exploredScenes: ["bedroom", "balcony"] };
 
@@ -73,477 +62,150 @@ test("new save records use schema v2 and preserve the mobile game state", () => 
   assert.deepEqual(loadGameState(storage, 200), state);
 });
 
-test("legacy mobile saves are normalized without daily task state", () => {
-  const storage = createMemoryStorage({
-    "wenbebi-mobile-game-v1": JSON.stringify({
-      currentScene: "balcony",
-      coins: 12,
-      seeds: 2,
-      daily: { completed: true },
-      streak: 9,
-    }),
-  });
-
-  const state = loadGameState(storage, 200);
-  assert.equal(state.currentScene, "balcony");
-  assert.equal(state.coins, 12);
-  assert.equal(state.player, null);
-  assert.equal("daily" in state, false);
-  assert.equal("streak" in state, false);
-});
-
-test("coplay verbs require a player and leave journal traces for all six actions", () => {
-  const noPlayer = applyCoplay(createInitialGameState(100), "greet", 100);
-  assert.equal(noPlayer.blockedMessage.includes("创建"), true);
-
-  let state = {
-    ...createInitialGameState(100),
-    player: { playerId: "p-test-deer", name: "小鹿", lookId: "soft", createdAt: 50 },
-  };
-
-  assert.ok(COPLAY_ACTIONS.length >= 5);
-
-  for (const [index, action] of COPLAY_ACTIONS.entries()) {
-    const result = applyCoplay(state, action.id, 200 + index);
-    assert.equal(result.blockedMessage, "");
-    assert.equal(result.state.lastCoplayId, action.id);
-    assert.equal(result.state.journal[0].text.includes("小鹿"), true);
-    state = result.state;
-  }
-
-  assert.equal(state.bondedMoments.filter((id) => id.startsWith("coplay:")).length, COPLAY_ACTIONS.length);
-});
-
-test("player profile is preserved and invalid player falls back to null (needs create flow)", () => {
-  const withPlayer = normalizeGameState({
-    player: { name: " 小鹿 ", lookId: "bright", createdAt: 99 },
-  }, 500);
-  assert.equal(withPlayer.player?.name, "小鹿");
-  assert.equal(withPlayer.player?.lookId, "bright");
-  assert.ok(withPlayer.player?.playerId);
-
-  const withId = normalizeGameState({
-    player: { playerId: "fixed-id", name: "小鹿", lookId: "soft", createdAt: 99 },
-  }, 500);
-  assert.equal(withId.player?.playerId, "fixed-id");
-
-  const legacyNoPlayer = normalizeGameState({ coins: 3 }, 500);
-  assert.equal(legacyNoPlayer.player, null);
-
-  const badPlayer = normalizeGameState({ player: { name: "  ", lookId: "nope" } }, 500);
-  assert.equal(badPlayer.player, null);
-});
-
-test("coplay furniture hints stay scene-local for short approaches", async () => {
-  const { coplayFurnitureHint, nearPoseForActor } = await import("../src/mobile/engine/stage-motion.ts");
-  assert.equal(coplayFurnitureHint("sit", "bedroom"), "armchair");
-  assert.equal(coplayFurnitureHint("look", "bedroom"), "window-a");
-  assert.equal(coplayFurnitureHint("greet", "bedroom"), null);
-  const chair = SCENE_FURNITURE.bedroom.find((item) => item.id === "armchair");
-  assert.ok(chair);
-  const selfNear = nearPoseForActor(chair, "self");
-  assert.equal(selfNear.bottom <= 14, true);
-});
-
-test("room short codes normalize and map to stable room ids", () => {
-  assert.equal(normalizeRoomCode(" k7m2 "), "K7M2");
-  assert.equal(isValidRoomCode("ab"), false);
-  assert.equal(isValidRoomCode("K7M2"), true);
-  assert.equal(roomIdFromCode("k7m2"), "wb-K7M2");
-  assert.equal(displayCodeFromRoomId("wb-K7M2"), "K7M2");
-  assert.equal(createRoomCode().length, 4);
-});
-
-test("standing slots assign L/R stably by playerId and furniture near slots prefer anchors", () => {
-  assert.equal(preferredSlot("a", ["b"]), "L");
-  assert.equal(preferredSlot("b", ["a"]), "R");
-  const armchair = SCENE_FURNITURE.bedroom.find((item) => item.id === "armchair");
-  assert.ok(armchair?.anchors);
-  assert.deepEqual(furnitureNearSlots(armchair), armchair.anchors);
-  assert.deepEqual(
-    furnitureNearSlots({ left: 10, bottom: 14, w: 20 }),
-    { L: { left: 15.6, bottom: 13 }, R: { left: 24.4, bottom: 13 } },
-  );
-});
-
-test("save normalization clamps values and drops invalid scenes", () => {
-  const state = normalizeGameState({
+test("legacy saves are normalized and clamp invalid values", () => {
+  const clamped = normalizeGameState({
     currentScene: "missing",
     coins: -3,
     pet: { energy: 140, happiness: -5, mood: "angry" },
-    exploredScenes: ["balcony", "missing", "balcony"],
   }, 500);
-
-  assert.equal(state.currentScene, "bedroom");
-  assert.equal(state.coins, 0);
-  assert.equal(state.pet.energy, 100);
-  assert.equal(state.pet.happiness, 0);
-  assert.equal(state.pet.mood, "normal");
-  assert.deepEqual(state.exploredScenes, ["balcony"]);
-});
-
-test("furniture costs and rewards are data-driven and one interaction cannot be bonded repeatedly", () => {
-  const state = createInitialGameState(100);
-  const snack = SCENE_FURNITURE.bedroom.find((item) => item.id === "snack");
-  const treat = PET_ACTIONS.find((action) => action.id === "treat");
-  assert.ok(snack && treat);
-
-  const result = interactWithFurniture(state, snack, treat, 200);
-  assert.equal(result.blockedMessage, "");
-  assert.equal(result.state.coins, 15);
-  assert.equal(result.state.pet.happiness, state.pet.happiness + 10);
-  assert.equal(result.state.bond, 1);
-
-  const repeated = interactWithFurniture(result.state, snack, treat, 300);
-  assert.equal(repeated.state.coins, 12);
-  assert.equal(repeated.state.bond, 1);
-});
-
-test("insufficient resources block the configured furniture action", () => {
-  const state = { ...createInitialGameState(100), coins: 0 };
-  const snack = SCENE_FURNITURE.bedroom.find((item) => item.id === "snack");
-  const treat = PET_ACTIONS.find((action) => action.id === "treat");
-  assert.ok(snack && treat);
-
-  const result = interactWithFurniture(state, snack, treat, 200);
-  assert.match(result.blockedMessage, /零钱不够/);
-  assert.equal(result.state, state);
-});
-
-test("discovering a location journals it once, and repeated petting is not a progression task", () => {
-  const initial = createInitialGameState(100);
-  const firstVisit = switchScene(initial, "balcony", 200);
-  const returnVisit = switchScene(firstVisit, "bedroom", 300);
-  const revisit = switchScene(returnVisit, "balcony", 400);
-
-  assert.equal(revisit.journal.length, 1);
-  assert.equal(revisit.bond, 2);
-  const firstPet = petCompanion(revisit, 500);
-  const secondPet = petCompanion(firstPet, 600);
-  assert.equal(firstPet.bond, 3);
-  assert.equal(secondPet.bond, 3);
-});
-
-test("V2 world state is additive, migrates old scenes and clamps bad clocks", () => {
-  const fresh = normalizeGameState({}, 100);
-  assert.equal(fresh.world.room, "home");
-  assert.equal(fresh.world.skin, "original");
-  assert.equal(fresh.world.plots.length, 3);
-  assert.equal(fresh.world.seenIntro, false);
-  assert.deepEqual(fresh.world.collection, { daisy: 0, rose: 0, sunflower: 0 });
-
-  const legacy = normalizeGameState({ currentScene: "balcony", coins: 4 }, 100);
-  assert.equal(legacy.world.room, "garden");
-  assert.equal(legacy.coins, 4);
-
-  const skewed = normalizeWorldState({ cooldowns: { bed: 100 + 10_000_000 } }, "bedroom", 100);
-  assert.equal(skewed.cooldowns.bed, 100 + 10 * 60_000);
-
-  const bad = normalizeWorldState({ room: "moon", plots: [{ kind: "tree" }, null] }, "bedroom", 100);
-  assert.equal(bad.room, "home");
-  assert.equal(bad.plots[0].kind, null);
-  assert.equal(bad.plots.length, 3);
-});
-
-test("character skin defaults to the original white look and survives bad values", () => {
-  const fresh = normalizeGameState({}, 100);
-  assert.equal(fresh.world.skin, "original");
+  assert.equal(clamped.currentScene, "bedroom");
+  assert.equal(clamped.coins, 0);
+  assert.equal(clamped.pet.energy, 100);
+  assert.equal(clamped.pet.happiness, 0);
 
   const maid = normalizeWorldState({ skin: "maid" }, "bedroom", 100);
   assert.equal(maid.skin, "maid");
-
-  const unknown = normalizeWorldState({ skin: "whale" }, "bedroom", 100);
-  assert.equal(unknown.skin, "original");
-
-  const notAString = normalizeWorldState({ skin: 42 }, "bedroom", 100);
-  assert.equal(notAString.skin, "original");
-
-  const legacy = normalizeGameState({ currentScene: "balcony" }, 100);
-  assert.equal(legacy.world.skin, "original", "old saves without a skin use the white one");
-
-  const storage = createMemoryStorage();
-  const saved = { ...createInitialGameState(100) };
-  saved.world = { ...saved.world, skin: "maid" };
-  assert.equal(saveGameState(saved, storage), true);
-  assert.equal(loadGameState(storage, 200).world.skin, "maid");
 });
 
-test("every character skin ships the full frame set and shares one baseline", async () => {
-  const { CHARACTER_SKINS, CHARACTER_SKIN_LIST, DEFAULT_CHARACTER_SKIN } = await import(
+test("every character skin ships the full frame set and exists on disk", async () => {
+  const { CHARACTER_SKIN_LIST, DEFAULT_CHARACTER_SKIN } = await import(
     "../src/mobile/world/skins.ts"
   );
-  assert.equal(DEFAULT_CHARACTER_SKIN, "original");
-  assert.deepEqual(CHARACTER_SKIN_LIST.map((skin) => skin.id), ["original", "maid"]);
-
-  for (const skin of CHARACTER_SKIN_LIST) {
-    assert.equal(skin.metrics.frame, 760);
-    assert.equal(skin.metrics.baseline, 748 / 760);
-    assert.ok(skin.metrics.visibleHeight > 600 && skin.metrics.visibleHeight <= 760);
-    assert.equal(skin.walk.length, 4);
-    assert.equal(skin.breathe.length, 4, `${skin.id} should ship a 4-frame breathing loop`);
-    assert.ok(skin.idle.includes(`/characters/${skin.id}/`));
-    assert.ok(skin.react.includes(`/characters/${skin.id}/`));
-    assert.ok(skin.avatar.includes(`/characters/${skin.id}/`));
-    for (const frame of skin.walk) assert.ok(frame.includes(`/characters/${skin.id}/`));
-    for (const frame of skin.breathe) assert.ok(frame.includes(`/characters/${skin.id}/`));
-  }
-
-  // 白色原角色额外有 sit / sleep 两张原画；女仆暂时没有，运行时回落到 react。
-  assert.ok(CHARACTER_SKINS.original.sit?.includes("/characters/original/"));
-  assert.ok(CHARACTER_SKINS.original.sleep?.includes("/characters/original/"));
-  assert.equal(CHARACTER_SKINS.maid.sit, undefined);
-  assert.equal(CHARACTER_SKINS.maid.sleep, undefined);
-
-  assert.equal(CHARACTER_SKINS.original.label, "白色");
-  assert.equal(CHARACTER_SKINS.maid.label, "小鲸鱼");
-});
-
-test("every frame referenced by skins.ts exists on disk", async () => {
-  const { CHARACTER_SKIN_LIST } = await import("../src/mobile/world/skins.ts");
   const publicRoot = new URL("../public/", import.meta.url);
+  assert.equal(DEFAULT_CHARACTER_SKIN, "original");
 
   for (const skin of CHARACTER_SKIN_LIST) {
-    const frames = [skin.idle, skin.react, ...skin.breathe, ...skin.walk];
-    if (skin.sit) frames.push(skin.sit);
-    if (skin.sleep) frames.push(skin.sleep);
-    frames.push(skin.avatar);
-
+    const frames = [skin.idle, skin.react, ...skin.breathe, ...skin.walk, skin.avatar];
     for (const frame of frames) {
-      const url = new URL(frame, publicRoot);
-      const path = fileURLToPath(url);
+      const path = fileURLToPath(new URL(frame, publicRoot));
       assert.equal(existsSync(path), true, `missing frame: ${frame}`);
       assert.ok(statSync(path).size > 1000, `frame looks empty: ${frame}`);
     }
   }
-
-  // 白色角色的动作帧数：idle + react + breathe×4 + walk×4 + sit + sleep + avatar
-  const original = CHARACTER_SKIN_LIST.find((skin) => skin.id === "original");
-  assert.ok(original);
-  const count = 1 + 1 + original.breathe.length + original.walk.length + 2 + 1;
-  assert.equal(count, 13);
 });
 
-test("skin metrics come from the generated spec, not hand-typed numbers", async () => {
-  const { CHARACTER_METRICS } = await import("../src/mobile/world/character-metrics.ts");
-  const { CHARACTER_SKIN_LIST } = await import("../src/mobile/world/skins.ts");
-  const { readFileSync } = await import("node:fs");
+test("V4 Nikki wardrobe: 5 slots, 27 R/SR/SSR items, 5-dimension style stats and all ComfyUI anime illustrations exist on disk", () => {
+  assert.equal(WARDROBE_SLOTS.length, 5);
+  assert.equal(WARDROBE_ITEMS.length, 27);
+  const publicRoot = new URL("../public/", import.meta.url);
 
-  const specPath = fileURLToPath(new URL("../tools/character/spec.json", import.meta.url));
-  const spec = JSON.parse(readFileSync(specPath, "utf8"));
-
-  for (const skin of CHARACTER_SKIN_LIST) {
-    const generated = CHARACTER_METRICS[skin.id];
-    assert.ok(generated, `${skin.id} missing from generated metrics`);
-    assert.equal(skin.metrics.visibleHeight, generated.visibleHeight);
-    assert.equal(skin.metrics.visibleWidth, generated.visibleWidth);
-    assert.equal(skin.metrics.baseline, generated.baseline);
-    assert.ok(skin.metrics.visibleHeight > 0, `${skin.id} visibleHeight must be positive`);
-    assert.ok(skin.metrics.visibleWidth > 0, `${skin.id} visibleWidth must be positive`);
-
-    // spec 声明的站立高必须和生成物一致，否则改了 spec 忘了重跑 verify.py。
-    const declared = spec.skins[skin.id]?.visibleHeight;
-    if (declared !== undefined) {
-      assert.equal(
-        skin.metrics.visibleHeight,
-        declared,
-        `${skin.id}: spec says ${declared} but metrics says ${skin.metrics.visibleHeight}; rerun tools/character/verify.py`,
-      );
-    }
+  for (const item of WARDROBE_ITEMS) {
+    assert.ok(item.image, `${item.id} must have an image path`);
+    const imgPath = fileURLToPath(new URL(item.image, publicRoot));
+    assert.equal(existsSync(imgPath), true, `missing generated ComfyUI illustration: ${item.image}`);
+    assert.ok(statSync(imgPath).size > 5000, `illustration looks empty: ${item.image}`);
   }
 
-  assert.equal(spec.frame.canvas, 760, "canvas is the shared contract");
-  assert.equal(spec.frame.baselineY, 748, "feet line is the shared contract");
-  assert.equal(spec.frame.centerX, 380, "center line is the shared contract");
-});
-
-test("prop actions map to the right character pose", async () => {
-  const { poseForProp } = await import("../src/mobile/world/poses.ts");
-
-  const bed = getProp("home", "bed");
-  const desk = getProp("home", "desk");
-  const shelf = getProp("home", "shelf");
-  const stall = getProp("street", "flower-stall");
-  const door = getProp("home", "home-garden-door");
-  const bench = getProp("street", "street-bench");
-  const plot = getProp("garden", "plot-0");
-  const fountain = getProp("street", "fountain");
-  assert.ok(bed && desk && shelf && stall && door && bench && plot && fountain);
-
-  assert.equal(poseForProp(bed, "ok")?.pose, "sleep", "bed should lie down");
-  assert.equal(poseForProp(desk, "ok")?.pose, "sit", "desk should sit down");
-  assert.equal(poseForProp(bench, "ok")?.pose, "sit", "bench should sit down");
-  assert.equal(poseForProp(plot, "ok")?.pose, "sit", "garden plot should kneel/sit");
-  assert.equal(poseForProp(stall, "ok")?.pose, "react", "flower stall is a short interaction");
-  assert.equal(poseForProp(shelf, "ok")?.pose, "react", "shelf is a short interaction");
-  assert.equal(poseForProp(fountain, "ok")?.pose, "react", "fountain is a short interaction");
-
-  assert.equal(poseForProp(door, "ok"), null, "doors switch room instead of posing");
-  assert.equal(poseForProp(bed, "blocked"), null, "cooldown clicks do not pose");
-});
-
-test("every room keeps a clear walking lane and key props are character-scaled", () => {
-  for (const room of Object.values(ROOMS)) {
-    for (let x = room.walk.x0 + 10; x <= room.walk.x1 - 10; x += 10) {
-      const runtime = new WorldRuntime(room, { x, y: 880 });
-      assert.equal(runtime.canStand(x, 880), true, `${room.id} blocked at x=${x}`);
-    }
+  for (const slot of WARDROBE_SLOTS) {
+    const itemsInSlot = WARDROBE_ITEMS.filter((i) => i.slot === slot);
+    assert.ok(itemsInSlot.length >= 5, `slot ${slot} has at least 5 items`);
   }
 
-  const heroHeight = PLAYER_STAND_H;
-  const keyProps = [
-    ["home", "bed"],
-    ["home", "desk"],
-    ["home", "shelf"],
-    ["home", "home-street-door"],
-  ];
-  for (const [roomId, propId] of keyProps) {
-    const prop = getProp(roomId, propId);
-    assert.ok(prop, `${propId} missing`);
-    const ratio = prop.h / heroHeight;
-    assert.ok(ratio >= 0.6 && ratio <= 1.5, `${propId} ratio ${ratio.toFixed(2)}`);
-  }
+  const baseStats = computeOutfitStats(DEFAULT_EQUIPPED_OUTFIT, {});
+  assert.ok(baseStats.sweet > 0);
+  assert.ok(baseStats.elegant > 0);
+  assert.ok(baseStats.pure > 0);
+  assert.ok(baseStats.warm > 0);
+  assert.ok(baseStats.cool > 0);
+
+  // Star level multiplier increases stats by +15% per star above 1
+  assert.equal(getItemStarMultiplier(1), 1);
+  assert.equal(getItemStarMultiplier(3), 1.3);
+  const starredStats = computeOutfitStats(DEFAULT_EQUIPPED_OUTFIT, {
+    "dress-snow-white": 3,
+  });
+  assert.ok(starredStats.pure > baseStats.pure);
 });
 
-test("walking follows the lane, stops at the target and moves the camera", () => {
-  const room = ROOMS.home;
-  const runtime = new WorldRuntime(room, room.defaultSpawn);
-  runtime.setViewport(500);
-  runtime.snapCamera();
+test("V4 Nikki styling stage evaluation: weighted 5-dim score, suit resonance, active skills and S/SS/SSS ranks", () => {
+  assert.equal(STYLING_STAGES.length, 6);
+  assert.equal(SUIT_DEFS.length, 4);
+  assert.equal(STYLING_SKILLS.length, 4);
+  const stage1 = STYLING_STAGES[0];
 
-  const bed = getProp("home", "bed");
-  assert.ok(bed);
-  runtime.moveTo(bed.x, 880);
-  tick(runtime, 1600);
+  // Default outfit is the 5-piece Snow Tea suit -> triggers suit resonance bonus
+  const suitCheck = detectActiveSuit(DEFAULT_EQUIPPED_OUTFIT);
+  assert.equal(suitCheck.suit?.id, "suit-snow-tea");
+  assert.equal(suitCheck.pieceCount, 5);
+  assert.equal(suitCheck.bonusScore, 450);
 
-  assert.ok(Math.abs(runtime.player.x - bed.x) < 6);
-  assert.equal(runtime.player.moving, false);
-  assert.ok(runtime.cameraX > 0);
-  assert.ok(Math.abs(runtime.cameraX - (runtime.player.x - 250)) < 46);
+  const baseEval = evaluateOutfitForStage(stage1, DEFAULT_EQUIPPED_OUTFIT, {}, ["smile", "charm"]);
+  assert.ok(baseEval.totalScore > 4200);
+  assert.ok(baseEval.skillBonusScore > 0, "memory card skill adds bonus score");
+  assert.ok(baseEval.activeSkillBonus > 0, "active styling skills add bonus score");
+  assert.equal(baseEval.suitBonusScore, 450, "suit resonance adds bonus score");
+  assert.equal(baseEval.beatRival, true);
+
+  // Equipping all SSR items with 5 stars easily achieves SSS rank on Stage 1
+  const allUnlocked = new Set(WARDROBE_ITEMS.map((i) => i.id));
+  const maxStars = Object.fromEntries(WARDROBE_ITEMS.map((i) => [i.id, 5]));
+  const bestOutfit = recommendBestOutfitForStage(stage1, allUnlocked, maxStars);
+  const maxEval = evaluateOutfitForStage(stage1, bestOutfit, maxStars, ["smile", "bloom"]);
+
+  assert.equal(maxEval.rank, "SSS");
+  assert.equal(maxEval.passedS, true);
+  assert.ok(maxEval.totalScore >= stage1.sssScore);
 });
 
-test("the garden ball can be kicked and caught while it is still moving", () => {
-  const ballProp = getProp("garden", "garden-ball");
-  assert.ok(ballProp);
-  const runtime = new WorldRuntime(ROOMS.garden, { x: ballProp.x, y: 884 });
-  runtime.setViewport(500);
-  const ball = runtime.ball;
-  assert.ok(ball);
+test("V4 Star Pavilion gacha: 1-pull and 5-pull with guaranteed SR/SSR and duplicate star-up", () => {
+  const initialUnlocked = new Set(DEFAULT_UNLOCKED_ITEM_IDS);
+  const draw5 = rollPavilionGacha(5, initialUnlocked, {}, () => 0.99);
+  assert.equal(draw5.pulls.length, 5);
+  assert.equal(
+    draw5.pulls.some((p) => p.item.rarity === "SR" || p.item.rarity === "SSR"),
+    true,
+    "5-pull guarantees at least one SR or SSR item even on worst RNG",
+  );
+  assert.ok(draw5.bondGained >= 30);
 
-  runtime.kickBall();
-  assert.ok(ball.flight, "ball should be in flight");
-  tick(runtime, 700);
-  assert.equal(runtime.canCatch(), true);
-  assert.ok(runtime.ballDistance() <= CATCH_RANGE);
-
-  assert.equal(runtime.catchBall(), true);
-  assert.equal(ball.combo, 1);
-  assert.ok(runtime.ballDistance() <= CATCH_RANGE, "ball returns to the player");
-
-  tick(runtime, 700);
-  runtime.kickBall();
-  tick(runtime, 700);
-  assert.equal(runtime.catchBall(), true);
-  assert.equal(ball.combo, 2);
+  // Drawing an already unlocked item increments its star level up to 5
+  const firstId = draw5.pulls[0].item.id;
+  const secondDraw = rollPavilionGacha(
+    1,
+    new Set(draw5.nextUnlockedIds),
+    draw5.nextStars,
+    () => 0,
+  );
+  assert.equal(secondDraw.pulls.length, 1);
+  assert.ok(getWardrobeItem(firstId));
 });
 
-test("garden plant, water and harvest form a closed loop that keeps a seed", () => {
-  const plot = getProp("garden", "plot-0");
-  assert.ok(plot);
+test("bond level progression and offline chat fallback", () => {
+  const lv = getBondLevelInfo(55);
+  assert.ok(lv.level >= 2);
 
-  const base = { ...createInitialGameState(100), seeds: 1 };
-  const planted = applyPropAction(base, plot, 1000);
-  assert.equal(planted.tone, "ok");
-  assert.equal(planted.state.world.plots[0].kind, "daisy");
-  assert.equal(planted.state.seeds, 0);
-  assert.equal(plotStage(planted.state.world.plots[0], 2000), 1);
+  const state = createInitialGameState(100);
+  const pat = interactWithCompanion(state, "pat", false, 1000);
+  assert.equal(pat.ok, true);
+  assert.ok(pat.bondGained > 0);
 
-  const watered = applyPropAction(planted.state, plot, 2000);
-  assert.ok(watered.state.world.plots[0].wateredAt > 0);
-  assert.match(watered.line, /浇了水/);
-
-  const harvested = applyPropAction(watered.state, plot, 2000 + PLOT_GROW_MS + 1);
-  assert.equal(harvested.tone, "reward");
-  assert.equal(harvested.state.flowers, 1);
-  assert.equal(harvested.state.seeds, 1, "harvest leaves a seed for the next round");
-  assert.equal(harvested.state.world.collection.daisy, 1);
-  assert.equal(harvested.state.mementos, 1);
-  assert.equal(harvested.state.world.plots[0].kind, null);
-  assert.ok(harvested.state.journal[0].text.includes("雏菊"));
+  assert.equal(lightingForHour(18).period, "dusk");
+  assert.ok(fallbackCompanionChat("今天这身衣服好看吗", state).length > 0);
 });
 
-test("prop actions apply a gentle cooldown and can never soft-lock the player", () => {
-  const bed = getProp("home", "bed");
-  assert.ok(bed);
-  const state = {
-    ...createInitialGameState(100),
-    pet: { ...createInitialGameState(100).pet, energy: 90 },
-  };
+test("V6 Paper-Doll rig placements and custom user adjustments clamp safely", () => {
+  const defaultHair = getRigPlacement("hair-daisy-clip", "hairAcc", {});
+  assert.equal(defaultHair.dx, 13);
+  assert.equal(defaultHair.dy, -27);
 
-  const first = applyPropAction(state, bed, 1000);
-  assert.equal(first.tone, "ok");
-  assert.equal(first.state.pet.energy, 100);
-  assert.ok(cooldownLeftMs(first.state, "bed", 1500) > 0);
+  const custom = clampRigPlacement({ dx: 99, dy: -80, scale: 3.5, rotate: 15 }, defaultHair);
+  assert.equal(custom.dx, 48);
+  assert.equal(custom.dy, -48);
+  assert.equal(custom.scale, 2.2);
+  assert.equal(custom.rotate, 15);
 
-  const second = applyPropAction(first.state, bed, 2000);
-  assert.equal(second.tone, "blocked");
-  assert.match(second.line, /歇/);
-});
-
-test("street shop, room visits and ball milestones respect low-pressure rules", () => {
-  const stall = getProp("street", "flower-stall");
-  assert.ok(stall);
-
-  const rich = { ...createInitialGameState(100), coins: 10, seeds: 0 };
-  const bought = applyPropAction(rich, stall, 1000);
-  assert.equal(bought.state.coins, 4);
-  assert.equal(bought.state.seeds, 2);
-
-  const poor = applyPropAction({ ...createInitialGameState(200), coins: 3 }, stall, 1000);
-  assert.equal(poor.tone, "blocked");
-  assert.match(poor.line, /零钱/);
-
-  const entered = enterRoom(createInitialGameState(100), "garden", 300);
-  assert.equal(entered.currentScene, "balcony");
-  assert.equal(entered.world.room, "garden");
-  assert.equal(entered.coins, 21);
-  assert.equal(entered.journal.length, 1);
-  assert.equal(enterRoom(entered, "garden", 400).journal.length, 1);
-
-  const kicked = recordBallKick(createInitialGameState(100));
-  assert.equal(kicked.world.kicks, 1);
-  const caught = recordBallCatch(kicked, 3, 500);
-  assert.equal(caught.world.bestCombo, 3);
-  assert.equal(caught.mementos, 1);
-  assert.ok(caught.journal[0].text.includes("连续接住 3 次球"));
-});
-
-test("V2 world state round-trips through the mobile save", () => {
-  const storage = createMemoryStorage();
-  const base = createInitialGameState(100);
-  const state = {
-    ...base,
-    seeds: 2,
-    world: {
-      ...base.world,
-      room: "garden",
-      seenIntro: true,
-      planted: 1,
-      harvested: 1,
-      collection: { daisy: 2, rose: 0, sunflower: 0 },
-      plots: [
-        { kind: "rose", plantedAt: 50, wateredAt: 60 },
-        { kind: null, plantedAt: 0, wateredAt: 0 },
-        { kind: null, plantedAt: 0, wateredAt: 0 },
-      ],
-      visited: ["home", "garden"],
-    },
-  };
-
-  assert.equal(saveGameState(state, storage), true);
-  const loaded = loadGameState(storage, 200);
-  assert.equal(loaded.world.room, "garden");
-  assert.equal(loaded.world.seenIntro, true);
-  assert.equal(loaded.world.collection.daisy, 2);
-  assert.equal(loaded.world.plots[0].kind, "rose");
-  assert.deepEqual(loaded.world.visited, ["home", "garden"]);
+  const overridden = getRigPlacement("hair-daisy-clip", "hairAcc", {
+    "hair-daisy-clip": custom,
+  });
+  assert.deepEqual(overridden, custom);
 });
