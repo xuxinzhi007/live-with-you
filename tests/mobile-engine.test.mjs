@@ -42,10 +42,14 @@ import {
 } from "../src/mobile/world/paper-doll-rig.ts";
 import {
   BONE_LINKS,
+  HUMANOID_BONES,
   JOINT_LIST,
+  computeHumanoidPartSlices,
+  evaluateAnimClip,
   getSkeletonForDress,
   moveJointCascade,
   resolveJointForItem,
+  solveWorldSkeleton,
   updateJointTransform,
 } from "../src/mobile/world/skeleton-system.ts";
 import {
@@ -232,9 +236,10 @@ test("V7 scale-invariant 760x760 bone sockets, transparent wearable overlays and
   assert.deepEqual(overridden, custom);
 });
 
-test("V8 per-dress hierarchical skeleton tree and cascade joint dragging", () => {
-  assert.equal(JOINT_LIST.length, 7);
-  assert.equal(BONE_LINKS.length, 6);
+test("V9 full humanoid biped FK skeleton (with legs), 6-layer cutout slicing and cascade joint dragging", () => {
+  assert.equal(JOINT_LIST.length, 14, "full humanoid rig has 14 joints including pelvis, hips, feet, shoulders, hands, neck and head");
+  assert.equal(HUMANOID_BONES.length, 6, "6 tapered octahedral bones: spine, head, armL, armR, legL, legR");
+  assert.equal(BONE_LINKS.length, 13);
 
   const snowSkel = getSkeletonForDress("dress-snow-white", {});
   const apricotSkel = getSkeletonForDress("dress-apricot-tea", {});
@@ -243,6 +248,8 @@ test("V8 per-dress hierarchical skeleton tree and cascade joint dragging", () =>
     apricotSkel.head.y,
     "different generated dress proportions have their own calibrated head bone height",
   );
+  assert.ok(snowSkel.footL.y > snowSkel.hipL.y, "left foot is below left hip");
+  assert.ok(snowSkel.footR.y > snowSkel.hipR.y, "right foot is below right hip");
 
   // Moving the parent `head` joint cascades the exact same delta to child `crown` and `hairSide` joints
   const origCrownY = snowSkel.crown.y;
@@ -251,10 +258,19 @@ test("V8 per-dress hierarchical skeleton tree and cascade joint dragging", () =>
   assert.equal(movedHead.crown.y, origCrownY - 4, "child crown joint moves with parent head joint");
   assert.equal(movedHead.hairSide.x, origSideX + 5, "child hairSide joint moves with parent head joint");
 
-  // Updating scale and rotation on a leaf socket joint clamps within safe bounds
-  const scaled = updateJointTransform(movedHead, "handR", { scale: 1.35, rotate: -25 });
+  // FK world solver rotates head and legs during walk animation
+  const walkAnim = evaluateAnimClip("walk", 0.35);
+  const world = solveWorldSkeleton(snowSkel, walkAnim);
+  const slices = computeHumanoidPartSlices(snowSkel, world, walkAnim);
+  assert.equal(slices.length, 6, "6 body part layers: legL, legR, armL, torso, armR, head");
+  assert.notEqual(world.hipL.worldAngle, 0, "left leg swings during walk cycle");
+  assert.notEqual(world.hipR.worldAngle, 0, "right leg swings opposite during walk cycle");
+
+  // Updating scale, rotation and poseRotate on a joint clamps within safe bounds
+  const scaled = updateJointTransform(movedHead, "handR", { scale: 1.35, rotate: -25, poseRotate: 20 });
   assert.equal(scaled.handR.scale, 1.35);
   assert.equal(scaled.handR.rotate, -25);
+  assert.equal(scaled.handR.poseRotate, 20);
   assert.equal(resolveJointForItem("hair-daisy-clip", "hairAcc"), "hairSide");
   assert.equal(resolveJointForItem("hair-pearl-tiara", "hairAcc"), "crown");
 });

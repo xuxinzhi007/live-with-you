@@ -31,12 +31,18 @@ import {
 } from "./world/paper-doll-rig";
 import {
   BONE_LINKS,
+  HUMANOID_BONES,
   JOINT_LIST,
+  buildTaperedBonePolygon,
+  computeHumanoidPartSlices,
+  evaluateAnimClip,
   getSkeletonForDress,
   moveJointCascade,
   resolveJointForItem,
+  solveWorldSkeleton,
   updateJointTransform,
   type AllDressSkeletons,
+  type AnimClipId,
   type JointId,
 } from "./world/skeleton-system";
 import { getBondLevelInfo } from "./world/codex";
@@ -156,8 +162,11 @@ export function WorldApp() {
   const [inspectedItemId, setInspectedItemId] = useState<string>(DEFAULT_EQUIPPED_OUTFIT.dress);
   const [selectedSkills, setSelectedSkills] = useState<StylingSkill["id"][]>(["smile", "charm"]);
 
-  // 骨骼校准工作台：当前选中与正在拖拽的关节
-  const [selectedJoint, setSelectedJoint] = useState<JointId>("crown");
+  // 骨骼校准工作台：Setup 绑定对位模式 vs Pose 动作摆姿模式 + 全身骨骼动画播放器
+  const [rigMode, setRigMode] = useState<"setup" | "pose">("pose");
+  const [animClip, setAnimClip] = useState<AnimClipId>("idle");
+  const [animTime, setAnimTime] = useState(0);
+  const [selectedJoint, setSelectedJoint] = useState<JointId>("head");
   const [draggingJoint, setDraggingJoint] = useState<JointId | null>(null);
   const boneBoxRef = useRef<HTMLDivElement>(null);
 
@@ -206,6 +215,19 @@ export function WorldApp() {
     }, 520);
     return () => clearInterval(timer);
   }, []);
+
+  // 30FPS 驱动全身双足 FK 骨骼动画（呼吸/歪头/挥手/踏步走/欢呼）
+  useEffect(() => {
+    if (screen === "rig" && rigMode === "setup") return;
+    let raf = 0;
+    const t0 = performance.now();
+    const loop = (now: number) => {
+      setAnimTime((now - t0) / 1000);
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [rigMode, screen]);
 
   useEffect(() => {
     void probeCompanionStatus().then(setCompanionConn);
@@ -317,18 +339,37 @@ export function WorldApp() {
     [nikki.equipped, nikki.itemStars, selectedSkills, selectedStage],
   );
 
-  // 根据当前头饰/手持物/香氛绑定的骨骼节点取坐标
+  // 根据当前头饰/手持物/香氛绑定的骨骼节点 + FK 正运动学解算世界坐标与旋转角！
   const hairJointId = useMemo(() => resolveJointForItem(currentHairAcc.id, "hairAcc"), [currentHairAcc.id]);
   const handJointId = useMemo(() => resolveJointForItem(currentHandheld.id, "handheld"), [currentHandheld.id]);
-  const hairNode = activeSkeleton[hairJointId];
-  const handNode = activeSkeleton[handJointId];
-  const auraNode = activeSkeleton.torso;
+
+  const currentAnimOffsets = useMemo(
+    () =>
+      screen === "rig" && rigMode === "setup"
+        ? { torsoRot: 0, headRot: 0, armLRot: 0, armRRot: 0, legLRot: 0, legRRot: 0, pelvisDy: 0 }
+        : evaluateAnimClip(animClip, animTime),
+    [animClip, animTime, rigMode, screen],
+  );
+
+  const worldJoints = useMemo(
+    () => solveWorldSkeleton(activeSkeleton, currentAnimOffsets),
+    [activeSkeleton, currentAnimOffsets],
+  );
+
+  const partSlices = useMemo(
+    () => computeHumanoidPartSlices(activeSkeleton, worldJoints, currentAnimOffsets),
+    [activeSkeleton, currentAnimOffsets, worldJoints],
+  );
+
+  const hairWorld = worldJoints[hairJointId];
+  const handWorld = worldJoints[handJointId];
+  const auraWorld = worldJoints.torso;
 
   const hairOverlaySrc = getWearableOverlaySrc(currentHairAcc.id, itemImage(currentHairAcc));
   const handOverlaySrc = getWearableOverlaySrc(currentHandheld.id, itemImage(currentHandheld));
   const auraOverlaySrc = getWearableOverlaySrc(currentAura.id, itemImage(currentAura));
 
-  // ==================== 可视化骨骼关节拖拽处理 ====================
+  // ==================== 可视化骨骼关节拖拽处理（Setup 拖关节对位 / Pose 拖骨骼旋转摆动作） ====================
   const handleBonePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (!draggingJoint || !boneBoxRef.current) return;
     const rect = boneBoxRef.current.getBoundingClientRect();
@@ -338,19 +379,36 @@ export function WorldApp() {
 
     setNikki((prev) => {
       const curSkel = getSkeletonForDress(currentDress.id, prev.dressSkeletons);
+      if (rigMode === "pose") {
+        // Pose 模式：拖动末端关节时，计算相对父枢轴的角度变化，直接旋转该部位骨骼（FK 摆姿）！
+        const node = curSkel[draggingJoint];
+        const parentNode = node.parent ? curSkel[node.parent] : null;
+        if (parentNode && !node.id.startsWith("crown") && !node.id.startsWith("hair")) {
+          const restAngle = (Math.atan2(node.y - parentNode.y, node.x - parentNode.x) * 180) / Math.PI;
+          const curAngle = (Math.atan2(ny - parentNode.y, nx - parentNode.x) * 180) / Math.PI;
+          let delta = curAngle - restAngle;
+          if (delta > 180) delta -= 360;
+          if (delta < -180) delta += 360;
+          const nextSkel = updateJointTransform(curSkel, draggingJoint, { poseRotate: delta });
+          return {
+            ...prev,
+            dressSkeletons: { ...(prev.dressSkeletons || {}), [currentDress.id]: nextSkel },
+          };
+        }
+      }
       const nextSkel = moveJointCascade(curSkel, draggingJoint, nx, ny);
       return {
         ...prev,
         dressSkeletons: { ...(prev.dressSkeletons || {}), [currentDress.id]: nextSkel },
       };
     });
-  }, [currentDress.id, draggingJoint]);
+  }, [currentDress.id, draggingJoint, rigMode]);
 
   const handleBonePointerUp = useCallback(() => {
     setDraggingJoint(null);
   }, []);
 
-  const handleSelectedJointScaleRotate = useCallback((patch: { scale?: number; rotate?: number }) => {
+  const handleSelectedJointScaleRotate = useCallback((patch: { scale?: number; rotate?: number; poseRotate?: number }) => {
     setNikki((prev) => {
       const curSkel = getSkeletonForDress(currentDress.id, prev.dressSkeletons);
       const nextSkel = updateJointTransform(curSkel, selectedJoint, patch);
@@ -751,34 +809,43 @@ export function WorldApp() {
                   src={auraOverlaySrc}
                   alt={currentAura.name}
                   style={{
-                    left: `${auraNode.x}%`,
-                    top: `${auraNode.y}%`,
-                    width: `${88 * auraNode.scale}%`,
+                    left: `${auraWorld.x}%`,
+                    top: `${auraWorld.y}%`,
+                    width: `${88 * auraWorld.scale}%`,
                     zIndex: 10,
-                    transform: `translate(-50%, -50%) rotate(${auraNode.rotate}deg)`,
+                    transform: `translate(-50%, -50%) rotate(${auraWorld.worldAngle + auraWorld.attachRotate}deg)`,
                   }}
                   draggable={false}
                 />
 
-                {/* Layer 20: 760×760 透明抠图主躯干 */}
-                <img
-                  className="nk-bone-body"
-                  src={heroSpriteSrc}
-                  alt="雯宝"
-                  draggable={false}
-                />
+                {/* Layer 16~24: 6 层人体部位切片蒙皮（LegL 左腿 / LegR 右腿 / ArmL 左臂 / Torso 躯干 / ArmR 右臂 / Head 头部）各自绕骨骼枢轴独立旋转！ */}
+                {partSlices.map((slice) => (
+                  <img
+                    key={slice.part}
+                    className={`nk-bone-body m-part-${slice.part}`}
+                    src={heroSpriteSrc}
+                    alt=""
+                    style={{
+                      zIndex: slice.zIndex,
+                      clipPath: slice.clipPath,
+                      transformOrigin: `${slice.originX}% ${slice.originY}%`,
+                      transform: `translateY(${slice.ty}%) rotate(${slice.angle}deg)`,
+                    }}
+                    draggable={false}
+                  />
+                ))}
 
-                {/* Layer 32: 绑定在 hairJointId (crown 头顶 或 hairSide 侧发) 骨骼关节上的头饰 */}
+                {/* Layer 32: 绑定在头部骨骼链上的头饰（随歪头动作同步旋转！） */}
                 <img
                   className={`nk-bone-layer m-hair${screen === "rig" && selectedJoint === hairJointId ? " m-editing" : ""}`}
                   src={hairOverlaySrc}
                   alt={currentHairAcc.name}
                   style={{
-                    left: `${hairNode.x}%`,
-                    top: `${hairNode.y}%`,
-                    width: `${(hairJointId === "hairSide" ? 22 : 38) * hairNode.scale}%`,
+                    left: `${hairWorld.x}%`,
+                    top: `${hairWorld.y}%`,
+                    width: `${(hairJointId === "hairSide" ? 22 : 38) * hairWorld.scale}%`,
                     zIndex: 32,
-                    transform: `translate(-50%, -50%) rotate(${hairNode.rotate}deg)`,
+                    transform: `translate(-50%, -50%) rotate(${hairWorld.worldAngle + hairWorld.attachRotate}deg)`,
                   }}
                   onClick={(e) => {
                     if (screen === "rig") {
@@ -789,17 +856,17 @@ export function WorldApp() {
                   draggable={false}
                 />
 
-                {/* Layer 35: 绑定在 handJointId (handR 右手 或 handL 左手) 骨骼关节上的手持物 */}
+                {/* Layer 35: 绑定在手部骨骼链上的手持物（随手臂挥动同步旋转位移！） */}
                 <img
                   className={`nk-bone-layer m-hand${screen === "rig" && selectedJoint === handJointId ? " m-editing" : ""}`}
                   src={handOverlaySrc}
                   alt={currentHandheld.name}
                   style={{
-                    left: `${handNode.x}%`,
-                    top: `${handNode.y}%`,
-                    width: `${26 * handNode.scale}%`,
+                    left: `${handWorld.x}%`,
+                    top: `${handWorld.y}%`,
+                    width: `${26 * handWorld.scale}%`,
                     zIndex: 35,
-                    transform: `translate(-50%, -50%) rotate(${handNode.rotate}deg)`,
+                    transform: `translate(-50%, -50%) rotate(${handWorld.worldAngle + handWorld.attachRotate}deg)`,
                   }}
                   onClick={(e) => {
                     if (screen === "rig") {
@@ -810,41 +877,60 @@ export function WorldApp() {
                   draggable={false}
                 />
 
-                {/* Layer 50: 🦴 可视化骨骼连线与可直接按住拖拽的关节手柄（仅在 screen === "rig" 时显示！） */}
+                {/* Layer 50: 🦴 Blender / Spine 风格锥形双足人体骨骼棒与精致关节圆环 */}
                 {screen === "rig" && (
                   <div className="nk-skeleton-overlay">
                     <svg className="nk-skeleton-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      {/* 辅助锁骨/髋部连接线 */}
                       {BONE_LINKS.map(([fromId, toId]) => {
-                        const a = activeSkeleton[fromId];
-                        const b = activeSkeleton[toId];
+                        const a = worldJoints[fromId];
+                        const b = worldJoints[toId];
                         return (
                           <line
-                            key={`${fromId}-${toId}`}
+                            key={`link-${fromId}-${toId}`}
                             x1={a.x}
                             y1={a.y}
                             x2={b.x}
                             y2={b.y}
-                            stroke="#38bdf8"
-                            strokeWidth="1.2"
-                            strokeDasharray="2.5 1.5"
+                            stroke="rgba(255,255,255,0.55)"
+                            strokeWidth="0.6"
+                            strokeDasharray="1.5 1.2"
+                          />
+                        );
+                      })}
+
+                      {/* 6 根人体主锥形骨骼棒（脊柱、头部、左臂、右臂、左腿、右腿） */}
+                      {HUMANOID_BONES.map((bone) => {
+                        const a = worldJoints[bone.from];
+                        const b = worldJoints[bone.to];
+                        const pts = buildTaperedBonePolygon(a.x, a.y, b.x, b.y, 2.5);
+                        const isSel = selectedJoint === bone.to || selectedJoint === bone.from;
+                        return (
+                          <polygon
+                            key={bone.id}
+                            points={pts}
+                            fill={bone.color}
+                            fillOpacity={isSel ? 0.78 : 0.48}
+                            stroke="#ffffff"
+                            strokeWidth={isSel ? "0.8" : "0.45"}
                           />
                         );
                       })}
                     </svg>
 
                     {JOINT_LIST.map((meta) => {
-                      const node = activeSkeleton[meta.id];
+                      const wNode = worldJoints[meta.id];
                       const isSel = selectedJoint === meta.id;
                       return (
                         <button
                           key={meta.id}
                           type="button"
-                          className={`nk-joint-handle${isSel ? " m-selected" : ""}`}
+                          className={`nk-joint-handle${isSel ? " m-selected" : ""}${meta.isSocket ? " m-socket" : ""}`}
                           style={{
-                            left: `${node.x}%`,
-                            top: `${node.y}%`,
+                            left: `${wNode.x}%`,
+                            top: `${wNode.y}%`,
                             borderColor: meta.color,
-                            background: isSel ? meta.color : "rgba(15, 23, 42, 0.78)",
+                            background: isSel ? meta.color : "rgba(15, 23, 42, 0.72)",
                           }}
                           onPointerDown={(e) => {
                             e.stopPropagation();
@@ -852,9 +938,9 @@ export function WorldApp() {
                             setSelectedJoint(meta.id);
                             setDraggingJoint(meta.id);
                           }}
-                          title={`按住拖动【${meta.label}】(${node.x}%, ${node.y}%)`}
+                          title={`${meta.label} (${Math.round(wNode.x)}%, ${Math.round(wNode.y)}%)`}
                         >
-                          <span>{meta.label.slice(0, 2)}</span>
+                          {isSel && <em>{meta.label}</em>}
                         </button>
                       );
                     })}
@@ -883,22 +969,59 @@ export function WorldApp() {
           </section>
         )}
 
-        {/* ==================== 画面 3：🦴 可视化骨骼校准控制面板 ==================== */}
+        {/* ==================== 画面 3：🦴 双足人体骨骼绑定 (Setup) & 动作摆姿 (Pose) 工作台 ==================== */}
         {screen === "rig" && (
           <section className="nk-panel nk-panel-enter" aria-label="骨骼校准工作台">
             <div className="nk-rig-panel-head">
-              <div>
-                <strong>🦴 【{currentDress.name}】专属骨骼树校准</strong>
-                <small>直接按住上方雯宝身上的圆点拖动关节（拖父关节会自动带动子关节）</small>
+              <div className="nk-rig-mode-switch">
+                <button
+                  type="button"
+                  className={rigMode === "pose" ? "m-on" : ""}
+                  onClick={() => setRigMode("pose")}
+                >
+                  🎬 动作摆姿 (Pose)
+                </button>
+                <button
+                  type="button"
+                  className={rigMode === "setup" ? "m-on" : ""}
+                  onClick={() => setRigMode("setup")}
+                >
+                  🔧 骨骼对位 (Setup)
+                </button>
               </div>
               <div className="nk-rig-head-btns">
-                <button type="button" className="nk-tuner-reset" onClick={handleCopySkeletonJson}>📋 导出JSON</button>
-                <button type="button" className="nk-tuner-reset" onClick={handleResetDressSkeleton}>重置骨骼</button>
+                <button type="button" className="nk-tuner-reset" onClick={handleCopySkeletonJson}>📋 导出</button>
+                <button type="button" className="nk-tuner-reset" onClick={handleResetDressSkeleton}>重置</button>
               </div>
             </div>
 
+            {/* 5 套全身骨骼动作一键预览（含迈腿踏步走、歪头、挥手、欢呼） */}
+            {rigMode === "pose" && (
+              <div className="nk-anim-clips">
+                <span>全身动作：</span>
+                {(
+                  [
+                    ["idle", "🍃 呼吸"],
+                    ["tilt", "💖 歪头"],
+                    ["wave", "👋 挥手"],
+                    ["walk", "🚶 踏步(动腿)"],
+                    ["cheer", "🎉 雀跃"],
+                  ] as [AnimClipId, string][]
+                ).map(([cid, label]) => (
+                  <button
+                    key={cid}
+                    type="button"
+                    className={`nk-clip-btn${animClip === cid ? " m-on" : ""}`}
+                    onClick={() => setAnimClip(cid)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="nk-joint-pills">
-              {JOINT_LIST.filter((j) => j.id !== "root").map((j) => (
+              {JOINT_LIST.map((j) => (
                 <button
                   key={j.id}
                   type="button"
@@ -914,7 +1037,27 @@ export function WorldApp() {
             {activeJointNode && (
               <div className="nk-tuner-sliders">
                 <label>
-                  <span>X ({activeJointNode.x}%)</span>
+                  <span>骨骼旋转 ({activeJointNode.poseRotate}°)</span>
+                  <input
+                    type="range"
+                    min={-60}
+                    max={60}
+                    value={activeJointNode.poseRotate}
+                    onChange={(e) => handleSelectedJointScaleRotate({ poseRotate: Number(e.target.value) })}
+                  />
+                </label>
+                <label>
+                  <span>插槽缩放 ({Math.round(activeJointNode.scale * 100)}%)</span>
+                  <input
+                    type="range"
+                    min={45}
+                    max={180}
+                    value={Math.round(activeJointNode.scale * 100)}
+                    onChange={(e) => handleSelectedJointScaleRotate({ scale: Number(e.target.value) / 100 })}
+                  />
+                </label>
+                <label>
+                  <span>关节 X ({Math.round(activeJointNode.x)}%)</span>
                   <input
                     type="range"
                     min={5}
@@ -936,7 +1079,7 @@ export function WorldApp() {
                   />
                 </label>
                 <label>
-                  <span>Y ({activeJointNode.y}%)</span>
+                  <span>关节 Y ({Math.round(activeJointNode.y)}%)</span>
                   <input
                     type="range"
                     min={5}
@@ -955,26 +1098,6 @@ export function WorldApp() {
                         };
                       });
                     }}
-                  />
-                </label>
-                <label>
-                  <span>插槽缩放</span>
-                  <input
-                    type="range"
-                    min={45}
-                    max={180}
-                    value={Math.round(activeJointNode.scale * 100)}
-                    onChange={(e) => handleSelectedJointScaleRotate({ scale: Number(e.target.value) / 100 })}
-                  />
-                </label>
-                <label>
-                  <span>插槽旋转</span>
-                  <input
-                    type="range"
-                    min={-60}
-                    max={60}
-                    value={activeJointNode.rotate}
-                    onChange={(e) => handleSelectedJointScaleRotate({ rotate: Number(e.target.value) })}
                   />
                 </label>
               </div>
