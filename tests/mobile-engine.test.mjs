@@ -34,9 +34,20 @@ import {
   interactWithCompanion,
 } from "../src/mobile/world/codex.ts";
 import {
+  BONE_SOCKETS,
   clampRigPlacement,
   getRigPlacement,
+  getSocketForItem,
+  getWearableOverlaySrc,
 } from "../src/mobile/world/paper-doll-rig.ts";
+import {
+  BONE_LINKS,
+  JOINT_LIST,
+  getSkeletonForDress,
+  moveJointCascade,
+  resolveJointForItem,
+  updateJointTransform,
+} from "../src/mobile/world/skeleton-system.ts";
 import {
   fallbackCompanionChat,
 } from "../src/mobile/world/companion-bridge.ts";
@@ -193,14 +204,25 @@ test("bond level progression and offline chat fallback", () => {
   assert.ok(fallbackCompanionChat("今天这身衣服好看吗", state).length > 0);
 });
 
-test("V6 Paper-Doll rig placements and custom user adjustments clamp safely", () => {
+test("V7 scale-invariant 760x760 bone sockets, transparent wearable overlays and custom user adjustments", () => {
   const defaultHair = getRigPlacement("hair-daisy-clip", "hairAcc", {});
-  assert.equal(defaultHair.dx, 13);
-  assert.equal(defaultHair.dy, -27);
+  assert.equal(defaultHair.dx, 0);
+  assert.equal(defaultHair.dy, 0);
+  assert.equal(defaultHair.rotate, 12);
+
+  // Side hair clips map to the hair-side bone socket; crowns/hats map to hair-crown
+  const sideSocket = getSocketForItem("hair-daisy-clip", "hairAcc");
+  const crownSocket = getSocketForItem("hair-pearl-tiara", "hairAcc");
+  assert.deepEqual(sideSocket, BONE_SOCKETS["hair-side"]);
+  assert.deepEqual(crownSocket, BONE_SOCKETS["hair-crown"]);
+
+  // Every wearable item has a 100% transparent SVG bone overlay
+  const overlay = getWearableOverlaySrc("hair-daisy-clip", "fallback.png");
+  assert.ok(overlay.startsWith("data:image/svg+xml"), "wearable overlay is a transparent SVG");
 
   const custom = clampRigPlacement({ dx: 99, dy: -80, scale: 3.5, rotate: 15 }, defaultHair);
-  assert.equal(custom.dx, 48);
-  assert.equal(custom.dy, -48);
+  assert.equal(custom.dx, 40);
+  assert.equal(custom.dy, -40);
   assert.equal(custom.scale, 2.2);
   assert.equal(custom.rotate, 15);
 
@@ -208,4 +230,31 @@ test("V6 Paper-Doll rig placements and custom user adjustments clamp safely", ()
     "hair-daisy-clip": custom,
   });
   assert.deepEqual(overridden, custom);
+});
+
+test("V8 per-dress hierarchical skeleton tree and cascade joint dragging", () => {
+  assert.equal(JOINT_LIST.length, 7);
+  assert.equal(BONE_LINKS.length, 6);
+
+  const snowSkel = getSkeletonForDress("dress-snow-white", {});
+  const apricotSkel = getSkeletonForDress("dress-apricot-tea", {});
+  assert.notEqual(
+    snowSkel.head.y,
+    apricotSkel.head.y,
+    "different generated dress proportions have their own calibrated head bone height",
+  );
+
+  // Moving the parent `head` joint cascades the exact same delta to child `crown` and `hairSide` joints
+  const origCrownY = snowSkel.crown.y;
+  const origSideX = snowSkel.hairSide.x;
+  const movedHead = moveJointCascade(snowSkel, "head", snowSkel.head.x + 5, snowSkel.head.y - 4);
+  assert.equal(movedHead.crown.y, origCrownY - 4, "child crown joint moves with parent head joint");
+  assert.equal(movedHead.hairSide.x, origSideX + 5, "child hairSide joint moves with parent head joint");
+
+  // Updating scale and rotation on a leaf socket joint clamps within safe bounds
+  const scaled = updateJointTransform(movedHead, "handR", { scale: 1.35, rotate: -25 });
+  assert.equal(scaled.handR.scale, 1.35);
+  assert.equal(scaled.handR.rotate, -25);
+  assert.equal(resolveJointForItem("hair-daisy-clip", "hairAcc"), "hairSide");
+  assert.equal(resolveJointForItem("hair-pearl-tiara", "hairAcc"), "crown");
 });

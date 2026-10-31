@@ -26,12 +26,19 @@ import {
   type WardrobeSlot,
 } from "./world/nikki-wardrobe";
 import {
-  clampRigPlacement,
-  getRigPlacement,
+  getWearableOverlaySrc,
   loadCutoutImage,
-  type RigOverrideMap,
-  type RigPlacement,
 } from "./world/paper-doll-rig";
+import {
+  BONE_LINKS,
+  JOINT_LIST,
+  getSkeletonForDress,
+  moveJointCascade,
+  resolveJointForItem,
+  updateJointTransform,
+  type AllDressSkeletons,
+  type JointId,
+} from "./world/skeleton-system";
 import { getBondLevelInfo } from "./world/codex";
 import {
   probeCompanionStatus,
@@ -42,10 +49,20 @@ import {
 import { getCharacterSkin } from "./world/skins";
 import "./world.css";
 
-type MainView = "wardrobe" | "stages" | "pavilion" | "codex" | "chat";
-type WearableAccessorySlot = "hairAcc" | "handheld" | "aura";
+/**
+ * 正规手游场景流（Screen State Machine）：
+ * - "title"    : 游戏启动封面页（Logo + 动态看板娘 + 点击开始游戏）
+ * - "lobby"    : 纯净主大厅（中间 85% 纯净全身展示，不堆叠任何衣橱列表或削头顶横幅）
+ * - "wardrobe" : 高定换装试衣间（上半全身试衣镜 + 下半轻巧衣橱）
+ * - "rig"      : 🦴 可视化骨骼工作台（在角色身上直接显示骨骼杆与关节圆环，按住关节直接拖动校准！）
+ * - "stages"   : 主题搭配闯关页
+ * - "pavilion" : 星愿幻阁 & ComfyUI 实时生图工坊
+ * - "codex"    : 典藏套装与原画图鉴
+ * - "chat"     : 和雯宝私语
+ */
+type GameScreen = "title" | "lobby" | "wardrobe" | "rig" | "stages" | "pavilion" | "codex" | "chat";
 
-const WARDROBE_STORAGE_KEY = "wenbebi-nikki-wardrobe-v6";
+const WARDROBE_STORAGE_KEY = "wenbebi-nikki-wardrobe-v8";
 
 interface SavedNikkiState {
   equipped: EquippedOutfit;
@@ -54,13 +71,14 @@ interface SavedNikkiState {
   clearedStages: Record<string, string>;
   coupons: number;
   customImages?: Record<string, string>;
-  rigOverrides?: RigOverrideMap;
+  dressSkeletons?: AllDressSkeletons;
 }
 
 function loadNikkiState(): SavedNikkiState {
   try {
     const raw =
       localStorage.getItem(WARDROBE_STORAGE_KEY) ||
+      localStorage.getItem("wenbebi-nikki-wardrobe-v6") ||
       localStorage.getItem("wenbebi-nikki-wardrobe-v4");
     if (!raw) {
       return {
@@ -68,9 +86,9 @@ function loadNikkiState(): SavedNikkiState {
         unlockedIds: [...DEFAULT_UNLOCKED_ITEM_IDS],
         itemStars: {},
         clearedStages: {},
-        coupons: 35,
+        coupons: 40,
         customImages: {},
-        rigOverrides: {},
+        dressSkeletons: {},
       };
     }
     const parsed = JSON.parse(raw);
@@ -79,9 +97,9 @@ function loadNikkiState(): SavedNikkiState {
       unlockedIds: Array.from(new Set([...DEFAULT_UNLOCKED_ITEM_IDS, ...(parsed.unlockedIds || [])])),
       itemStars: parsed.itemStars || {},
       clearedStages: parsed.clearedStages || {},
-      coupons: typeof parsed.coupons === "number" ? parsed.coupons : 35,
+      coupons: typeof parsed.coupons === "number" ? parsed.coupons : 40,
       customImages: parsed.customImages || {},
-      rigOverrides: parsed.rigOverrides || {},
+      dressSkeletons: parsed.dressSkeletons || {},
     };
   } catch {
     return {
@@ -89,9 +107,9 @@ function loadNikkiState(): SavedNikkiState {
       unlockedIds: [...DEFAULT_UNLOCKED_ITEM_IDS],
       itemStars: {},
       clearedStages: {},
-      coupons: 35,
+      coupons: 40,
       customImages: {},
-      rigOverrides: {},
+      dressSkeletons: {},
     };
   }
 }
@@ -132,21 +150,22 @@ const QUICK_CHAT_TOPICS = [
 export function WorldApp() {
   const { state, setSkin, companionAct } = useWorldGame();
   const [nikki, setNikki] = useState<SavedNikkiState>(loadNikkiState);
-  const [activeView, setActiveView] = useState<MainView>("wardrobe");
+  const [screen, setScreen] = useState<GameScreen>("title");
   const [activeSlot, setActiveSlot] = useState<WardrobeSlot>("dress");
   const [selectedStageId, setSelectedStageId] = useState<string>(STYLING_STAGES[0].id);
   const [inspectedItemId, setInspectedItemId] = useState<string>(DEFAULT_EQUIPPED_OUTFIT.dress);
   const [selectedSkills, setSelectedSkills] = useState<StylingSkill["id"][]>(["smile", "charm"]);
-  const [drawerCollapsed, setDrawerCollapsed] = useState(false);
 
-  // 纸偶骨骼穿戴微调器状态（支持手动调整头饰/手持物/香氛在雯宝身上的位置、缩放、旋转）
-  const [rigEditingSlot, setRigEditingSlot] = useState<WearableAccessorySlot | null>(null);
+  // 骨骼校准工作台：当前选中与正在拖拽的关节
+  const [selectedJoint, setSelectedJoint] = useState<JointId>("crown");
+  const [draggingJoint, setDraggingJoint] = useState<JointId | null>(null);
+  const boneBoxRef = useRef<HTMLDivElement>(null);
+
   const [cutoutMap, setCutoutMap] = useState<Record<string, string>>({});
-
-  // 角色立绘丝滑动态（呼吸帧 + 换装闪光魔法阵 + 互动弹跳）
   const [breatheIdx, setBreatheIdx] = useState(0);
   const [reacting, setReacting] = useState(false);
   const [equipBurstKey, setEquipBurstKey] = useState(0);
+  const [lobbyLine, setLobbyLine] = useState("「欢迎回来～点右边『换装』试新裙子，或点『骨骼』直接拖动关节点位哦！」");
 
   // PK 走秀动态滚分演出状态
   const [evalModal, setEvalModal] = useState<{
@@ -168,7 +187,7 @@ export function WorldApp() {
   const [chatHistory, setChatHistory] = useState<ChatTurn[]>([
     {
       role: "assistant",
-      content: "欢迎来到高定搭配工坊～现在所有礼服都是同角色 Q 版雯宝并已自动透明抠图，头饰和手持物也会直接穿戴在我身上，点『🔧调位置』还能自由拖动大小哦！",
+      content: "欢迎来到高定搭配工坊～每套生成的衣服现在都有自己独立的骨骼树，进入『🦴 骨骼』模式可以直接按住我身上的关节点拖动微调哦！",
     },
   ]);
   const [chatInput, setChatInput] = useState("");
@@ -198,30 +217,29 @@ export function WorldApp() {
   const currentAura = useMemo(() => getWardrobeItem(nikki.equipped.aura), [nikki.equipped.aura]);
   const currentCard = useMemo(() => getWardrobeItem(nikki.equipped.memoryCard), [nikki.equipped.memoryCard]);
 
+  // 当前所穿服装的专属层级骨骼树（每套衣服独立保存！）
+  const activeSkeleton = useMemo(
+    () => getSkeletonForDress(currentDress.id, nikki.dressSkeletons),
+    [currentDress.id, nikki.dressSkeletons],
+  );
+
   const itemImage = useCallback(
     (item: WardrobeItem) => nikki.customImages?.[item.id] || item.image,
     [nikki.customImages],
   );
 
-  // 自动将当前穿戴的礼服、头饰、手持物、香氛进行四边连通洪水透明抠图（消除方形白框！）
+  // 自动将当前穿戴的礼服进行防过度透明抠图并对齐到 760×760 骨骼画布
   useEffect(() => {
     let active = true;
-    const targets: { id: string; src: string; mode: "character" | "accessory" }[] = [
-      { id: currentDress.id, src: itemImage(currentDress), mode: "character" },
-      { id: currentHairAcc.id, src: itemImage(currentHairAcc), mode: "accessory" },
-      { id: currentHandheld.id, src: itemImage(currentHandheld), mode: "accessory" },
-      { id: currentAura.id, src: itemImage(currentAura), mode: "accessory" },
-    ];
-    for (const t of targets) {
-      void loadCutoutImage(t.src, t.mode).then((dataUrl) => {
-        if (!active) return;
-        setCutoutMap((prev) => (prev[t.id] === dataUrl ? prev : { ...prev, [t.id]: dataUrl }));
-      });
-    }
+    const src = itemImage(currentDress);
+    void loadCutoutImage(src, "character").then((dataUrl) => {
+      if (!active) return;
+      setCutoutMap((prev) => (prev[currentDress.id] === dataUrl ? prev : { ...prev, [currentDress.id]: dataUrl }));
+    });
     return () => {
       active = false;
     };
-  }, [currentAura, currentDress, currentHairAcc, currentHandheld, itemImage]);
+  }, [currentDress, itemImage]);
 
   useEffect(() => {
     if (!evalModal) {
@@ -299,53 +317,66 @@ export function WorldApp() {
     [nikki.equipped, nikki.itemStars, selectedSkills, selectedStage],
   );
 
-  // 计算头饰、手持物、香氛在雯宝骨骼上的实时穿戴坐标
-  const hairRig = useMemo(
-    () => getRigPlacement(currentHairAcc.id, "hairAcc", nikki.rigOverrides),
-    [currentHairAcc.id, nikki.rigOverrides],
-  );
-  const handRig = useMemo(
-    () => getRigPlacement(currentHandheld.id, "handheld", nikki.rigOverrides),
-    [currentHandheld.id, nikki.rigOverrides],
-  );
-  const auraRig = useMemo(
-    () => getRigPlacement(currentAura.id, "aura", nikki.rigOverrides),
-    [currentAura.id, nikki.rigOverrides],
-  );
+  // 根据当前头饰/手持物/香氛绑定的骨骼节点取坐标
+  const hairJointId = useMemo(() => resolveJointForItem(currentHairAcc.id, "hairAcc"), [currentHairAcc.id]);
+  const handJointId = useMemo(() => resolveJointForItem(currentHandheld.id, "handheld"), [currentHandheld.id]);
+  const hairNode = activeSkeleton[hairJointId];
+  const handNode = activeSkeleton[handJointId];
+  const auraNode = activeSkeleton.torso;
 
-  const editingTargetItem = useMemo(() => {
-    if (rigEditingSlot === "hairAcc") return currentHairAcc;
-    if (rigEditingSlot === "handheld") return currentHandheld;
-    if (rigEditingSlot === "aura") return currentAura;
-    return null;
-  }, [currentAura, currentHairAcc, currentHandheld, rigEditingSlot]);
+  const hairOverlaySrc = getWearableOverlaySrc(currentHairAcc.id, itemImage(currentHairAcc));
+  const handOverlaySrc = getWearableOverlaySrc(currentHandheld.id, itemImage(currentHandheld));
+  const auraOverlaySrc = getWearableOverlaySrc(currentAura.id, itemImage(currentAura));
 
-  const editingTargetRig = useMemo(() => {
-    if (!rigEditingSlot || !editingTargetItem) return null;
-    return getRigPlacement(editingTargetItem.id, rigEditingSlot, nikki.rigOverrides);
-  }, [editingTargetItem, nikki.rigOverrides, rigEditingSlot]);
+  // ==================== 可视化骨骼关节拖拽处理 ====================
+  const handleBonePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingJoint || !boneBoxRef.current) return;
+    const rect = boneBoxRef.current.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const nx = ((e.clientX - rect.left) / rect.width) * 100;
+    const ny = ((e.clientY - rect.top) / rect.height) * 100;
 
-  const updateEditingRig = useCallback((patch: Partial<RigPlacement>) => {
-    if (!rigEditingSlot || !editingTargetItem) return;
     setNikki((prev) => {
-      const current = getRigPlacement(editingTargetItem.id, rigEditingSlot, prev.rigOverrides);
-      const next = clampRigPlacement({ ...current, ...patch }, current);
+      const curSkel = getSkeletonForDress(currentDress.id, prev.dressSkeletons);
+      const nextSkel = moveJointCascade(curSkel, draggingJoint, nx, ny);
       return {
         ...prev,
-        rigOverrides: { ...(prev.rigOverrides || {}), [editingTargetItem.id]: next },
+        dressSkeletons: { ...(prev.dressSkeletons || {}), [currentDress.id]: nextSkel },
       };
     });
-  }, [editingTargetItem, rigEditingSlot]);
+  }, [currentDress.id, draggingJoint]);
 
-  const resetEditingRig = useCallback(() => {
-    if (!editingTargetItem) return;
+  const handleBonePointerUp = useCallback(() => {
+    setDraggingJoint(null);
+  }, []);
+
+  const handleSelectedJointScaleRotate = useCallback((patch: { scale?: number; rotate?: number }) => {
     setNikki((prev) => {
-      const nextMap = { ...(prev.rigOverrides || {}) };
-      delete nextMap[editingTargetItem.id];
-      return { ...prev, rigOverrides: nextMap };
+      const curSkel = getSkeletonForDress(currentDress.id, prev.dressSkeletons);
+      const nextSkel = updateJointTransform(curSkel, selectedJoint, patch);
+      return {
+        ...prev,
+        dressSkeletons: { ...(prev.dressSkeletons || {}), [currentDress.id]: nextSkel },
+      };
     });
-    pushPopup(`已重置 ${editingTargetItem.name} 穿戴位置`);
-  }, [editingTargetItem, pushPopup]);
+  }, [currentDress.id, selectedJoint]);
+
+  const handleResetDressSkeleton = useCallback(() => {
+    setNikki((prev) => {
+      const nextMap = { ...(prev.dressSkeletons || {}) };
+      delete nextMap[currentDress.id];
+      return { ...prev, dressSkeletons: nextMap };
+    });
+    pushPopup(`已重置【${currentDress.name}】骨骼树`);
+  }, [currentDress.id, currentDress.name, pushPopup]);
+
+  const handleCopySkeletonJson = useCallback(() => {
+    const jsonText = JSON.stringify({ [currentDress.id]: activeSkeleton }, null, 2);
+    if (navigator.clipboard) {
+      void navigator.clipboard.writeText(jsonText);
+    }
+    showToast(`📋 已复制【${currentDress.name}】的专属骨骼树 JSON！`);
+  }, [activeSkeleton, currentDress.id, currentDress.name, showToast]);
 
   const handleSelectOrEquipItem = useCallback((item: WardrobeItem) => {
     setInspectedItemId(item.id);
@@ -360,13 +391,15 @@ export function WorldApp() {
     if (item.skinId) {
       setSkin(item.skinId);
     }
-    if (item.slot === "hairAcc" || item.slot === "handheld" || item.slot === "aura") {
-      setRigEditingSlot(item.slot);
+    if (item.slot === "hairAcc") {
+      setSelectedJoint(resolveJointForItem(item.id, "hairAcc"));
+    } else if (item.slot === "handheld") {
+      setSelectedJoint(resolveJointForItem(item.id, "handheld"));
     }
     setEquipBurstKey((k) => k + 1);
     setReacting(true);
     setTimeout(() => setReacting(false), 680);
-    pushPopup(`✨ 穿戴上身：${item.name}`);
+    pushPopup(`✨ 穿戴：${item.name}`);
   }, [pushPopup, setSkin, showToast, unlockedSet]);
 
   const handleUpgradeOrCraftItem = useCallback((item: WardrobeItem) => {
@@ -376,7 +409,7 @@ export function WorldApp() {
     if (!owned) {
       const craftCost = item.rarity === "SSR" ? 28 : item.rarity === "SR" ? 16 : 10;
       if (nikki.coupons < craftCost) {
-        showToast(`定制【${item.name}】需要 ${craftCost} 礼券（当前 ${nikki.coupons}），点舞台右上角『PK ›』赢礼券吧！`);
+        showToast(`定制【${item.name}】需要 ${craftCost} 礼券（当前 ${nikki.coupons}），去『👑 闯关』赢礼券吧！`);
         return;
       }
       setNikki((prev) => ({
@@ -399,7 +432,7 @@ export function WorldApp() {
     }
     const upCost = currentStar * 8;
     if (nikki.coupons < upCost) {
-      showToast(`升至 ★${currentStar + 1} 需要 ${upCost} 礼券（当前 ${nikki.coupons}），点右上角『PK ›』拿奖励吧！`);
+      showToast(`升至 ★${currentStar + 1} 需要 ${upCost} 礼券（当前 ${nikki.coupons}）！`);
       return;
     }
     setNikki((prev) => ({
@@ -413,16 +446,11 @@ export function WorldApp() {
     pushPopup(`⭐ ${item.name} 升至 ★${currentStar + 1}`);
   }, [companionAct, nikki.coupons, nikki.itemStars, pushPopup, setSkin, showToast, unlockedSet]);
 
-  // 调用本地 ComfyUI (8188 · meinamix_v12Final + xiaoyan.safetensors LoRA 0.80) 实时重绘并自动透明抠图
   const handleLiveComfyGenerate = useCallback(async () => {
     if (comfyBusy) return;
     setComfyBusy(true);
     const isDress = inspectedItem.slot === "dress";
-    showToast(
-      isDress
-        ? "🎨 正在调用本机 ComfyUI + 雯宝 LoRA (xiaoyan.safetensors 0.80) 生成同角色礼服并自动透明抠图…"
-        : "🎨 正在调用本机 ComfyUI 生成配饰并自动透明抠图…",
-    );
+    showToast("🎨 正在调用本机 ComfyUI + 雯宝 LoRA 生成同角色立绘并自动对齐 760×760 骨骼画布…");
     try {
       const res = await fetch("/api/comfy/draw", {
         method: "POST",
@@ -443,7 +471,7 @@ export function WorldApp() {
         customImages: { ...(prev.customImages || {}), [inspectedItem.id]: cutoutUrl },
       }));
       setEquipBurstKey((k) => k + 1);
-      pushPopup(`🎨 已用雯宝 LoRA 重绘并抠图：${inspectedItem.name}！`);
+      pushPopup(`🎨 新生成的【${inspectedItem.name}】已绑定骨骼！可点『🦴骨骼』微调关节`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "请确认本机 ComfyUI (127.0.0.1:8188) 正在运行");
     } finally {
@@ -452,13 +480,20 @@ export function WorldApp() {
   }, [comfyBusy, comfyPrompt, inspectedItem.id, inspectedItem.name, inspectedItem.slot, pushPopup, showToast]);
 
   const handleTapCharacter = useCallback(() => {
+    if (screen === "rig") return;
     const res = companionAct("pat", false);
     setNikki((prev) => ({ ...prev, coupons: prev.coupons + 2 }));
     setEquipBurstKey((k) => k + 1);
     setReacting(true);
     setTimeout(() => setReacting(false), 720);
+    const lines = [
+      `「今天穿的是【${currentDress.name}】，头饰和手持物都牢牢绑在我的骨骼点上啦！」`,
+      "「如果新生成的衣服高矮不同，点右边的『🦴骨骼』就能直接拖动我身上的关节点对位哦～」",
+      `「当前搭配总魅力已经达到 ${totalCharmPower} 分啦！」`,
+    ];
+    setLobbyLine(lines[Math.floor(Math.random() * lines.length)]);
     pushPopup(`+${res.bondGained} 亲密 · +2 礼券`);
-  }, [companionAct, pushPopup]);
+  }, [companionAct, currentDress.name, pushPopup, screen, totalCharmPower]);
 
   const handleAutoRecommend = useCallback((stage: StylingStage) => {
     const best = recommendBestOutfitForStage(stage, unlockedSet, nikki.itemStars);
@@ -516,7 +551,7 @@ export function WorldApp() {
   const handlePavilionDraw = useCallback((count: 1 | 5) => {
     const cost = count === 5 ? 20 : 5;
     if (nikki.coupons < cost) {
-      showToast(`许愿 ${count} 次需要 ${cost} 礼券（当前 ${nikki.coupons}），点右上角『PK ›』闯关拿礼券吧！`);
+      showToast(`许愿 ${count} 次需要 ${cost} 礼券（当前 ${nikki.coupons}）！`);
       return;
     }
     const res = rollPavilionGacha(count, unlockedSet, nikki.itemStars);
@@ -555,7 +590,6 @@ export function WorldApp() {
     [activeSlot],
   );
 
-  // 角色主立绘：全部使用透明抠图后的同角色 Q 版雯宝（再也没有方形白框！）
   const isComfyDress = currentDress.image.startsWith("assets/nikki/dress-");
   const customDressImg = nikki.customImages?.[currentDress.id];
   const heroSpriteSrc = customDressImg
@@ -566,23 +600,65 @@ export function WorldApp() {
         ? activeSkin.react
         : activeSkin.breathe[breatheIdx % activeSkin.breathe.length] || activeSkin.idle;
 
-  const hairCutoutSrc = cutoutMap[currentHairAcc.id] || itemImage(currentHairAcc);
-  const handCutoutSrc = cutoutMap[currentHandheld.id] || itemImage(currentHandheld);
-  const auraCutoutSrc = cutoutMap[currentAura.id] || itemImage(currentAura);
-
   const collectionPercent = Math.round((nikki.unlockedIds.length / WARDROBE_ITEMS.length) * 100);
   const inspectedOwned = unlockedSet.has(inspectedItem.id);
   const inspectedStars = nikki.itemStars[inspectedItem.id] ?? 1;
+  const activeJointNode = activeSkeleton[selectedJoint];
+
+  /* ==================== 画面 1：正规手游启动封面页 (Title Screen) ==================== */
+  if (screen === "title") {
+    return (
+      <div id="nikki-root" className="nk-title-screen" onClick={() => setScreen("lobby")}>
+        <div
+          className="nk-title-bg"
+          style={{ backgroundImage: `url(${itemImage(currentCard) || "assets/nikki/card-starlight-waltz.png"})` }}
+          aria-hidden="true"
+        />
+        <div className="nk-sparkles" aria-hidden="true">
+          <i className="s1" /><i className="s2" /><i className="s3" /><i className="s4" /><i className="s5" />
+        </div>
+
+        <div className="nk-title-top">
+          <span className="nk-title-ver">VER 8.0 · LIVE WITH WENBAO</span>
+        </div>
+
+        <div className="nk-title-hero">
+          <img src={heroSpriteSrc} alt="雯宝" draggable={false} />
+        </div>
+
+        <div className="nk-title-brand">
+          <span className="nk-title-sub">STYLING & COMPANION STORY</span>
+          <h1>雯宝 · 心境衣橱</h1>
+          <p>高定换装 · 骨骼工坊 · 星愿幻阁 · 朝夕相伴</p>
+          <button
+            type="button"
+            className="nk-title-start-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              setScreen("lobby");
+            }}
+          >
+            ✨ 点击进入小屋 · TAP TO START
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div id="nikki-root" data-theme={currentDress.stageTheme || "daylight"}>
-      {/* 1. 极简顶栏 */}
+      {/* 1. 极简顶栏（含返回封面/大厅按钮） */}
       <header className="nk-header">
-        <button type="button" className="nk-profile" onClick={handleTapCharacter}>
+        <button
+          type="button"
+          className="nk-profile"
+          onClick={() => setScreen(screen === "lobby" ? "title" : "lobby")}
+          title={screen === "lobby" ? "返回游戏封面" : "返回主大厅"}
+        >
           <img src={activeSkin.avatar} alt="" draggable={false} />
           <div className="nk-profile-text">
             <div className="nk-profile-row">
-              <strong>雯宝</strong>
+              <strong>{screen === "lobby" ? "雯宝" : "‹ 返回大厅"}</strong>
               <span className="nk-lv">Lv.{bondInfo.level}</span>
             </div>
             <div className="nk-exp-track">
@@ -592,12 +668,12 @@ export function WorldApp() {
         </button>
 
         <div className="nk-currencies">
-          <button type="button" className="nk-curr-pill" onClick={() => setActiveView("stages")}>
+          <button type="button" className="nk-curr-pill" onClick={() => setScreen("stages")}>
             <GemSvg />
             <b>{totalCharmPower}</b>
             <span>魅力</span>
           </button>
-          <button type="button" className="nk-curr-pill" onClick={() => setActiveView("pavilion")}>
+          <button type="button" className="nk-curr-pill" onClick={() => setScreen("pavilion")}>
             <CoinSvg />
             <b>{nikki.coupons}</b>
             <span>礼券</span>
@@ -606,9 +682,11 @@ export function WorldApp() {
       </header>
 
       <main className="nk-main">
-        {/* 2. 多层纸偶骨骼穿戴舞台（Paper-Doll Stage：透明抠图雯宝 + 头饰/手持/香氛直接穿戴在身上！） */}
-        {(activeView === "wardrobe" || activeView === "stages") && (
-          <section className={`nk-stage-card${drawerCollapsed ? " m-expanded" : ""}`}>
+        {/* ==================== 共享核心舞台（在「主大厅」「换装」「骨骼校准」「闯关」下展示） ==================== */}
+        {(screen === "lobby" || screen === "wardrobe" || screen === "rig" || screen === "stages") && (
+          <section
+            className={`nk-stage-card${screen === "lobby" || screen === "rig" ? " m-expanded" : ""}`}
+          >
             <div
               className="nk-stage-bg"
               style={{ backgroundImage: `url(${itemImage(currentCard) || currentDress.bgScene || "assets/scenes/home.webp"})` }}
@@ -620,232 +698,172 @@ export function WorldApp() {
               <div key={equipBurstKey} className="nk-magic-ring" aria-hidden="true" />
             )}
 
-            {/* 舞台顶部：轻巧挑战目标胶囊 */}
-            <div className="nk-stage-banner">
-              <div className="nk-banner-left" onClick={() => { setActiveView("stages"); setDrawerCollapsed(false); }}>
-                <span className="nk-banner-chap">{selectedStage.chapter}</span>
-                <strong>{selectedStage.title}</strong>
-                <span className="nk-banner-req">
-                  ({STYLE_ATTR_LABELS[selectedStage.primaryAttr].name}/{STYLE_ATTR_LABELS[selectedStage.secondaryAttr].name})
-                </span>
-              </div>
-              <button
-                type="button"
-                className="nk-banner-pk-btn"
-                onClick={() => handleStartStylingEval(selectedStage)}
-              >
-                <span>预估 <b>{livePreviewEval.rank}</b></span>
-                <em>PK ›</em>
-              </button>
-            </div>
-
             <div className="nk-sparkles" aria-hidden="true">
               <i className="s1" /><i className="s2" /><i className="s3" /><i className="s4" /><i className="s5" />
             </div>
 
-            {/* 左侧 2 枚快捷槽位指示圆章（点击可切换槽位或开启该部位穿戴位置微调） */}
-            <div className="nk-side-orbs m-left">
-              <button
-                type="button"
-                className={`nk-orb${activeSlot === "hairAcc" || rigEditingSlot === "hairAcc" ? " m-focus" : ""}`}
-                title={`头饰：${currentHairAcc.name}（点击调整穿戴）`}
-                onClick={() => {
-                  setActiveView("wardrobe");
-                  setDrawerCollapsed(false);
-                  setActiveSlot("hairAcc");
-                  setInspectedItemId(currentHairAcc.id);
-                }}
-              >
-                <img src={hairCutoutSrc} alt={currentHairAcc.name} draggable={false} />
-                <b className="nk-orb-star">头饰 ★{nikki.itemStars[currentHairAcc.id] ?? 1}</b>
-              </button>
-              <button
-                type="button"
-                className={`nk-orb${activeSlot === "aura" || rigEditingSlot === "aura" ? " m-focus" : ""}`}
-                title={`香氛：${currentAura.name}`}
-                onClick={() => {
-                  setActiveView("wardrobe");
-                  setDrawerCollapsed(false);
-                  setActiveSlot("aura");
-                  setInspectedItemId(currentAura.id);
-                }}
-              >
-                <img src={auraCutoutSrc} alt={currentAura.name} draggable={false} />
-                <b className="nk-orb-star">香氛 ★{nikki.itemStars[currentAura.id] ?? 1}</b>
-              </button>
-            </div>
+            {/* 仅在「主大厅 Lobby」显示的右侧精致悬浮功能按钮组（不挡人物、不削头顶！） */}
+            {screen === "lobby" && (
+              <>
+                <div className="nk-lobby-bubble" onClick={handleTapCharacter}>
+                  <span>{lobbyLine}</span>
+                </div>
+                <aside className="nk-lobby-menu" aria-label="快捷入口">
+                  <button type="button" className="nk-lobby-btn" onClick={() => setScreen("wardrobe")}>
+                    <span>👗</span>
+                    <small>换装</small>
+                  </button>
+                  <button type="button" className="nk-lobby-btn" onClick={() => setScreen("rig")}>
+                    <span>🦴</span>
+                    <small>骨骼</small>
+                  </button>
+                  <button type="button" className="nk-lobby-btn m-pk" onClick={() => setScreen("stages")}>
+                    <span>👑</span>
+                    <small>闯关</small>
+                  </button>
+                  <button type="button" className="nk-lobby-btn" onClick={() => setScreen("pavilion")}>
+                    <span>✨</span>
+                    <small>幻阁</small>
+                  </button>
+                </aside>
+              </>
+            )}
 
-            {/* 右侧 2 枚快捷槽位指示圆章 */}
-            <div className="nk-side-orbs m-right">
-              <button
-                type="button"
-                className={`nk-orb${activeSlot === "handheld" || rigEditingSlot === "handheld" ? " m-focus" : ""}`}
-                title={`手持：${currentHandheld.name}（点击调整穿戴）`}
-                onClick={() => {
-                  setActiveView("wardrobe");
-                  setDrawerCollapsed(false);
-                  setActiveSlot("handheld");
-                  setInspectedItemId(currentHandheld.id);
-                }}
-              >
-                <img src={handCutoutSrc} alt={currentHandheld.name} draggable={false} />
-                <b className="nk-orb-star">手持 ★{nikki.itemStars[currentHandheld.id] ?? 1}</b>
-              </button>
-              <button
-                type="button"
-                className={`nk-orb m-card${activeSlot === "memoryCard" ? " m-focus" : ""}`}
-                title={`羁绊：${currentCard.name}`}
-                onClick={() => {
-                  setActiveView("wardrobe");
-                  setDrawerCollapsed(false);
-                  setActiveSlot("memoryCard");
-                  setInspectedItemId(currentCard.id);
-                }}
-              >
-                <img src={itemImage(currentCard)} alt={currentCard.name} draggable={false} />
-                <b className="nk-orb-star">羁绊 ★{nikki.itemStars[currentCard.id] ?? 1}</b>
-              </button>
-            </div>
-
-            {/* ==================== 核心：多层纸偶骨骼穿戴容器 (Paper-Doll Rig) ==================== */}
+            {/* ==================== 核心：每套衣服独立的层级骨骼容器 (Hierarchical Skeleton Rig) ==================== */}
             <div
               key={`${currentDress.id}-${equipBurstKey}`}
-              className={`nk-paperdoll-rig nk-anim-enter${reacting ? " m-bounce" : ""}`}
+              className={`nk-paperdoll-rig nk-anim-enter${reacting ? " m-bounce" : ""}${screen === "rig" ? " m-rig-mode" : ""}`}
               onClick={handleTapCharacter}
               role="button"
               tabIndex={0}
-              aria-label="点击雯宝互动"
+              aria-label="雯宝角色舞台"
             >
-              {/* Layer 10: 背后香氛光环挂件（随骨骼呼吸浮动） */}
-              <img
-                className={`nk-rig-layer m-aura${rigEditingSlot === "aura" ? " m-editing" : ""}`}
-                src={auraCutoutSrc}
-                alt={currentAura.name}
-                style={{
-                  transform: `translate(${auraRig.dx}%, ${auraRig.dy}%) scale(${auraRig.scale}) rotate(${auraRig.rotate}deg)`,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setRigEditingSlot("aura");
-                }}
-                draggable={false}
-              />
+              <div
+                ref={boneBoxRef}
+                className="nk-bone-box"
+                onPointerMove={handleBonePointerMove}
+                onPointerUp={handleBonePointerUp}
+                onPointerCancel={handleBonePointerUp}
+              >
+                {/* Layer 10: 绑定在胸腔主骨骼 torso 上的背后环绕光环 */}
+                <img
+                  className="nk-bone-layer m-aura"
+                  src={auraOverlaySrc}
+                  alt={currentAura.name}
+                  style={{
+                    left: `${auraNode.x}%`,
+                    top: `${auraNode.y}%`,
+                    width: `${88 * auraNode.scale}%`,
+                    zIndex: 10,
+                    transform: `translate(-50%, -50%) rotate(${auraNode.rotate}deg)`,
+                  }}
+                  draggable={false}
+                />
 
-              {/* Layer 20: 100% 透明抠图的同角色 Q 版雯宝主立绘（无方形背景框！） */}
-              <img
-                className="nk-rig-body"
-                src={heroSpriteSrc}
-                alt="雯宝"
-                draggable={false}
-              />
+                {/* Layer 20: 760×760 透明抠图主躯干 */}
+                <img
+                  className="nk-bone-body"
+                  src={heroSpriteSrc}
+                  alt="雯宝"
+                  draggable={false}
+                />
 
-              {/* Layer 30: 头顶骨骼锚点 — 透明抠图头饰直接戴在雯宝头上！ */}
-              <img
-                className={`nk-rig-layer m-hair${rigEditingSlot === "hairAcc" ? " m-editing" : ""}`}
-                src={hairCutoutSrc}
-                alt={currentHairAcc.name}
-                style={{
-                  transform: `translate(${hairRig.dx}%, ${hairRig.dy}%) scale(${hairRig.scale}) rotate(${hairRig.rotate}deg)`,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setRigEditingSlot("hairAcc");
-                }}
-                draggable={false}
-              />
+                {/* Layer 32: 绑定在 hairJointId (crown 头顶 或 hairSide 侧发) 骨骼关节上的头饰 */}
+                <img
+                  className={`nk-bone-layer m-hair${screen === "rig" && selectedJoint === hairJointId ? " m-editing" : ""}`}
+                  src={hairOverlaySrc}
+                  alt={currentHairAcc.name}
+                  style={{
+                    left: `${hairNode.x}%`,
+                    top: `${hairNode.y}%`,
+                    width: `${(hairJointId === "hairSide" ? 22 : 38) * hairNode.scale}%`,
+                    zIndex: 32,
+                    transform: `translate(-50%, -50%) rotate(${hairNode.rotate}deg)`,
+                  }}
+                  onClick={(e) => {
+                    if (screen === "rig") {
+                      e.stopPropagation();
+                      setSelectedJoint(hairJointId);
+                    }
+                  }}
+                  draggable={false}
+                />
 
-              {/* Layer 40: 手部骨骼锚点 — 透明抠图手持物直接拿在雯宝手边！ */}
-              <img
-                className={`nk-rig-layer m-hand${rigEditingSlot === "handheld" ? " m-editing" : ""}`}
-                src={handCutoutSrc}
-                alt={currentHandheld.name}
-                style={{
-                  transform: `translate(${handRig.dx}%, ${handRig.dy}%) scale(${handRig.scale}) rotate(${handRig.rotate}deg)`,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setRigEditingSlot("handheld");
-                }}
-                draggable={false}
-              />
+                {/* Layer 35: 绑定在 handJointId (handR 右手 或 handL 左手) 骨骼关节上的手持物 */}
+                <img
+                  className={`nk-bone-layer m-hand${screen === "rig" && selectedJoint === handJointId ? " m-editing" : ""}`}
+                  src={handOverlaySrc}
+                  alt={currentHandheld.name}
+                  style={{
+                    left: `${handNode.x}%`,
+                    top: `${handNode.y}%`,
+                    width: `${26 * handNode.scale}%`,
+                    zIndex: 35,
+                    transform: `translate(-50%, -50%) rotate(${handNode.rotate}deg)`,
+                  }}
+                  onClick={(e) => {
+                    if (screen === "rig") {
+                      e.stopPropagation();
+                      setSelectedJoint(handJointId);
+                    }
+                  }}
+                  draggable={false}
+                />
+
+                {/* Layer 50: 🦴 可视化骨骼连线与可直接按住拖拽的关节手柄（仅在 screen === "rig" 时显示！） */}
+                {screen === "rig" && (
+                  <div className="nk-skeleton-overlay">
+                    <svg className="nk-skeleton-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      {BONE_LINKS.map(([fromId, toId]) => {
+                        const a = activeSkeleton[fromId];
+                        const b = activeSkeleton[toId];
+                        return (
+                          <line
+                            key={`${fromId}-${toId}`}
+                            x1={a.x}
+                            y1={a.y}
+                            x2={b.x}
+                            y2={b.y}
+                            stroke="#38bdf8"
+                            strokeWidth="1.2"
+                            strokeDasharray="2.5 1.5"
+                          />
+                        );
+                      })}
+                    </svg>
+
+                    {JOINT_LIST.map((meta) => {
+                      const node = activeSkeleton[meta.id];
+                      const isSel = selectedJoint === meta.id;
+                      return (
+                        <button
+                          key={meta.id}
+                          type="button"
+                          className={`nk-joint-handle${isSel ? " m-selected" : ""}`}
+                          style={{
+                            left: `${node.x}%`,
+                            top: `${node.y}%`,
+                            borderColor: meta.color,
+                            background: isSel ? meta.color : "rgba(15, 23, 42, 0.78)",
+                          }}
+                          onPointerDown={(e) => {
+                            e.stopPropagation();
+                            e.currentTarget.setPointerCapture(e.pointerId);
+                            setSelectedJoint(meta.id);
+                            setDraggingJoint(meta.id);
+                          }}
+                          title={`按住拖动【${meta.label}】(${node.x}%, ${node.y}%)`}
+                        >
+                          <span>{meta.label.slice(0, 2)}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* 穿戴位置/大小/角度自由微调浮层（点击 🔧调位置 或点击身上的配饰触发） */}
-            {rigEditingSlot && editingTargetItem && editingTargetRig && (
-              <div className="nk-rig-tuner" onClick={(e) => e.stopPropagation()}>
-                <div className="nk-tuner-head">
-                  <div className="nk-tuner-tabs">
-                    <button
-                      type="button"
-                      className={rigEditingSlot === "hairAcc" ? "m-on" : ""}
-                      onClick={() => setRigEditingSlot("hairAcc")}
-                    >
-                      🎀 头饰
-                    </button>
-                    <button
-                      type="button"
-                      className={rigEditingSlot === "handheld" ? "m-on" : ""}
-                      onClick={() => setRigEditingSlot("handheld")}
-                    >
-                      👜 手持
-                    </button>
-                    <button
-                      type="button"
-                      className={rigEditingSlot === "aura" ? "m-on" : ""}
-                      onClick={() => setRigEditingSlot("aura")}
-                    >
-                      ✨ 香氛
-                    </button>
-                  </div>
-                  <button type="button" className="nk-tuner-reset" onClick={resetEditingRig}>重置</button>
-                  <button type="button" className="nk-tuner-close" onClick={() => setRigEditingSlot(null)}>完成</button>
-                </div>
-                <div className="nk-tuner-sliders">
-                  <label>
-                    <span>水平 X</span>
-                    <input
-                      type="range"
-                      min={-45}
-                      max={45}
-                      value={editingTargetRig.dx}
-                      onChange={(e) => updateEditingRig({ dx: Number(e.target.value) })}
-                    />
-                  </label>
-                  <label>
-                    <span>垂直 Y</span>
-                    <input
-                      type="range"
-                      min={-45}
-                      max={45}
-                      value={editingTargetRig.dy}
-                      onChange={(e) => updateEditingRig({ dy: Number(e.target.value) })}
-                    />
-                  </label>
-                  <label>
-                    <span>大小</span>
-                    <input
-                      type="range"
-                      min={45}
-                      max={165}
-                      value={Math.round(editingTargetRig.scale * 100)}
-                      onChange={(e) => updateEditingRig({ scale: Number(e.target.value) / 100 })}
-                    />
-                  </label>
-                  <label>
-                    <span>角度</span>
-                    <input
-                      type="range"
-                      min={-45}
-                      max={45}
-                      value={editingTargetRig.rotate}
-                      onChange={(e) => updateEditingRig({ rotate: Number(e.target.value) })}
-                    />
-                  </label>
-                </div>
-              </div>
-            )}
-
-            {/* 舞台底栏：左套装共鸣铭牌，右「🔧调位置」与「👁️全景欣赏」 */}
+            {/* 舞台底栏：左套装铭牌，右快速切换「🦴骨骼校准」 */}
             <div className="nk-stage-foot">
               <span className="nk-suit-badge">
                 {activeSuitInfo.suit
@@ -855,25 +873,117 @@ export function WorldApp() {
               <div className="nk-foot-btns">
                 <button
                   type="button"
-                  className={`nk-collapse-btn${rigEditingSlot ? " m-active" : ""}`}
-                  onClick={() => setRigEditingSlot((cur) => (cur ? null : "hairAcc"))}
+                  className={`nk-collapse-btn${screen === "rig" ? " m-active" : ""}`}
+                  onClick={() => setScreen(screen === "rig" ? "wardrobe" : "rig")}
                 >
-                  🔧 调饰品位置
-                </button>
-                <button
-                  type="button"
-                  className="nk-collapse-btn"
-                  onClick={() => setDrawerCollapsed((c) => !c)}
-                >
-                  {drawerCollapsed ? "🔼 展开衣橱" : "👁️ 全景"}
+                  {screen === "rig" ? "✓ 完成骨骼校准" : "🦴 骨骼校准"}
                 </button>
               </div>
             </div>
           </section>
         )}
 
-        {/* ==================== 面板 A：全插画毛玻璃卡片衣橱 ==================== */}
-        {activeView === "wardrobe" && !drawerCollapsed && (
+        {/* ==================== 画面 3：🦴 可视化骨骼校准控制面板 ==================== */}
+        {screen === "rig" && (
+          <section className="nk-panel nk-panel-enter" aria-label="骨骼校准工作台">
+            <div className="nk-rig-panel-head">
+              <div>
+                <strong>🦴 【{currentDress.name}】专属骨骼树校准</strong>
+                <small>直接按住上方雯宝身上的圆点拖动关节（拖父关节会自动带动子关节）</small>
+              </div>
+              <div className="nk-rig-head-btns">
+                <button type="button" className="nk-tuner-reset" onClick={handleCopySkeletonJson}>📋 导出JSON</button>
+                <button type="button" className="nk-tuner-reset" onClick={handleResetDressSkeleton}>重置骨骼</button>
+              </div>
+            </div>
+
+            <div className="nk-joint-pills">
+              {JOINT_LIST.filter((j) => j.id !== "root").map((j) => (
+                <button
+                  key={j.id}
+                  type="button"
+                  className={`nk-joint-pill${selectedJoint === j.id ? " m-on" : ""}`}
+                  onClick={() => setSelectedJoint(j.id)}
+                >
+                  <i style={{ background: j.color }} />
+                  <span>{j.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {activeJointNode && (
+              <div className="nk-tuner-sliders">
+                <label>
+                  <span>X ({activeJointNode.x}%)</span>
+                  <input
+                    type="range"
+                    min={5}
+                    max={95}
+                    value={activeJointNode.x}
+                    onChange={(e) => {
+                      const nx = Number(e.target.value);
+                      setNikki((prev) => {
+                        const cur = getSkeletonForDress(currentDress.id, prev.dressSkeletons);
+                        return {
+                          ...prev,
+                          dressSkeletons: {
+                            ...(prev.dressSkeletons || {}),
+                            [currentDress.id]: moveJointCascade(cur, selectedJoint, nx, activeJointNode.y),
+                          },
+                        };
+                      });
+                    }}
+                  />
+                </label>
+                <label>
+                  <span>Y ({activeJointNode.y}%)</span>
+                  <input
+                    type="range"
+                    min={5}
+                    max={95}
+                    value={activeJointNode.y}
+                    onChange={(e) => {
+                      const ny = Number(e.target.value);
+                      setNikki((prev) => {
+                        const cur = getSkeletonForDress(currentDress.id, prev.dressSkeletons);
+                        return {
+                          ...prev,
+                          dressSkeletons: {
+                            ...(prev.dressSkeletons || {}),
+                            [currentDress.id]: moveJointCascade(cur, selectedJoint, activeJointNode.x, ny),
+                          },
+                        };
+                      });
+                    }}
+                  />
+                </label>
+                <label>
+                  <span>插槽缩放</span>
+                  <input
+                    type="range"
+                    min={45}
+                    max={180}
+                    value={Math.round(activeJointNode.scale * 100)}
+                    onChange={(e) => handleSelectedJointScaleRotate({ scale: Number(e.target.value) / 100 })}
+                  />
+                </label>
+                <label>
+                  <span>插槽旋转</span>
+                  <input
+                    type="range"
+                    min={-60}
+                    max={60}
+                    value={activeJointNode.rotate}
+                    onChange={(e) => handleSelectedJointScaleRotate({ rotate: Number(e.target.value) })}
+                  />
+                </label>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ==================== 画面 4：高定换装衣橱 ==================== */}
+        {screen === "wardrobe" && (
           <section className="nk-panel nk-panel-enter" aria-label="换装衣橱">
             <div className="nk-slot-tabs" role="tablist">
               {WARDROBE_SLOTS.map((slot) => {
@@ -970,8 +1080,8 @@ export function WorldApp() {
           </section>
         )}
 
-        {/* ==================== 面板 B：主题出行搭配闯关 ==================== */}
-        {activeView === "stages" && !drawerCollapsed && (
+        {/* ==================== 画面 5：主题出行搭配闯关 ==================== */}
+        {screen === "stages" && (
           <section className="nk-panel nk-panel-enter" aria-label="主题搭配闯关">
             <div className="nk-stage-selector">
               {STYLING_STAGES.map((st) => {
@@ -1041,8 +1151,8 @@ export function WorldApp() {
           </section>
         )}
 
-        {/* ==================== 面板 C：星愿幻阁 + 本地 ComfyUI 雯宝 LoRA 实时工坊 ==================== */}
-        {activeView === "pavilion" && (
+        {/* ==================== 画面 6：星愿幻阁 + 本地 ComfyUI 雯宝 LoRA 实时工坊 ==================== */}
+        {screen === "pavilion" && (
           <section className="nk-full-view nk-panel-enter" aria-label="星愿幻阁">
             <div className="nk-pavilion-hero">
               <span className="nk-pavilion-tag">✨ 限时典藏阁 · 重复单品自动升星 (+15%属性)</span>
@@ -1084,27 +1194,27 @@ export function WorldApp() {
 
             <div className="nk-comfy-box">
               <div className="nk-comfy-head">
-                <strong>🎨 雯宝 LoRA 换装抠图工坊 (xiaoyan.safetensors · 0.80)</strong>
-                <small>正在为【{inspectedItem.name}】生成同角色立绘并自动执行边缘洪水透明抠图</small>
+                <strong>🎨 雯宝 LoRA 换装抠图工坊 (xiaoyan.safetensors)</strong>
+                <small>正在为【{inspectedItem.name}】生成同角色立绘并绑定专属骨骼树</small>
               </div>
               <div className="nk-comfy-row">
                 <input
                   type="text"
                   value={comfyPrompt}
                   onChange={(e) => setComfyPrompt(e.target.value)}
-                  placeholder="输入新礼服/配饰英文描述（自动挂雯宝LoRA并透明抠图）…"
+                  placeholder="输入新礼服英文描述（生成后自动抠图并可在🦴骨骼台微调关节）…"
                   disabled={comfyBusy}
                 />
                 <button type="button" disabled={comfyBusy} onClick={() => void handleLiveComfyGenerate()}>
-                  {comfyBusy ? "抠图中…" : "✨ LoRA生图"}
+                  {comfyBusy ? "生成中…" : "✨ LoRA生图"}
                 </button>
               </div>
             </div>
           </section>
         )}
 
-        {/* ==================== 面板 D：四大典藏套装 & 全插画图鉴 ==================== */}
-        {activeView === "codex" && (
+        {/* ==================== 画面 7：四大典藏套装 & 全插画图鉴 ==================== */}
+        {screen === "codex" && (
           <section className="nk-full-view nk-panel-enter" aria-label="全衣橱图鉴">
             <div className="nk-codex-head">
               <div>
@@ -1158,8 +1268,8 @@ export function WorldApp() {
           </section>
         )}
 
-        {/* ==================== 面板 E：和雯宝聊聊 ==================== */}
-        {activeView === "chat" && (
+        {/* ==================== 画面 8：和雯宝聊聊 ==================== */}
+        {screen === "chat" && (
           <section className="nk-full-view nk-chat-view nk-panel-enter" aria-label="和雯宝聊聊">
             <div className="nk-chat-head">
               <img src={activeSkin.avatar} alt="" />
@@ -1276,7 +1386,7 @@ export function WorldApp() {
                 className="nk-btn-secondary"
                 onClick={() => {
                   setEvalModal(null);
-                  setActiveView("wardrobe");
+                  setScreen("wardrobe");
                 }}
               >
                 去升星/换装
@@ -1297,31 +1407,43 @@ export function WorldApp() {
       <nav className="nk-nav" aria-label="主导航">
         <button
           type="button"
-          className={activeView === "wardrobe" ? "m-active" : ""}
-          onClick={() => { setActiveView("wardrobe"); setDrawerCollapsed(false); }}
+          className={screen === "lobby" ? "m-active" : ""}
+          onClick={() => setScreen("lobby")}
+        >
+          <span>🏠</span>
+          <small>主大厅</small>
+        </button>
+        <button
+          type="button"
+          className={screen === "wardrobe" || screen === "rig" ? "m-active" : ""}
+          onClick={() => setScreen("wardrobe")}
         >
           <span>👗</span>
           <small>高定衣橱</small>
         </button>
         <button
           type="button"
-          className={activeView === "stages" ? "m-active" : ""}
-          onClick={() => { setActiveView("stages"); setDrawerCollapsed(false); }}
+          className={screen === "stages" ? "m-active" : ""}
+          onClick={() => setScreen("stages")}
         >
           <span>👑</span>
           <small>搭配闯关</small>
         </button>
-        <button type="button" className={activeView === "pavilion" ? "m-active" : ""} onClick={() => setActiveView("pavilion")}>
+        <button
+          type="button"
+          className={screen === "pavilion" ? "m-active" : ""}
+          onClick={() => setScreen("pavilion")}
+        >
           <span>✨</span>
           <small>星愿幻阁</small>
         </button>
-        <button type="button" className={activeView === "codex" ? "m-active" : ""} onClick={() => setActiveView("codex")}>
+        <button
+          type="button"
+          className={screen === "codex" ? "m-active" : ""}
+          onClick={() => setScreen("codex")}
+        >
           <span>📖</span>
           <small>原画 ({collectionPercent}%)</small>
-        </button>
-        <button type="button" className={activeView === "chat" ? "m-active" : ""} onClick={() => setActiveView("chat")}>
-          <span>💬</span>
-          <small>密语</small>
         </button>
       </nav>
     </div>
