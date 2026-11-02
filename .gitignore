@@ -22,3 +22,4 @@ public/vendor/live2dcubismcore.min.js
 specs/
 # 没有门禁时不要把 hooks.json 提交给团队：它指向的脚本可能不在同级仓库里。
 # <<< data-workflow <<<
+.agents/skills/data-workflow/
