@@ -18,6 +18,21 @@
 </head>
 <body>
   <div id="root"></div>
+  <script>
+    // Live2D Cubism Core（专有文件，不进仓库）。缺失时 Live2D 功能不可用，
+    // 其余功能不受影响。下载：npm run setup:live2d
+    (function () {
+      var s = document.createElement("script");
+      s.src = "/vendor/live2dcubismcore.min.js";
+      s.onload = function () { console.log("[live2d] Cubism Core loaded"); };
+      s.onerror = function () {
+        console.warn("[live2d] Cubism Core 缺失。Live2D 渲染不可用。\n" +
+          "  下载：npm run setup:live2d\n" +
+          "  或手动放 public/vendor/live2dcubismcore.min.js");
+      };
+      document.head.appendChild(s);
+    })();
+  </script>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

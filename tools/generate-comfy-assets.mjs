@@ -18,6 +18,16 @@ const CHECKPOINT = process.env.COMFY_CHECKPOINT || "meinamix_v12Final.safetensor
 const LORA_FILE = "xiaoyan.safetensors";
 const OUT_DIR = path.resolve("public/assets/nikki");
 
+// ---- 可选增强（默认关，向后兼容；不传则与现状一致） ----
+// COMFY_CONTROLNET=openpose|dwpose|none  用骨架图锁死姿势，解决漂移
+// COMFY_CONTROLNET_IMAGE=<path>          骨架图路径（不填则跳过 ControlNet）
+// COMFY_CONTROLNET_STRENGTH=0.9          姿势约束强度
+// COMFY_LAYERDIFFUSE=1                   开 LayerDiffusion 出透明分层（需装插件）
+const CONTROLNET = process.env.COMFY_CONTROLNET || "none";
+const CONTROLNET_IMAGE = process.env.COMFY_CONTROLNET_IMAGE || "";
+const CONTROLNET_STRENGTH = Number(process.env.COMFY_CONTROLNET_STRENGTH || 0.9);
+const LAYERDIFFUSE = process.env.COMFY_LAYERDIFFUSE === "1";
+
 const NEGATIVE_CHAR =
   "wings, black dress, dark background, detached sleeves, floating hair, complex background, scenery, furniture, window, shadow, floor, cropped, close-up, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, worst quality, low quality, watermark, blurry, multiple girls";
 
@@ -299,6 +309,7 @@ const ASSET_JOBS = [
 ];
 
 function buildComfyGraph({ prompt, negative, width, height, seed, lora, loraStrength = 0.58 }) {
+  const useControlnet = CONTROLNET !== "none" && CONTROLNET_IMAGE;
   const graph = {
     "4": {
       class_type: "CheckpointLoaderSimple",
@@ -330,7 +341,7 @@ function buildComfyGraph({ prompt, negative, width, height, seed, lora, loraStre
         scheduler: "karras",
         denoise: 1,
         model: lora ? ["12", 0] : ["4", 0],
-        positive: ["6", 0],
+        positive: useControlnet ? ["14", 0] : ["6", 0],
         negative: ["7", 0],
         latent_image: ["5", 0],
       },
@@ -356,6 +367,39 @@ function buildComfyGraph({ prompt, negative, width, height, seed, lora, loraStre
       },
     };
   }
+
+  // ControlNet：用一张骨架图锁死姿势。节点名按 comfyui_controlnet_aux 插件约定。
+  // 链路：LoadImage → 预处理器 → ControlNetLoader → ControlNetApply(接原 positive) → KSampler
+  if (useControlnet) {
+    const preprocessor = CONTROLNET === "dwpose" ? "DWPreprocessor" : "OpenposePreprocessor";
+    graph["20"] = { class_type: "LoadImage", inputs: { image: CONTROLNET_IMAGE } };
+    graph["21"] = { class_type: preprocessor, inputs: { image: ["20", 0] } };
+    graph["22"] = {
+      class_type: "ControlNetLoader",
+      inputs: { control_net_name: "control_v11p_sd15_openpose.pth" },
+    };
+    graph["23"] = {
+      class_type: "ControlNetApply",
+      inputs: {
+        conditioning: ["6", 0],
+        control_net: ["22", 0],
+        image: ["21", 0],
+        strength: CONTROLNET_STRENGTH,
+      },
+    };
+    graph["3"].inputs.positive = ["23", 0];
+  }
+
+  // LayerDiffusion：出透明分层。节点名按 ComfyUI-layerdiffuse 插件约定。
+  // 注意：插件版本差异大，参数名可能不同；此处给最小可用形态，接入时按 /object_info 校准。
+  if (LAYERDIFFUSE) {
+    graph["30"] = {
+      class_type: "LayerDiffuseApply",
+      inputs: { images: ["8", 0] },
+    };
+    graph["9"].inputs.images = ["30", 0];
+  }
+
   return graph;
 }
 

@@ -357,6 +357,126 @@ def make_face_readability(spec: dict) -> str:
     return path
 
 
+# 11 个部件槽（z 序与命名取自 docs/standard-character-plan.md §3）。
+# rect 是占 x0,y0,x1,y1 的比例（相对 720 可见高 + 380 中心），用于画分区。
+PART_SLOTS = [
+    # name, z, 中文名, 侧面, (左, 上, 右, 下) 比例: 左/右相对中心线, 上/下相对 720 可见高
+    ("hair-back", 10, "后发", "back", (-0.30, -0.02, 0.30, 0.28), None),
+    ("legs-back", 15, "后腿", "back", (-0.14, 0.52, 0.14, 1.00), "胯"),
+    ("body", 20, "底层身体", "mid", (-0.18, 0.26, 0.18, 0.97), "胯"),
+    ("arms-back", 25, "后臂", "back", (-0.26, 0.22, -0.14, 0.60), "肩"),
+    ("outfit", 30, "服装", "mid", (-0.24, 0.24, 0.24, 0.95), "腰"),
+    ("arms-front", 40, "前臂", "front", (0.14, 0.22, 0.26, 0.60), "肩"),
+    ("head", 50, "头+颈", "mid", (-0.20, -0.02, 0.20, 0.22), "颈"),
+    ("face", 55, "五官", "mid", (-0.10, 0.03, 0.10, 0.15), "颈"),
+    ("hair-front", 60, "刘海", "front", (-0.21, -0.03, 0.21, 0.12), "头顶"),
+    ("acc-head", 70, "头饰", "front", (-0.11, -0.07, 0.11, 0.02), "头顶"),
+    ("acc-hand", 45, "手持物", "front", (0.24, 0.48, 0.40, 0.64), "手"),
+]
+
+SIDE_COLOR = {
+    "back": (146, 132, 168),
+    "mid": (108, 160, 120),
+    "front": (196, 96, 74),
+}
+
+
+def make_parts_template(spec: dict) -> str:
+    """11 件 Live2D 分层对位图：每件的占位框 + z 序 + 枢轴。"""
+    heads = 5.0
+    kp = keypoints(spec, heads)
+    cell = 400
+    pad = 20
+    header = 76
+    legend_h = 150
+    width = pad * 2 + cell
+    height = header + cell + legend_h
+
+    img = Image.new("RGB", (width, height), PAPER)
+    draw = ImageDraw.Draw(img)
+
+    draw.text((pad, 14), "Live2D 11 件分层对位模板", font=cjk(20), fill=INK)
+    draw.text(
+        (pad, 42),
+        f"画布 {spec['frame']['canvas']}×{spec['frame']['canvas']} · "
+        f"脚底 y={spec['frame']['baselineY']} · 中心 x={spec['frame']['centerX']} · {heads:.1f} 头身",
+        font=label(11),
+        fill=MUTED,
+    )
+
+    draw.text((pad, 56), "每件按此框出一张与画布同尺寸的透明 PNG", font=label(10), fill=MUTED)
+
+    x = pad
+    y = header
+    s = cell / spec["frame"]["canvas"]
+    baseline_y = y + spec["frame"]["baselineY"] * s
+    center_x = x + spec["frame"]["centerX"] * s
+    top_y = y + kp["top"] * s
+    vis_h = 720.0 * s
+
+    draw.rectangle([x, y, x + cell, y + cell], fill=BOX, outline=GRID)
+    draw.line([x, baseline_y, x + cell, baseline_y], fill=BASELINE, width=2)
+    draw.line([center_x, y, center_x, y + cell], fill=CENTER, width=1)
+
+    def slot_box(rx0, ry0, rx1, ry1):
+        # rx 是相对中心线的偏移（负=左），ry 是从头顶算起的可见高比例
+        bx0 = center_x + rx0 * vis_h
+        bx1 = center_x + rx1 * vis_h
+        by0 = top_y + ry0 * vis_h
+        by1 = top_y + ry1 * vis_h
+        return [min(bx0, bx1), by0, max(bx0, bx1), by1]
+
+    # 框内只标编号（避免文字压住分区），完整清单放底部表格。
+    for idx, (name, z, cn, side, rect, pivot) in enumerate(PART_SLOTS, start=1):
+        color = SIDE_COLOR[side]
+        box = slot_box(*rect)
+        draw.rectangle(box, outline=color, width=2)
+        bx = box[0] + 3
+        by = box[1] + 3
+        draw.rectangle([bx - 1, by - 1, bx + 15, by + 13], fill=BOX, outline=color)
+        draw.text((bx + 1, by), f"{idx:02d}", font=mono(10), fill=color)
+        if pivot and pivot in kp["points"]:
+            py = y + kp["points"][pivot] * s
+            draw.ellipse([center_x - 3, py - 3, center_x + 3, py + 3], outline=ACCENT, width=1)
+        elif pivot == "手":
+            hy = y + (kp["points"]["腰"] + 40) * s
+            draw.ellipse([box[2] - 6, hy - 3, box[2], hy + 3], outline=ACCENT, width=1)
+
+    # 图例 + 部件清单（三列，按 z 序）
+    ly = header + cell + 10
+    draw.line([pad, ly - 6, width - pad, ly - 6], fill=GRID)
+    lx = pad
+    for side, text in (("back", "back 层（藏在后面）"), ("mid", "mid 层（主体）"), ("front", "front 层（盖在上面）")):
+        color = SIDE_COLOR[side]
+        draw.rectangle([lx, ly, lx + 11, ly + 11], outline=color, width=2)
+        draw.text((lx + 16, ly - 1), text, font=label(10), fill=INK)
+        lx += 150
+
+    cols = 2
+    col_w = (width - pad * 2) // cols
+    for idx, (name, z, cn, side, rect, pivot) in enumerate(PART_SLOTS, start=1):
+        r = (idx - 1) // cols
+        c = (idx - 1) % cols
+        tx = pad + c * col_w
+        ty = ly + 20 + r * 14
+        draw.text((tx, ty), f"{idx:02d}", font=mono(9), fill=SIDE_COLOR[side])
+        draw.text((tx + 20, ty), f"{name}", font=mono(9), fill=INK)
+        draw.text((tx + 92, ty), f"z{z}", font=mono(9), fill=MUTED)
+        draw.text((tx + 118, ty), cn, font=label(10), fill=MUTED)
+
+    note_y = ly + 20 + ((len(PART_SLOTS) + cols - 1) // cols) * 14 + 8
+    draw.text(
+        (pad, note_y),
+        "每件出一张与画布同尺寸的透明 PNG，空区保留用于对齐；关节位置由 spec.json 算出。",
+        font=label(10),
+        fill=ACCENT,
+    )
+
+    path = os.path.join(OUT_DIR, "parts-template-390.png")
+    img.save(path)
+    return path
+
+
 def main() -> int:
     spec = load_spec()
 
@@ -374,7 +494,8 @@ def main() -> int:
     os.makedirs(OUT_DIR, exist_ok=True)
     a = make_standard_template(spec)
     b = make_face_readability(spec)
-    for p in (a, b):
+    c = make_parts_template(spec)
+    for p in (a, b, c):
         print(f"OK   {os.path.relpath(p, ROOT)}")
     return 0
 

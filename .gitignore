@@ -6,6 +6,9 @@ source-assets/
 .env.*
 !.env.example
 
+# Live2D Cubism Core（专有许可，不进仓库）。用 `npm run setup:live2d` 下载。
+public/vendor/live2dcubismcore.min.js
+
 # Local Netlify folder
 .netlify
 
