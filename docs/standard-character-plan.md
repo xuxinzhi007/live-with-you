@@ -1,5 +1,7 @@
 # 标准比例角色底模方案（v2）
 
+> **历史计划文档。** 现行入口为 `WorldApp`；文中 `WorldView` / Pixi 走动世界引用已不是当前运行时。见 [product-charter.md](./product-charter.md) 与 [archive/](./archive/README.md)。
+
 > 状态：**设计定稿，未改代码**。等你确认第 9 节后进入实现。
 > 取代：[character-rig-design.md](./character-rig-design.md) 中“1.87 头身”的比例基准；
 > 画布、槽位、容差、流水线仍沿用该文。

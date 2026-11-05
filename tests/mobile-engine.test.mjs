@@ -34,19 +34,19 @@ import {
   interactWithCompanion,
 } from "../src/mobile/world/codex.ts";
 import {
-  BONE_SOCKETS,
-  clampRigPlacement,
-  getRigPlacement,
-  getSocketForItem,
   getWearableOverlaySrc,
 } from "../src/mobile/world/paper-doll-rig.ts";
 import {
   BONE_LINKS,
+  BONE_SOCKETS,
   HUMANOID_BONES,
   JOINT_LIST,
+  clampRigPlacement,
   computeHumanoidPartSlices,
   evaluateAnimClip,
+  getRigPlacement,
   getSkeletonForDress,
+  getSocketForItem,
   moveJointCascade,
   resolveJointForItem,
   solveWorldSkeleton,
@@ -55,6 +55,18 @@ import {
 import {
   fallbackCompanionChat,
 } from "../src/mobile/world/companion-bridge.ts";
+import {
+  getLayeredPartLocalPaths,
+  isPhase1LayeredOutfit,
+  MOTION_DURATION_MS,
+  nextMotion,
+  probeLayeredParts,
+  resolveLayeredPartUrls,
+} from "../src/mobile/world/layered-stage.ts";
+import {
+  mapLocalAsset,
+  resolveAsset,
+} from "../src/mobile/world/remote-assets.ts";
 
 function createMemoryStorage(seed = {}) {
   const values = new Map(Object.entries(seed));
@@ -273,4 +285,41 @@ test("V9 full humanoid biped FK skeleton (with legs), 6-layer cutout slicing and
   assert.equal(scaled.handR.poseRotate, 20);
   assert.equal(resolveJointForItem("hair-daisy-clip", "hairAcc"), "hairSide");
   assert.equal(resolveJointForItem("hair-pearl-tiara", "hairAcc"), "crown");
+});
+
+test("layered paper-doll paths map to base/dress remote categories and probe falls back when art missing", async () => {
+  const local = getLayeredPartLocalPaths("original", "dress-snow-white");
+  assert.equal(local.body, "assets/characters/original/body.png");
+  assert.equal(local.head, "assets/characters/original/head.png");
+  assert.equal(local.armsFront, "assets/characters/original/arms-front.png");
+  assert.equal(local.dress, "assets/characters/parts/dress/dress-snow-white.png");
+
+  assert.deepEqual(mapLocalAsset(local.body), { cat: "base", name: "original-body.png" });
+  assert.deepEqual(mapLocalAsset(local.head), { cat: "base", name: "original-head.png" });
+  assert.deepEqual(mapLocalAsset(local.armsFront), { cat: "base", name: "original-arms-front.png" });
+  assert.deepEqual(mapLocalAsset(local.dress), { cat: "dress", name: "dress-snow-white.png" });
+
+  assert.equal(isPhase1LayeredOutfit("dress-snow-white"), true);
+  assert.equal(isPhase1LayeredOutfit("dress-apricot-tea"), false);
+  assert.equal(isPhase1LayeredOutfit("dress-rose-waltz"), false);
+  assert.deepEqual(mapLocalAsset("assets/nikki/dress-apricot-tea.png"), {
+    cat: "dress",
+    name: "dress-apricot-tea.png",
+  });
+
+  const resolved = resolveLayeredPartUrls("original", "dress-snow-white");
+  assert.equal(resolved.body, local.body);
+  assert.equal(resolveAsset(local.dress), local.dress);
+
+  const ready = await probeLayeredParts(resolved);
+  assert.equal(ready, false, "Node has no Image loader; missing local public parts must fall back");
+});
+
+test("stage motion state machine: react/equip interrupt and return to idle durations", () => {
+  assert.equal(nextMotion("idle", "react"), "react");
+  assert.equal(nextMotion("react", "equip"), "equip");
+  assert.equal(nextMotion("equip", "react"), "react");
+  assert.equal(nextMotion("react", "idle"), "idle");
+  assert.equal(MOTION_DURATION_MS.react, 720);
+  assert.equal(MOTION_DURATION_MS.equip, 680);
 });

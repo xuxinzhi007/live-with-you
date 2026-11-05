@@ -1,133 +1,10 @@
 /**
- * V7 · 角色 760×760 统一骨骼坐标系统 (Skeleton Bone System) + 17 件纯透明矢量可穿戴配饰 + 无损边缘抠图引擎
- *
- * 1. 【760×760 归一化骨骼坐标系统（Scale-Invariant Bone System）】：
- *    依据 `tools/character/spec.json` 与 `docs/character-rig-design.md` §5.2 的实测关键点（Landmarks）：
- *    - 画布固定 760×760 比例（aspect-ratio: 1 / 1），脚底基线 y = 98.4% (748/760)，中心线 x = 50% (380/760)。
- *    - 头顶骨骼点 `crown`   : (x: 50%, y: 12%)
- *    - 额头/发际骨骼点 `head`: (x: 50%, y: 20%)
- *    - 左耳侧发夹骨骼点 `hairSide`: (x: 63%, y: 24%)
- *    - 颈部/领口骨骼点 `neck`: (x: 50%, y: 55%)
- *    - 右手骨骼点 `handR`   : (x: 68%, y: 69%)
- *    - 左手骨骼点 `handL`   : (x: 32%, y: 69%)
- *    - 背部光环骨骼点 `aura`: (x: 50%, y: 50%)
- *    所有配饰均作为 1:1 骨骼舞台的子节点，宽度与位置全部用 `%` 绑定在骨骼上！
- *    因此无论普通模式还是「👁️ 全景放大」模式，头饰和手持物都 100% 锁死在头顶与手上，绝不偏移失效！
- *
- * 2. 【17 件 100% 纯透明 SVG 精致动漫可穿戴配饰库】：
- *    彻底杜绝 AI 把“发夹/花束”生成出“金发人头”或“花盆底座”的问题！
- *    当穿戴在雯宝骨骼上时，直接使用专门按骨骼对位绘制的 100% 透明底多层高光动漫 SVG 部件。
- *
- * 3. 【防过度抠图引擎（Anti-Overcut Flood-Fill）】：
- *    严格只抠除与四周边框连通的纯背景色，且一旦遇到深色轮廓线立即停止向内渗透，
- *    100% 保护角色头发高光、眼白、脸部皮肤与白色裙摆不被抠穿！
+ * 纸偶舞台叠加与抠图（V5）：
+ * - 舞台可穿戴外观以本文件 WEARABLE_SVG_OVERLAYS / getWearableOverlaySrc 为唯一来源（图鉴仍可用 nikki/item-*.png）。
+ * - 插槽锚点 BONE_SOCKETS / getSocketForItem / getRigPlacement 已并入 skeleton-system.ts，勿在此重复定义。
+ * - loadCutoutImage：对不透明 Comfy 主装扮（512×640 RGB）等做运行时洪水填充抠图。
+ *   后续应用离线透明、贴近 760 脚底规格的资产替换运行时抠图；当前三张 dress-* 仍保持不透明原图。
  */
-import type { WardrobeSlot } from "./nikki-wardrobe.ts";
-
-export interface RigPlacement {
-  /** 相对骨骼基准锚点的水平偏移百分比 (-40 ~ +40) */
-  dx: number;
-  /** 相对骨骼基准锚点的垂直偏移百分比 (-40 ~ +40) */
-  dy: number;
-  /** 缩放倍率 (0.5 ~ 2.0) */
-  scale: number;
-  /** 旋转角度 (-45 ~ +45 度) */
-  rotate: number;
-}
-
-export type RigOverrideMap = Record<string, RigPlacement>;
-
-/**
- * 760×760 骨骼标准锚点（百分比坐标，随骨骼容器等比缩放，放大后永不失效！）
- * - anchorX / anchorY: 骨骼基准点在 1:1 角色框内的百分比位置
- * - baseWidthPct     : 配饰相对于角色框宽度的百分比尺寸（随角色放大等比放大！）
- */
-export interface BoneSocketSpec {
-  anchorX: number;
-  anchorY: number;
-  baseWidthPct: number;
-  zIndex: number;
-}
-
-export const BONE_SOCKETS: Record<string, BoneSocketSpec> = {
-  // 头顶发箍 / 皇冠 / 帽子骨骼点（对应头顶 y=13%~16%）
-  "hair-crown": { anchorX: 50, anchorY: 14, baseWidthPct: 38, zIndex: 32 },
-  // 侧边发夹 / 蝴蝶结骨骼点（对应左侧刘海旁 x=63%, y=23%）
-  "hair-side":  { anchorX: 63, anchorY: 23, baseWidthPct: 22, zIndex: 33 },
-  // 右手手持物骨骼点（对应右手位置 x=68%, y=68%）
-  "hand-right": { anchorX: 67, anchorY: 67, baseWidthPct: 26, zIndex: 35 },
-  // 左手手持物骨骼点（对应左手位置 x=33%, y=68%）
-  "hand-left":  { anchorX: 33, anchorY: 67, baseWidthPct: 25, zIndex: 35 },
-  // 身后环绕香氛光环骨骼点（居中衬托在角色背后 zIndex=10）
-  "aura-back":  { anchorX: 50, anchorY: 48, baseWidthPct: 92, zIndex: 10 },
-};
-
-/** 每件单品绑定的具体骨骼插槽 */
-export function getSocketForItem(itemId: string, slot: Exclude<WardrobeSlot, "dress" | "memoryCard">): BoneSocketSpec {
-  if (slot === "hairAcc") {
-    if (itemId === "hair-daisy-clip" || itemId === "hair-lace-ribbon") {
-      return BONE_SOCKETS["hair-side"];
-    }
-    return BONE_SOCKETS["hair-crown"];
-  }
-  if (slot === "handheld") {
-    if (itemId === "hand-pocket-watch") {
-      return BONE_SOCKETS["hand-left"];
-    }
-    return BONE_SOCKETS["hand-right"];
-  }
-  return BONE_SOCKETS["aura-back"];
-}
-
-export const DEFAULT_SLOT_RIG: Record<Exclude<WardrobeSlot, "dress" | "memoryCard">, RigPlacement> = {
-  hairAcc:  { dx: 0, dy: 0, scale: 1.0, rotate: 0 },
-  handheld: { dx: 0, dy: 0, scale: 1.0, rotate: 0 },
-  aura:     { dx: 0, dy: 0, scale: 1.0, rotate: 0 },
-};
-
-export const ITEM_DEFAULT_RIG: Record<string, RigPlacement> = {
-  "hair-daisy-clip":        { dx: 0,  dy: 0,  scale: 1.0,  rotate: 12 },
-  "hair-lace-ribbon":       { dx: 2,  dy: -2, scale: 1.05, rotate: 8 },
-  "hair-plush-bunny":       { dx: 0,  dy: -3, scale: 1.12, rotate: 0 },
-  "hair-whale-beret":       { dx: 3,  dy: -1, scale: 1.08, rotate: 8 },
-  "hair-pearl-tiara":       { dx: 0,  dy: -1, scale: 0.96, rotate: 0 },
-  "hair-sunflower-hat":     { dx: 0,  dy: 0,  scale: 1.22, rotate: -3 },
-
-  "hand-teacup":            { dx: 0,  dy: 0,  scale: 0.95, rotate: 0 },
-  "hand-cookie-basket":     { dx: 2,  dy: 3,  scale: 1.05, rotate: 4 },
-  "hand-sunflower-bouquet": { dx: -2, dy: -2, scale: 1.15, rotate: -10 },
-  "hand-music-box":         { dx: 0,  dy: 2,  scale: 1.0,  rotate: 0 },
-  "hand-whale-globe":       { dx: 0,  dy: 0,  scale: 1.02, rotate: 0 },
-  "hand-pocket-watch":      { dx: 0,  dy: 0,  scale: 0.95, rotate: -8 },
-
-  "aura-morning-breeze":    { dx: 0,  dy: 0,  scale: 1.0,  rotate: 0 },
-  "aura-honey-amber":       { dx: 0,  dy: 0,  scale: 1.0,  rotate: 0 },
-  "aura-rose-petals":       { dx: 0,  dy: 0,  scale: 1.05, rotate: 0 },
-  "aura-ocean-bubbles":     { dx: 0,  dy: 0,  scale: 1.05, rotate: 0 },
-  "aura-starlight-firefly": { dx: 0,  dy: 0,  scale: 1.08, rotate: 0 },
-};
-
-export function getRigPlacement(
-  itemId: string,
-  slot: Exclude<WardrobeSlot, "dress" | "memoryCard">,
-  overrides: RigOverrideMap = {},
-): RigPlacement {
-  if (overrides[itemId]) return overrides[itemId];
-  if (ITEM_DEFAULT_RIG[itemId]) return ITEM_DEFAULT_RIG[itemId];
-  return DEFAULT_SLOT_RIG[slot];
-}
-
-export function clampRigPlacement(input: Partial<RigPlacement>, fallback: RigPlacement): RigPlacement {
-  const num = (v: unknown, def: number, lo: number, hi: number) =>
-    typeof v === "number" && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : def;
-  return {
-    dx: num(input.dx, fallback.dx, -40, 40),
-    dy: num(input.dy, fallback.dy, -40, 40),
-    scale: num(input.scale, fallback.scale, 0.4, 2.2),
-    rotate: num(input.rotate, fallback.rotate, -60, 60),
-  };
-}
-
 /* ==================== 17 件 100% 透明底可穿戴动漫矢量配饰（专为骨骼穿戴设计，零杂边、零错位！） ==================== */
 
 function svgDataUrl(svgContent: string): string {
@@ -353,6 +230,8 @@ export function getWearableOverlaySrc(itemId: string, fallbackImg: string): stri
 }
 
 /* ==================== 浏览器端防过度抠图引擎（严格外框连通 + 轮廓线阻断保护） ==================== */
+/* 现状：Comfy dress-* 多为 512×640 不透明图，舞台依赖本函数抠透明。目标态：离线产出带 alpha 的 760 规格资产后可跳过洪水填充。 */
+
 
 const CUTOUT_CACHE = new Map<string, Promise<string>>();
 

@@ -25,6 +25,7 @@ import {
   type WardrobeItem,
   type WardrobeSlot,
 } from "./world/nikki-wardrobe";
+import { isComfyDressSource, resolveAsset } from "./world/remote-assets";
 import {
   getWearableOverlaySrc,
   loadCutoutImage,
@@ -53,6 +54,15 @@ import {
   type CompanionConnection,
 } from "./world/companion-bridge";
 import { getCharacterSkin } from "./world/skins";
+import {
+  MOTION_DURATION_MS,
+  isPhase1LayeredOutfit,
+  nextMotion,
+  probeLayeredParts,
+  resolveLayeredPartUrls,
+  type LayerSkinId,
+  type StageMotion,
+} from "./world/layered-stage";
 import "./world.css";
 
 /**
@@ -173,6 +183,9 @@ export function WorldApp() {
   const [cutoutMap, setCutoutMap] = useState<Record<string, string>>({});
   const [breatheIdx, setBreatheIdx] = useState(0);
   const [reacting, setReacting] = useState(false);
+  const [stageMotion, setStageMotion] = useState<StageMotion>("idle");
+  const motionGenRef = useRef(0);
+  const [layeredReady, setLayeredReady] = useState(false);
   const [equipBurstKey, setEquipBurstKey] = useState(0);
   const [lobbyLine, setLobbyLine] = useState("「欢迎回来～点右边『换装』试新裙子，或点『骨骼』直接拖动关节点位哦！」");
 
@@ -208,13 +221,6 @@ export function WorldApp() {
   useEffect(() => {
     saveNikkiState(nikki);
   }, [nikki]);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setBreatheIdx((i) => (i + 1) % 4);
-    }, 520);
-    return () => clearInterval(timer);
-  }, []);
 
   // 30FPS 驱动全身双足 FK 骨骼动画（呼吸/歪头/挥手/踏步走/欢呼）
   useEffect(() => {
@@ -262,6 +268,50 @@ export function WorldApp() {
       active = false;
     };
   }, [currentDress, itemImage]);
+
+  const playStageMotion = useCallback((input: StageMotion) => {
+    const gen = ++motionGenRef.current;
+    setStageMotion((current) => nextMotion(current, input));
+    setReacting(input !== "idle");
+    if (input === "idle") return;
+    const duration = MOTION_DURATION_MS[input];
+    window.setTimeout(() => {
+      if (motionGenRef.current !== gen) return;
+      setStageMotion("idle");
+      setReacting(false);
+    }, duration);
+  }, []);
+
+  const layerSkinId: LayerSkinId = currentDress.skinId === "maid" ? "maid" : "original";
+  const layeredEligible = isPhase1LayeredOutfit(currentDress.id);
+  const layeredUrls = useMemo(
+    () => resolveLayeredPartUrls(layerSkinId, currentDress.id),
+    [layerSkinId, currentDress.id],
+  );
+  const showLayered = layeredEligible && layeredReady;
+
+  useEffect(() => {
+    if (showLayered) return;
+    const timer = setInterval(() => {
+      setBreatheIdx((i) => (i + 1) % 4);
+    }, 520);
+    return () => clearInterval(timer);
+  }, [showLayered]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!layeredEligible) {
+      setLayeredReady(false);
+      return;
+    }
+    setLayeredReady(false);
+    void probeLayeredParts(layeredUrls).then((ok) => {
+      if (alive) setLayeredReady(ok);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [layeredEligible, layeredUrls]);
 
   useEffect(() => {
     if (!evalModal) {
@@ -455,10 +505,9 @@ export function WorldApp() {
       setSelectedJoint(resolveJointForItem(item.id, "handheld"));
     }
     setEquipBurstKey((k) => k + 1);
-    setReacting(true);
-    setTimeout(() => setReacting(false), 680);
+    playStageMotion(item.slot === "dress" ? "equip" : "react");
     pushPopup(`✨ 穿戴：${item.name}`);
-  }, [pushPopup, setSkin, showToast, unlockedSet]);
+  }, [playStageMotion, pushPopup, setSkin, showToast, unlockedSet]);
 
   const handleUpgradeOrCraftItem = useCallback((item: WardrobeItem) => {
     const owned = unlockedSet.has(item.id);
@@ -479,6 +528,7 @@ export function WorldApp() {
       }));
       if (item.skinId) setSkin(item.skinId);
       setEquipBurstKey((k) => k + 1);
+      playStageMotion(item.slot === "dress" ? "equip" : "react");
       companionAct("giftFlower", false);
       pushPopup(`🎉 成功定制并穿戴 ${item.name}！`);
       return;
@@ -499,10 +549,9 @@ export function WorldApp() {
       itemStars: { ...prev.itemStars, [item.id]: currentStar + 1 },
     }));
     setEquipBurstKey((k) => k + 1);
-    setReacting(true);
-    setTimeout(() => setReacting(false), 680);
+    playStageMotion("react");
     pushPopup(`⭐ ${item.name} 升至 ★${currentStar + 1}`);
-  }, [companionAct, nikki.coupons, nikki.itemStars, pushPopup, setSkin, showToast, unlockedSet]);
+  }, [companionAct, nikki.coupons, nikki.itemStars, playStageMotion, pushPopup, setSkin, showToast, unlockedSet]);
 
   const handleLiveComfyGenerate = useCallback(async () => {
     if (comfyBusy) return;
@@ -542,8 +591,7 @@ export function WorldApp() {
     const res = companionAct("pat", false);
     setNikki((prev) => ({ ...prev, coupons: prev.coupons + 2 }));
     setEquipBurstKey((k) => k + 1);
-    setReacting(true);
-    setTimeout(() => setReacting(false), 720);
+    playStageMotion("react");
     const lines = [
       `「今天穿的是【${currentDress.name}】，头饰和手持物都牢牢绑在我的骨骼点上啦！」`,
       "「如果新生成的衣服高矮不同，点右边的『🦴骨骼』就能直接拖动我身上的关节点对位哦～」",
@@ -551,7 +599,7 @@ export function WorldApp() {
     ];
     setLobbyLine(lines[Math.floor(Math.random() * lines.length)]);
     pushPopup(`+${res.bondGained} 亲密 · +2 礼券`);
-  }, [companionAct, currentDress.name, pushPopup, screen, totalCharmPower]);
+  }, [companionAct, currentDress.name, playStageMotion, pushPopup, screen, totalCharmPower]);
 
   const handleAutoRecommend = useCallback((stage: StylingStage) => {
     const best = recommendBestOutfitForStage(stage, unlockedSet, nikki.itemStars);
@@ -560,10 +608,9 @@ export function WorldApp() {
     if (dress.skinId) setSkin(dress.skinId);
     setInspectedItemId(best.dress);
     setEquipBurstKey((k) => k + 1);
-    setReacting(true);
-    setTimeout(() => setReacting(false), 680);
+    playStageMotion("equip");
     showToast(`💡 已一键换上【${STYLE_ATTR_LABELS[stage.primaryAttr].name}·${STYLE_ATTR_LABELS[stage.secondaryAttr].name}】最优搭配！`);
-  }, [nikki.itemStars, setSkin, showToast, unlockedSet]);
+  }, [nikki.itemStars, playStageMotion, setSkin, showToast, unlockedSet]);
 
   const handleToggleSkill = useCallback((skId: StylingSkill["id"]) => {
     setSelectedSkills((prev) => {
@@ -622,10 +669,9 @@ export function WorldApp() {
     companionAct("pat", count === 5);
     setGachaResults(res.pulls);
     setEquipBurstKey((k) => k + 1);
-    setReacting(true);
-    setTimeout(() => setReacting(false), 800);
+    playStageMotion("react");
     pushPopup(`✨ 幻阁抽取 ×${count} · +${res.bondGained} 亲密`);
-  }, [companionAct, nikki.coupons, nikki.itemStars, pushPopup, showToast, unlockedSet]);
+  }, [companionAct, nikki.coupons, nikki.itemStars, playStageMotion, pushPopup, showToast, unlockedSet]);
 
   const handleSendChat = useCallback(async (textToSend?: string) => {
     const msg = (textToSend ?? chatInput).trim();
@@ -648,8 +694,9 @@ export function WorldApp() {
     [activeSlot],
   );
 
-  const isComfyDress = currentDress.image.startsWith("assets/nikki/dress-");
+  const isComfyDress = isComfyDressSource(currentDress.image);
   const customDressImg = nikki.customImages?.[currentDress.id];
+  // Fallback whole-body only (layered mode renders its own stack and does not hard-cut breathe frames).
   const heroSpriteSrc = customDressImg
     ? customDressImg
     : isComfyDress
@@ -669,7 +716,7 @@ export function WorldApp() {
       <div id="nikki-root" className="nk-title-screen" onClick={() => setScreen("lobby")}>
         <div
           className="nk-title-bg"
-          style={{ backgroundImage: `url(${itemImage(currentCard) || "assets/nikki/card-starlight-waltz.png"})` }}
+          style={{ backgroundImage: `url(${itemImage(currentCard) || resolveAsset("assets/nikki/card-starlight-waltz.png")})` }}
           aria-hidden="true"
         />
         <div className="nk-sparkles" aria-hidden="true">
@@ -681,7 +728,16 @@ export function WorldApp() {
         </div>
 
         <div className="nk-title-hero">
-          <img src={heroSpriteSrc} alt="雯宝" draggable={false} />
+          {showLayered ? (
+            <div className={`nk-layered-stack m-title m-motion-${stageMotion}`} aria-hidden="true">
+              <img className="nk-layer m-body" src={layeredUrls.body} alt="" draggable={false} />
+              <img className="nk-layer m-dress" src={layeredUrls.dress} alt="" draggable={false} />
+              <img className="nk-layer m-head" src={layeredUrls.head} alt="" draggable={false} />
+              <img className="nk-layer m-arms" src={layeredUrls.armsFront} alt="" draggable={false} />
+            </div>
+          ) : (
+            <img src={heroSpriteSrc} alt="雯宝" draggable={false} />
+          )}
         </div>
 
         <div className="nk-title-brand">
@@ -747,7 +803,7 @@ export function WorldApp() {
           >
             <div
               className="nk-stage-bg"
-              style={{ backgroundImage: `url(${itemImage(currentCard) || currentDress.bgScene || "assets/scenes/home.webp"})` }}
+              style={{ backgroundImage: `url(${itemImage(currentCard) || currentDress.bgScene || resolveAsset("assets/scenes/home.webp")})` }}
               aria-hidden="true"
             />
             <div className="nk-stage-frame" aria-hidden="true" />
@@ -789,8 +845,8 @@ export function WorldApp() {
 
             {/* ==================== 核心：每套衣服独立的层级骨骼容器 (Hierarchical Skeleton Rig) ==================== */}
             <div
-              key={`${currentDress.id}-${equipBurstKey}`}
-              className={`nk-paperdoll-rig nk-anim-enter${reacting ? " m-bounce" : ""}${screen === "rig" ? " m-rig-mode" : ""}`}
+              key={showLayered ? "layered-wenbao" : `${currentDress.id}-${equipBurstKey}`}
+              className={`nk-paperdoll-rig nk-anim-enter${reacting ? " m-bounce" : ""}${screen === "rig" ? " m-rig-mode" : ""}${showLayered ? " m-layered" : ""} m-motion-${stageMotion}`}
               onClick={handleTapCharacter}
               role="button"
               tabIndex={0}
@@ -818,22 +874,36 @@ export function WorldApp() {
                   draggable={false}
                 />
 
-                {/* Layer 16~24: 6 层人体部位切片蒙皮（LegL 左腿 / LegR 右腿 / ArmL 左臂 / Torso 躯干 / ArmR 右臂 / Head 头部）各自绕骨骼枢轴独立旋转！ */}
-                {partSlices.map((slice) => (
-                  <img
-                    key={slice.part}
-                    className={`nk-bone-body m-part-${slice.part}`}
-                    src={heroSpriteSrc}
-                    alt=""
-                    style={{
-                      zIndex: slice.zIndex,
-                      clipPath: slice.clipPath,
-                      transformOrigin: `${slice.originX}% ${slice.originY}%`,
-                      transform: `translateY(${slice.ty}%) rotate(${slice.angle}deg)`,
-                    }}
-                    draggable={false}
-                  />
-                ))}
+                {/* Layered paper-doll (body→dress→head→arms) when transparent parts exist; else fake 6-slice whole-body fallback */}
+                {showLayered ? (
+                  <div className={`nk-layered-stack m-motion-${stageMotion}`} aria-hidden="true">
+                    <img className="nk-layer m-body" src={layeredUrls.body} alt="" draggable={false} />
+                    <img
+                      className={`nk-layer m-dress${stageMotion === "equip" ? " m-equip-fade" : ""}`}
+                      src={layeredUrls.dress}
+                      alt=""
+                      draggable={false}
+                    />
+                    <img className="nk-layer m-head" src={layeredUrls.head} alt="" draggable={false} />
+                    <img className="nk-layer m-arms" src={layeredUrls.armsFront} alt="" draggable={false} />
+                  </div>
+                ) : (
+                  partSlices.map((slice) => (
+                    <img
+                      key={slice.part}
+                      className={`nk-bone-body m-part-${slice.part}`}
+                      src={heroSpriteSrc}
+                      alt=""
+                      style={{
+                        zIndex: slice.zIndex,
+                        clipPath: slice.clipPath,
+                        transformOrigin: `${slice.originX}% ${slice.originY}%`,
+                        transform: `translateY(${slice.ty}%) rotate(${slice.angle}deg)`,
+                      }}
+                      draggable={false}
+                    />
+                  ))
+                )}
 
                 {/* Layer 32: 绑定在头部骨骼链上的头饰（随歪头动作同步旋转！） */}
                 <img

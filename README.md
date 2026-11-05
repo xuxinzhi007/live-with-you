@@ -43,6 +43,16 @@ npm run build
 
 ---
 
+
+## 2.1 入口与资源库
+
+- **入口**：`src/main.tsx` → `src/mobile/WorldApp.tsx`（React DOM，无 Pixi）。
+- **远端资源库**：在 `.env` 设置 `VITE_ASSET_BASE_URL=http://192.168.124.77:8788`（见 `.env.example`）。解析逻辑在 `src/mobile/world/remote-assets.ts`，把 `public` 相对路径映射到小主机 `/files/{dress|part|card|base|ui|world}/…`。
+- 将 `VITE_ASSET_BASE_URL` 设为空字符串并重启开发服务后，改回读取仓库 `public/assets`。本地 `characters` / `nikki` / `scenes` 副本仍保留作回退；**当前没有**图片加载失败时的 onerror 自动切换。
+- 路径对照：`public/assets/manifest.json`。
+
+---
+
 ## 3. 本地 ComfyUI 动漫美术资产生成管线
 
 本项目的所有服饰原画、心境羁绊卡 CG 与配饰插画均通过本机 **ComfyUI** 自动生成，无需手工抠图或找外部素材。
@@ -65,7 +75,7 @@ npm run build
   - 舞台中央的雯宝采用 4 层骨骼挂载：`Layer 10`（背后香氛光环 `aura`）、`Layer 20`（同角色透明抠图主躯干 `dress`）、`Layer 30`（头顶骨骼锚点 `hairAcc`）、`Layer 40`（手部骨骼锚点 `handheld`）。
   - 点击舞台右下角 **「🔧 调饰品位置」** 或直接点雯宝身上的头饰/手持物，即可通过滑块实时微调 `水平 X / 垂直 Y / 大小 / 角度` 并自动持久化保存。
 
-### 3.2 一键批量生成 / 重新生成全套衣橱动漫原画
+### 3.3 一键批量生成 / 重新生成全套衣橱动漫原画
 
 确保本机 ComfyUI (`127.0.0.1:8188`) 已启动后，在仓库根目录运行：
 
@@ -77,7 +87,7 @@ node tools/generate-comfy-assets.mjs
 FORCE_REGEN=1 node tools/generate-comfy-assets.mjs
 ```
 
-### 3.3 游戏内实时调用 ComfyUI 重绘卡面
+### 3.4 游戏内实时调用 ComfyUI 重绘卡面
 
 在 `npm run dev` 开发模式下，`vite.config.ts` 已内置 `/api/comfy/draw` 本地代理中间件：
 1. 打开游戏底部导航 **「✨ 星愿幻阁」**；

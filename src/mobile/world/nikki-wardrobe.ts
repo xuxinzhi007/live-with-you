@@ -6,6 +6,7 @@
  * - 6 大主题闯关章节 + 互动式「搭配对决 PK 技能系统」（暖暖微笑 / 迷人飞吻 / 免疫挑剔 / 真爱之吻）
  */
 import type { CharacterSkinId } from "../engine/types.ts";
+import { resolveAsset } from "./remote-assets.ts";
 
 export type WardrobeSlot = "dress" | "hairAcc" | "handheld" | "aura" | "memoryCard";
 export type StyleAttr = "sweet" | "elegant" | "pure" | "warm" | "cool";
@@ -113,7 +114,7 @@ export interface WardrobeItem {
   skillName?: string;
 }
 
-export const WARDROBE_ITEMS: WardrobeItem[] = [
+const LOCAL_WARDROBE_ITEMS: WardrobeItem[] = [
   /* ==================== 1. 主装扮 (dress · 5 件) ==================== */
   {
     id: "dress-snow-white",
@@ -528,6 +529,11 @@ export const WARDROBE_ITEMS: WardrobeItem[] = [
     skillName: "星河华尔兹 +22%",
   },
 ];
+export const WARDROBE_ITEMS: WardrobeItem[] = LOCAL_WARDROBE_ITEMS.map((item) => ({
+  ...item,
+  image: resolveAsset(item.image),
+  bgScene: item.bgScene ? resolveAsset(item.bgScene) : item.bgScene,
+}));
 
 export const DEFAULT_UNLOCKED_ITEM_IDS: string[] = [
   "dress-snow-white",

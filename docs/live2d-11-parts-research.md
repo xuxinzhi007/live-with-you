@@ -1,6 +1,7 @@
 # Live2D 11 件方案调研
 
-> 状态：调研完成，链路已验证。日期：2026-11-02
+> **定位：未来 / 可选，不是当前运行时。** 现行产品是 `WorldApp` DOM 纸偶与 `skeleton-system`；仓库已卸除 `pixi.js` 运行时依赖。若日后接入 Live2D，需重新引入兼容的渲染依赖并完成 Cubism 许可流程。
+> 状态：调研完成，链路曾在 Pixi 8 下验证。日期：2026-11-02
 > 验收证据：`spark-output/audit/live2d-demo/report.json`、`live2d-canvas.png`
 
 ## 0. 结论

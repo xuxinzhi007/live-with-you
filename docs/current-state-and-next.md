@@ -1,81 +1,61 @@
-# 《雯宝》当前实现与下一步（V2）
+# 《雯宝》当前实现与下一步（V5）
 
-> 依据：[产品宪章 V2](./product-charter.md)
-> 状态：V2「可走动的单主角小世界」已落地并通过 390×844 自动化验收；内容深度与真机回归待补。
+> 依据：[产品宪章 V5](./product-charter.md)
+> 状态：现行产品是 **WorldApp 换装 / 舞台 / 纸偶 / 幻阁 / 密语**。V2 可走动 Pixi 小世界已归档，见 [archive/](./archive/README.md)。
+> **不存在** `src/mobile/world/WorldView.tsx`；**没有** Pixi 运行时。
 
 ## 1. 现在是什么
 
-玩家**扮演雯宝本人**，在一个横向比屏幕宽的小世界里走动、使用家具、种花、买种、踢球。
-交互全部发生在场景里：点地面走过去，点物件走近后出现一个情境按钮，门是唯一的跨房间入口。
+入口：`src/main.tsx` 只挂载 `src/mobile/WorldApp.tsx`。
 
-技术分工：
+屏幕状态机：`title` → `lobby` / `wardrobe` / `rig` / `stages` / `pavilion` / `codex` / `chat`。
 
 | 模块 | 位置 | 职责 |
 | --- | --- | --- |
-| 页面与 HUD | `src/mobile/WorldApp.tsx` | 路由、身份/资源、情境按钮、抽屉、提示 |
-| 世界渲染 | `src/mobile/world/WorldView.tsx` | Pixi 舞台、贴图、排序、输入、相机、落点圈 |
-| 世界运行时 | `src/mobile/world/runtime.ts` | 移动、碰撞、走近、接球、镜头（纯 TS，可单测） |
-| 房间数据 | `src/mobile/world/rooms.ts` | 房间、物件、阻挡、门、走近点 |
-| 世界规则 | `src/mobile/world/state.ts`、`actions.ts` | 花圃、冷却、收集、小记、动作结算（纯函数） |
-| 状态钩子 | `src/mobile/world/useWorldGame.ts` | 读写存档、把动作结果接进 React |
-| 角色皮肤 | `src/mobile/world/skins.ts` | original（默认）/ maid 两套帧、头像与统一基线 |
-| 素材 | `public/assets/characters/<skin>/`、`public/assets/scenes/` | 角色帧、房间背景、物件、花圃阶段 |
-| 素材脚本 | `tools/build-character-assets.py`、`tools/build-scene-assets.py` | 抠图、统一基线、程序化生成背景与物件 |
+| 页面与 HUD | `src/mobile/WorldApp.tsx` | 屏幕路由、试衣镜、衣橱、闯关、幻阁、图鉴、密语、骨骼工坊 UI |
+| 衣橱规则 | `src/mobile/world/nikki-wardrobe.ts` | 槽位、单品、套装、闯关、抽卡、升星；路径经 `resolveAsset` |
+| 远端资源 | `src/mobile/world/remote-assets.ts` | `VITE_ASSET_BASE_URL` → `/files/{cat}/…`；空 env 回退本地相对路径 |
+| 角色皮肤 | `src/mobile/world/skins.ts` | original / maid 帧表（760 画布）；经 `resolveAsset` |
+| 纸偶叠加与抠图 | `src/mobile/world/paper-doll-rig.ts` | SVG 可穿戴叠加、`loadCutoutImage` 洪水填充抠图 |
+| 骨骼系统 | `src/mobile/world/skeleton-system.ts` | 人体关节 FK、切片预览、动画片段、工坊标定 |
+| 羁绊 / 陪伴动作 | `src/mobile/world/codex.ts`、`useWorldGame.ts` | bond 等级；`companionAct`（摸摸头等）写入世界存档 |
+| 密语桥 | `src/mobile/world/companion-bridge.ts` | 探活与聊天；房间名等上下文仍读 `rooms.ts` |
+| 存档 | `src/mobile/engine/storage.ts` | 世界 / bond 存档规范化 |
+| 网关 | `server/ollama-gateway.py`、`netlify/functions/companion-scene.mjs` | 局域网 / 线上陪伴代理 |
 
-旧移动端（`MobileLayout` + `SceneStage` + `pixi-stage`）保留在 `?legacy`，桌面 `App` 保留在 `?desktop`。
+历史 V2 模块（房间走动、碰撞、`assets.ts` 道具图映射、`poses`/`runtime` 等）若仍留在树中，**不是**当前 UI 主路径；清理见开发债清单。
 
-## 2. 已实现并验证
+## 2. 资源库（现行）
 
-- 三个房间：小屋 / 庭院 / 街区，世界宽 980 / 960 / 1180，横向可拖、默认跟随角色。
-- 角色：两套皮肤（默认「白色」原角色 / 「小鲸鱼」蓝白女仆）。白色有 13 帧：站立、4 帧呼吸、4 帧走路、短交互、坐下、躺下、头像；女仆有 11 帧（无坐下/躺下，运行时回落到短交互）。脚底基线统一。
-- 角色动作：点她 = 短交互；床 = 躺下；书桌 / 长椅 = 坐下；花圃 = 蹲下照料；动作结束自动回站立。
-- 皮肤切换：「更多 → 角色外观」，写入 `world.skin`，刷新后保留；旧档没有该字段时默认白色。
-- 移动：点地面自动走到可行走带；家具/装饰物阻挡；镜头平滑跟随；手动拖镜头暂停跟随。
-- 交互：点物件 → 走近 → 底部单一情境按钮；冷却时按钮变“过一会儿 + 秒数”。
-- 种植闭环：买种（6 零钱 2 颗）→ 种下 → 浇水（缩短一半）→ 开花 → 收花（+1 花束、+1 种子、首次进收藏架）。
-- 轻动作：庭院踢球，球飞出后点球即可接住；连击 3 次写入纪念与小记；接不到只重置连击。
-- 收集与留痕：花束、纪念、花种、零钱、最高连击、种过/收过/踢球次数、生活小记。
-- 存档：沿用 `wenbebi-mobile-game-v2`，新增 `world` 字段；旧档缺字段自动补默认值，旧场景映射到新房间。
-- HUD：顶部身份 + 两枚资源胶囊，底栏 3 项（背包/手账/更多），实测常驻内容 HUD 约 13.3% 屏高；抽屉 ≤ 40dvh。
-- 无障碍：全部按钮 ≥ 44px；`prefers-reduced-motion` 下关闭走路帧、待机呼吸与镜头缓动（实测两张相隔 0.48s 的截图完全一致）。
+- 环境变量：`.env` / `.env.example` 中 `VITE_ASSET_BASE_URL=http://192.168.124.77:8788`。
+- 解析器：`src/mobile/world/remote-assets.ts`（`mapLocalAsset` / `resolveAsset` / `isComfyDressSource`）。
+- 分类：`dress` / `part` / `card` / `icon` / `base` / `ui` / `world`。管理页：同主机 `:8788`。
+- 仓库 `public/assets/characters|nikki|scenes` **仍保留**作本地回退（env 为空时）。**尚未**实现图片加载失败的 onerror 自动切回本地。
+- 对照表：`public/assets/manifest.json`。
+- 三张 Comfy 主装扮目前仍为不透明 512×640；运行时对 `dress-*` 走洪水填充抠图。离线透明 760 规格资产是后续项，不是现状。
 
-验证命令：
+## 3. 已实现
+
+- 五槽衣橱、套装共鸣、主题闯关评级、星愿幻阁抽卡与升星。
+- 试衣镜：皮肤呼吸帧或 Comfy 套装抠图 + SVG 配件叠加；骨骼工坊可拖关节。
+- 密语：同源 companion 函数 → 局域网 Ollama，失败离线回复。
+- 本地衣橱存档键迁移（v4/v6 → v8）。
+- 远端资源优先解析（需重启 dev 以读取 `.env`）。
+
+## 4. 差距与下一步（优先序）
+
+1. 文档与死代码岛清理（本轮）：对齐宪章、卸未用依赖、删无引用模块、合并骨骼锚点。
+2. 运行时验证后再考虑是否删本地 `public/assets` 副本；先补加载失败回退更稳妥。
+3. Comfy 套装离线抠成透明图并贴近 760 脚底规格，减少每次洪水填充。
+4. 真机竖屏回归；可选评估 Live2D/Spine（调研见对应文档，**非当前运行时**）。
+5. `main` 分支仍停留在桌面宠物入口时，合并策略与产品发布另议（本机以 `featurle/xinzhi_feat` 为准）。
+
+## 5. 验证
 
 ```bash
 npx tsc --noEmit
+npm run test:mobile
 npm run build
-node --experimental-strip-types --test tests/mobile-engine.test.mjs   # Node ≥ 22.6，21 个用例
 ```
 
-验收证据：
-
-- [spark-output/audit/v2-390x844](../spark-output/audit/v2-390x844/README.md)：12 项玩法检查全部通过；360/390/430 三档 HUD 与角色不重叠；控制台 0 错误。
-- [spark-output/audit/v2-character-skins](../spark-output/audit/v2-character-skins/README.md)：14 项皮肤检查全部通过；默认白色、切换小鲸鱼、刷新保留、点角色仍可交互。
-- [spark-output/audit/v2-character-poses](../spark-output/audit/v2-character-poses/README.md)：11 项动作检查全部通过；呼吸在动、坐下/躺下/蹲下姿势互不混淆、换皮后缺帧会回落、减少动态时完全静止。
-
-## 3. 仍存在的差距
-
-| 项 | 现状 | 下一步 |
-| --- | --- | --- |
-| 房间内容密度 | 小屋 4 个可交互物件，庭院 4 个，街区 4 个 | 每房间补到 5–6 个，且有独特反馈 |
-| 角色表演 | 白色已有站立/呼吸/走路/交互/坐下/躺下；女仆只有站立/呼吸/走路/交互 | 给女仆补坐下/躺下；补浇水、收花等专属动作帧 |
-| 家具朝向与遮挡 | 统一底边锚点，无朝向差异 | 视需要加左/右朝向与前后分层 |
-| 时段与天气 | 只有顶部时段文案 | 背景光照变体（不引入新系统） |
-| 小记 | 只记录首次到访、首次收花、连击 | 增加可回看的日常片段 |
-| 真机 | 只有 390×844 headless Chrome + 单测 | 360/390/430 真机与低端机性能 |
-| 实时多人 | 旧代码保留在 `?legacy`，线上无中继 | 需要真实后端后再评估 |
-
-## 4. 下一步顺序
-
-1. **真机回归**：iPhone SE/13、Android 360px；验证点击命中、挡手、安全区、低端机帧率。
-2. **房间内容**：每个房间补 1–2 个有独特反馈的物件（优先能坐下/能看的）。
-3. **角色表演**：给女仆补坐下/躺下；补浇水、收花等专属动作帧。
-4. **时段氛围**：仅改背景光照与少量物件状态，不加新系统。
-5. **小记与回看**：把已有事件写得像生活片段，不加任务。
-6. **上线准备**：真机清单、构建自动化、存档迁移测试。
-
-## 5. 暂缓
-
-- 新房间、新货币、抽卡、任务面板、签到、排行榜。
-- 实时多人作为主线（需要 WebSocket 服务与部署）。
-- 全 3D、Live2D/Spine 管线（当前角色资产未稳定前不引入）。
+Node ≥ 22.6（见 `package.json` `engines`）。
