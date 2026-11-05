@@ -34,19 +34,19 @@ import {
   interactWithCompanion,
 } from "../src/mobile/world/codex.ts";
 import {
-  BONE_SOCKETS,
-  clampRigPlacement,
-  getRigPlacement,
-  getSocketForItem,
   getWearableOverlaySrc,
 } from "../src/mobile/world/paper-doll-rig.ts";
 import {
   BONE_LINKS,
+  BONE_SOCKETS,
   HUMANOID_BONES,
   JOINT_LIST,
+  clampRigPlacement,
   computeHumanoidPartSlices,
   evaluateAnimClip,
+  getRigPlacement,
   getSkeletonForDress,
+  getSocketForItem,
   moveJointCascade,
   resolveJointForItem,
   solveWorldSkeleton,

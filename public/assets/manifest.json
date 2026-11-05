@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "baseUrl": "http://192.168.124.77:8788",
+  "note": "游戏通过 VITE_ASSET_BASE_URL + src/mobile/world/remote-assets.ts 解析。局域网不可用或环境变量为空时回退到仓库 public 路径。本地 public/assets 文件暂未删除。",
+  "mapping": [
+    { "from": "assets/characters/{skin}/{file}", "to": "/files/base/{skin}-{file}" },
+    { "from": "assets/nikki/dress-*", "to": "/files/dress/dress-*" },
+    { "from": "assets/nikki/card-*", "to": "/files/card/card-*" },
+    { "from": "assets/nikki/item-*", "to": "/files/part/item-*" },
+    { "from": "assets/scenes/{home|garden|street}.webp", "to": "/files/ui/stage-{name}.webp" },
+    { "from": "assets/scenes/{other}", "to": "/files/world/{other}" }
+  ],
+  "counts": { "base": 24, "dress": 3, "part": 17, "card": 5, "ui": 4, "world": 19, "icon": 0 }
+}

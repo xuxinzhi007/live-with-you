@@ -28,8 +28,18 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-NIKKI_DIR = os.path.join(ROOT, "public", "assets", "nikki")
-CUTOUT_DIR = os.path.join(NIKKI_DIR, "cutout")
+NIKKI_DIR = os.path.join(ROOT, "public", "assets", "nikki")  # legacy optional
+STAGE_ROOT = os.path.join(ROOT, "tools", "out", "wenbao-assets")
+CUTOUT_DIR = os.path.join(STAGE_ROOT, "dress")
+PART_DIR = os.path.join(STAGE_ROOT, "part")
+RAW_DIR = os.path.join(STAGE_ROOT, "raw")
+SPEC_PATH = os.path.join(ROOT, "tools", "character", "spec.json")
+with open(SPEC_PATH, encoding="utf-8") as _sf:
+    SPEC = json.load(_sf)
+CANVAS = int(SPEC["frame"]["canvas"])
+BASELINE_Y = int(SPEC["frame"]["baselineY"])
+CENTER_X = int(SPEC["frame"]["centerX"])
+TARGET_H = int(SPEC["skins"].get("maid", {}).get("visibleHeight") or 714)
 
 COMFY_URL = os.environ.get("COMFY_BASE_URL", "http://127.0.0.1:8188").rstrip("/")
 COMFY_LORAS_DIR = r"D:\xuxinzhi\ComfyUI_windows_portable_nvidia\ComfyUI_windows_portable\ComfyUI\models\loras"
@@ -59,8 +69,8 @@ WENBAO_DRESS_JOBS = [
         "cutout_file": "dress-apricot-tea.webp",
         "seed": 2026110101,
         "prompt": (
-            "masterpiece, best quality, xiaoyan, chibi, full body, solo, 1girl, black hair, "
-            "short hair, bob cut, bangs, brown eyes, cute gentle smile, wearing a cozy warm apricot "
+            "masterpiece, best quality, xiaoyan, chibi, full body, solo, 1girl, "
+            "wearing a cozy warm apricot "
             "cream knitted sweater dress with caramel ribbon bow and white stockings, standing, "
             "front view, looking at viewer, (white background:1.4), simple background"
         ),
@@ -71,8 +81,8 @@ WENBAO_DRESS_JOBS = [
         "cutout_file": "dress-rose-waltz.webp",
         "seed": 2026110102,
         "prompt": (
-            "masterpiece, best quality, xiaoyan, chibi, full body, solo, 1girl, black hair, "
-            "short hair, bob cut, bangs, brown eyes, sweet smile, wearing an elegant dusty rose "
+            "masterpiece, best quality, xiaoyan, chibi, full body, solo, 1girl, "
+            "wearing an elegant dusty rose "
             "pink frilly tea party dress with white lace collar and rose corset ribbon, standing, "
             "front view, looking at viewer, (white background:1.4), simple background"
         ),
@@ -83,8 +93,8 @@ WENBAO_DRESS_JOBS = [
         "cutout_file": "dress-starlight-dream.webp",
         "seed": 2026110103,
         "prompt": (
-            "masterpiece, best quality, xiaoyan, chibi, full body, solo, 1girl, black hair, "
-            "short hair, bob cut, bangs, sparkling brown eyes, wearing a dreamy pastel lavender "
+            "masterpiece, best quality, xiaoyan, chibi, full body, solo, 1girl, "
+            "wearing a dreamy pastel lavender "
             "and starlight blue layered chiffon princess dress with golden star ribbons, standing, "
             "front view, looking at viewer, (white background:1.4), simple background"
         ),
@@ -280,16 +290,22 @@ def smart_border_cutout(img: Image.Image, color_tol: float = 38.0) -> Image.Imag
     return out
 
 
-def align_character_canvas(trimmed: Image.Image, canvas: int = 760, target_h: int = 690, baseline_y: int = 742) -> Image.Image:
-    """将抠好图的全身雯宝立绘统一缩放到 760x760 画布、脚底对齐 y=742，和 original/maid 完全一致！"""
+def align_character_canvas(
+    trimmed: Image.Image,
+    canvas: int = CANVAS,
+    target_h: int = TARGET_H,
+    baseline_y: int = BASELINE_Y,
+    center_x: int = CENTER_X,
+) -> Image.Image:
+    """Align cutout to tools/character/spec.json (760, feet baselineY, centerX)."""
     factor = target_h / max(1, trimmed.height)
     new_w = max(1, round(trimmed.width * factor))
     new_h = max(1, round(trimmed.height * factor))
     scaled = trimmed.resize((new_w, new_h), Image.LANCZOS)
 
     frame = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
-    dx = (canvas - new_w) // 2
-    dy = baseline_y - new_h
+    dx = center_x - new_w // 2
+    dy = baseline_y - (new_h - 1)
     frame.alpha_composite(scaled, (dx, max(0, dy)))
     return frame
 
@@ -323,6 +339,12 @@ def align_item_canvas(trimmed: Image.Image, canvas: int = 360) -> Image.Image:
 
 def main() -> None:
     os.makedirs(CUTOUT_DIR, exist_ok=True)
+    os.makedirs(PART_DIR, exist_ok=True)
+    os.makedirs(RAW_DIR, exist_ok=True)
+    also_nikki = os.environ.get('WENBAO_ALSO_NIKKI') == '1'
+    if also_nikki:
+        os.makedirs(NIKKI_DIR, exist_ok=True)
+        os.makedirs(os.path.join(NIKKI_DIR, 'cutout'), exist_ok=True)
     installed = query_installed_loras()
     active_lora = "wenbao.safetensors" if "wenbao.safetensors" in installed else "xiaoyan.safetensors"
     print(f"Using ComfyUI LoRA: {active_lora}")
@@ -331,28 +353,40 @@ def main() -> None:
     for job in WENBAO_DRESS_JOBS:
         print(f"Generating same-character Wenbao dress [{job['id']}] with LoRA {active_lora}...")
         raw_img = generate_with_wenbao_lora(job, active_lora)
-        raw_path = os.path.join(NIKKI_DIR, job["raw_file"])
+        raw_path = os.path.join(RAW_DIR, job["raw_file"])
         raw_img.save(raw_path, "PNG")
+        if also_nikki:
+            raw_img.save(os.path.join(NIKKI_DIR, job["raw_file"]), "PNG")
 
         trimmed = smart_border_cutout(raw_img, color_tol=44.0)
         aligned = align_character_canvas(trimmed)
-        cutout_path = os.path.join(CUTOUT_DIR, job["cutout_file"])
-        aligned.save(cutout_path, "WEBP", quality=92, method=6)
+        cutout_path = os.path.join(CUTOUT_DIR, job["raw_file"])
+        aligned.save(cutout_path, "PNG")
+        webp_path = os.path.join(CUTOUT_DIR, job["cutout_file"])
+        aligned.save(webp_path, "WEBP", quality=92, method=6)
+        if also_nikki:
+            aligned.save(os.path.join(NIKKI_DIR, "cutout", job["cutout_file"]), "WEBP", quality=92, method=6)
         print(f"  -> Saved transparent cutout: {cutout_path} ({os.path.getsize(cutout_path)/1024:.1f} KiB)")
 
     # 2. 对全部 17 件配饰/手持物/香氛生成透明抠图图层
     for filename in WEARABLE_ITEMS:
         src_path = os.path.join(NIKKI_DIR, filename)
         if not os.path.exists(src_path):
+            alt = os.path.join(RAW_DIR, filename)
+            src_path = alt if os.path.exists(alt) else src_path
+        if not os.path.exists(src_path):
             print(f"  WARN: missing {src_path}")
             continue
         img = Image.open(src_path)
         trimmed = smart_border_cutout(img, color_tol=52.0)
         aligned = align_item_canvas(trimmed, canvas=360)
-        webp_name = os.path.splitext(filename)[0] + ".webp"
-        out_path = os.path.join(CUTOUT_DIR, webp_name)
-        aligned.save(out_path, "WEBP", quality=90, method=6)
-        print(f"  -> Cutout wearable item: {webp_name} ({os.path.getsize(out_path)/1024:.1f} KiB)")
+        png_name = os.path.splitext(filename)[0] + ".png"
+        out_path = os.path.join(PART_DIR, png_name)
+        aligned.save(out_path, "PNG")
+        if also_nikki:
+            webp_name = os.path.splitext(filename)[0] + ".webp"
+            aligned.save(os.path.join(NIKKI_DIR, "cutout", webp_name), "WEBP", quality=90, method=6)
+        print(f"  -> Cutout wearable item: {png_name} ({os.path.getsize(out_path)/1024:.1f} KiB)")
 
     print("ALL WENBAO LORA DRESSES & TRANSPARENT CUTOUTS READY.")
 

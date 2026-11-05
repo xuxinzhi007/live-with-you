@@ -1,10 +1,13 @@
-# 角色底模与部件化方案（提案）
+# 角色底模与部件化方案（提案 · 历史对照）
 
-> 状态：**设计提案，未改代码**。等你确认第 13 节的选择后再落地。
-> 对照：[产品宪章 V2](./product-charter.md)、[移动版结构](./mobile-architecture.md)、[Spine 接入](./spine-integration.md)
-> 日期：2026-10-29
+> **现行运行时（2026-11-06）**：入口为 `WorldApp`（DOM 纸偶 + `skeleton-system` + `paper-doll-rig` SVG 叠加）。
+> **不存在** `WorldView.tsx` / Pixi 世界渲染；下文凡引用 `WorldView.tsx`、`runtime.ts` 姿势枚举、桌面 `?studio` 纸偶壳，均视为 **V2 / 更早历史或未落地设想**，不是当前代码路径。
+> 现行产品约束见 [product-charter.md](./product-charter.md)；骨架实现见 `src/mobile/world/skeleton-system.ts` 与 `paper-doll-rig.ts`。
+> Spine / Live2D 仍为未来可选，见对应调研文档。
 
 ---
+
+## （以下为 2026-10-29 提案原文，保留作设计参考）
 
 ## 0. 先给结论
 

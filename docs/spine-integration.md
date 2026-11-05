@@ -1,5 +1,7 @@
 # Spine 接入方案
 
+> **定位：未来 / 可选，不是当前运行时。** 现行入口为 `WorldApp`；下文中的 `Pet`、`?studio`、`src/game/data/spine.js`、`puppet.json` 属于历史桌面 / V2 设想，当前分支主路径不再挂载这些入口。
+
 ## 目标
 
 使用 Spine 作为角色渲染层，保留 `Pet` 的状态、移动、交互、存档和摄像机系统。

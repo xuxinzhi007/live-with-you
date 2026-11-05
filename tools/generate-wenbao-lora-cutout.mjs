@@ -19,8 +19,12 @@ import path from "node:path";
 const COMFY_URL = process.env.COMFY_BASE_URL || "http://127.0.0.1:8188";
 const CHECKPOINT = "meinamix_v12Final.safetensors";
 
+const STAGE_ROOT = path.resolve("tools/out/wenbao-assets");
 const NIKKI_DIR = path.resolve("public/assets/nikki");
-const CUTOUT_DIR = path.resolve("public/assets/nikki/cutout");
+const CUTOUT_DIR = path.resolve("tools/out/wenbao-assets/dress");
+const RAW_DIR = path.resolve("tools/out/wenbao-assets/raw");
+const PART_DIR = path.resolve("tools/out/wenbao-assets/part");
+const ALSO_NIKKI = process.env.WENBAO_ALSO_NIKKI === "1";
 
 const NEGATIVE_LORA =
   "wings, black dress, dark background, complex background, scenery, outdoors, indoors, furniture, window, shadow, gray floor, ground, cropped, close-up, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, worst quality, low quality, watermark, blurry, multiple girls";
@@ -31,21 +35,21 @@ const WENBAO_DRESS_JOBS = [
     file: "dress-apricot-tea.png",
     seed: 2026110111,
     prompt:
-      "masterpiece, best quality, xiaoyan, chibi, full body, solo, 1girl, black hair, short hair, bob cut, bangs, brown eyes, cute gentle smile, wearing a cozy warm apricot cream knitted sweater dress with caramel ribbon bow and white stockings, standing, front view, looking at viewer, (pure white background:1.5), simple background",
+      "masterpiece, best quality, xiaoyan, chibi, full body, solo, 1girl, wearing a cozy warm apricot cream knitted sweater dress with caramel ribbon bow and white stockings, standing, front view, looking at viewer, (pure white background:1.5), simple background",
   },
   {
     id: "dress-rose-waltz",
     file: "dress-rose-waltz.png",
     seed: 2026110112,
     prompt:
-      "masterpiece, best quality, xiaoyan, chibi, full body, solo, 1girl, black hair, short hair, bob cut, bangs, brown eyes, sweet smile, wearing an elegant dusty rose pink frilly tea party dress with white lace collar and rose corset ribbon, standing, front view, looking at viewer, (pure white background:1.5), simple background",
+      "masterpiece, best quality, xiaoyan, chibi, full body, solo, 1girl, wearing an elegant dusty rose pink frilly tea party dress with white lace collar and rose corset ribbon, standing, front view, looking at viewer, (pure white background:1.5), simple background",
   },
   {
     id: "dress-starlight-dream",
     file: "dress-starlight-dream.png",
     seed: 2026110113,
     prompt:
-      "masterpiece, best quality, xiaoyan, chibi, full body, solo, 1girl, black hair, short hair, bob cut, bangs, sparkling brown eyes, wearing a dreamy pastel lavender and starlight blue layered chiffon princess dress with golden star ribbons, standing, front view, looking at viewer, (pure white background:1.5), simple background",
+      "masterpiece, best quality, xiaoyan, chibi, full body, solo, 1girl, wearing a dreamy pastel lavender and starlight blue layered chiffon princess dress with golden star ribbons, standing, front view, looking at viewer, (pure white background:1.5), simple background",
   },
 ];
 
@@ -118,6 +122,7 @@ function buildLoraCutoutGraph({ prompt, seed, width, height, loraName }) {
       inputs: { samples: ["3", 0], vae: ["4", 2] },
     },
     // ComfyUI 原生抠图节点链：提取纯白背景 -> 反转 -> 收缩1px消除白边 -> 羽化 -> 合成透明通道
+    // DRAFT color-key only. Official dress: workflow MeinaMix_雯宝LoRA_换装抠图 + deliver-dress-frame.py
     "14": {
       class_type: "ImageColorToMask",
       inputs: { image: ["8", 0], color: 16777215 },
@@ -126,9 +131,17 @@ function buildLoraCutoutGraph({ prompt, seed, width, height, loraName }) {
       class_type: "InvertMask",
       inputs: { mask: ["14", 0] },
     },
+    "18": {
+      class_type: "GrowMask",
+      inputs: { mask: ["15", 0], expand: -2, tapered_corners: true },
+    },
+    "19": {
+      class_type: "FeatherMask",
+      inputs: { mask: ["18", 0], left: 2, top: 2, right: 2, bottom: 2 },
+    },
     "16": {
       class_type: "JoinImageWithAlpha",
-      inputs: { image: ["8", 0], alpha: ["15", 0] },
+      inputs: { image: ["8", 0], alpha: ["19", 0] },
     },
     "17": {
       class_type: "SaveImage",
@@ -195,15 +208,22 @@ async function runComfyJob(graph, outPaths) {
 }
 
 async function main() {
-  await mkdir(NIKKI_DIR, { recursive: true });
+  await mkdir(STAGE_ROOT, { recursive: true });
   await mkdir(CUTOUT_DIR, { recursive: true });
+  await mkdir(RAW_DIR, { recursive: true });
+  await mkdir(PART_DIR, { recursive: true });
+  if (ALSO_NIKKI) {
+    await mkdir(NIKKI_DIR, { recursive: true });
+    await mkdir(path.join(NIKKI_DIR, "cutout"), { recursive: true });
+  }
   const loraName = await ensureWenbaoLora();
   console.log(`Active Wenbao LoRA in ComfyUI: ${loraName}`);
 
   // 1. 生成 3 套同角色 Q 版雯宝礼服（挂 LoRA + 透明抠图）
   for (const job of WENBAO_DRESS_JOBS) {
-    const p1 = path.join(NIKKI_DIR, job.file);
+    const p1 = path.join(RAW_DIR, job.file);
     const p2 = path.join(CUTOUT_DIR, job.file);
+    const outs = ALSO_NIKKI ? [p1, p2, path.join(NIKKI_DIR, job.file), path.join(NIKKI_DIR, "cutout", job.file)] : [p1, p2];
     const t0 = Date.now();
     const graph = buildLoraCutoutGraph({
       prompt: job.prompt,
@@ -212,14 +232,16 @@ async function main() {
       height: 640,
       loraName,
     });
-    const bytes = await runComfyJob(graph, [p1, p2]);
-    console.log(`OK [Wenbao LoRA Dress] ${job.file} (${(bytes / 1024).toFixed(1)} KiB, ${((Date.now() - t0) / 1000).toFixed(1)}s)`);
+    const bytes = await runComfyJob(graph, outs);
+    console.log(`OK [Wenbao LoRA Dress DRAFT] ${job.file} (${(bytes / 1024).toFixed(1)} KiB, ${((Date.now() - t0) / 1000).toFixed(1)}s)`);
+    console.log(`NOTE official 760: python tools/deliver-dress-frame.py ${path.relative(process.cwd(), p1)} --name ${job.file} --check-spec`);
   }
 
   // 2. 生成 17 件纯白底透明抠图可穿戴配饰
   for (const item of WEARABLE_ITEMS) {
-    const p1 = path.join(NIKKI_DIR, item.file);
-    const p2 = path.join(CUTOUT_DIR, item.file);
+    const p1 = path.join(RAW_DIR, item.file);
+    const p2 = path.join(PART_DIR, item.file);
+    const outs = ALSO_NIKKI ? [p1, p2, path.join(NIKKI_DIR, item.file), path.join(NIKKI_DIR, "cutout", item.file)] : [p1, p2];
     const t0 = Date.now();
     const graph = buildLoraCutoutGraph({
       prompt: item.prompt,
@@ -228,8 +250,8 @@ async function main() {
       height: 512,
       loraName: null,
     });
-    const bytes = await runComfyJob(graph, [p1, p2]);
-    console.log(`OK [Wearable Cutout] ${item.file} (${(bytes / 1024).toFixed(1)} KiB, ${((Date.now() - t0) / 1000).toFixed(1)}s)`);
+    const bytes = await runComfyJob(graph, outs);
+    console.log(`OK [Wearable Cutout DRAFT] ${item.file} (${(bytes / 1024).toFixed(1)} KiB, ${((Date.now() - t0) / 1000).toFixed(1)}s)`);
   }
 
   console.log("ALL WENBAO LORA & WEARABLE CUTOUTS GENERATED.");

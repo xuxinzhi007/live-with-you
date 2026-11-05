@@ -1,38 +1,13 @@
 /**
  * V9 · 标准二次元人体双足全身层级骨骼系统 (Anime Humanoid Biped FK Skeleton & 6-Layer Cutout Skinning)
  *
- * 参考 Blender 2D Cutout / Spine / Live2D / LÖVE 2D 标准双足人体骨骼架构（Biped Rig）：
+ * 插槽锚点（BONE_SOCKETS / getSocketForItem / getRigPlacement）也归本文件：
+ * WorldApp 关节 FK 与衣橱默认挂点共用一套坐标，避免与 paper-doll-rig 双轨。
+ * 舞台可穿戴外观仍以 paper-doll-rig 的 SVG 叠加为准；本文件只负责锚点与 FK。
  *
- *                    ● crown (头顶皇冠/礼帽插槽)
- *                    │
- *                    ▲ head (头部骨骼 · 绕颈部 neck 枢轴旋转 -> 歪头) ── ● hairSide (侧发夹插槽)
- *                    │
- *                    ● neck (颈部枢轴)
- *                    │
- *     shoulderL ●────┼────● shoulderR (左右肩枢轴)
- *        │           │           │
- *        ▼ armL      ▲ torso     ▼ armR (右臂骨骼 · 绕右肩旋转 -> 挥手)
- *        │        (胸腔脊柱)     │
- *     handL ●        │        ● handR (右手插槽：茶杯/花束/藤篮跟随右臂挥动！)
- *   (左手插槽)       ● pelvis (骨盆/髋中心 Root Pivot)
- *                 ╱     ╲
- *          hipL ●         ● hipR (左右髋关节枢轴)
- *               │         │
- *               ▼ legL    ▼ legR (左右腿骨骼 · 绕髋部旋转 -> 迈步/踢腿/欢呼跳跃！)
- *               │         │
- *         footL ●         ● footR (左右脚踝末端)
- *
- * 核心能力：
- * 1. 【11 关节完整双足人体骨骼树（Full Humanoid Biped Tree）】：
- *    包含 `pelvis(骨盆根)`、`torso(胸脊)`、`neck(颈部)`、`head(头顶)`、`crown(头饰槽)`、`hairSide(侧发槽)`、
- *    `shoulderL/handL(左臂链)`、`shoulderR/handR(右臂链)`、`hipL/footL(左腿链)`、`hipR/footR(右腿链)`。
- * 2. 【单张立绘自动 6 层人体部位切割蒙皮（6-Layer Humanoid Cutout Skinning）】：
- *    根据当前服装在 Setup 模式下标定的颈部、双肩、髋部坐标，在 Canvas 内存中将透明立绘自动拆分为 6 个独立部位图层：
- *    `LegL(左腿层)`、`LegR(右腿层)`、`ArmL(左臂层)`、`Torso(躯干裙摆层)`、`ArmR(右臂层)`、`Head(头部层)`，
- *    并在关节旋转枢轴处生成圆形柔化重叠区（Joint Overlap Seam），旋转时绝不漏缝！
- * 3. 【正运动学（FK）级联旋转与 5 套全身骨骼动画】：
- *    支持 `idle(呼吸轻摆)`、`tilt(歪头卖萌)`、`wave(挥手问好)`、`walk(轻快踏步走)`、`cheer(开心跳跃)`！
+ * 参考 Blender 2D Cutout / Spine / Live2D / LÖVE 2D 标准双足人体骨骼架构（Biped Rig）。
  */
+import type { WardrobeSlot } from "./nikki-wardrobe.ts";
 
 export type JointId =
   | "pelvis"
@@ -339,6 +314,101 @@ export function resolveJointForItem(itemId: string, slot: "hairAcc" | "handheld"
     return "handR";
   }
   return "torso";
+}
+
+
+/* ==================== 衣橱插槽默认锚点（由原 paper-doll-rig 并入，与上方关节树对齐） ==================== */
+
+export interface RigPlacement {
+  /** 相对骨骼基准锚点的水平偏移百分比 (-40 ~ +40) */
+  dx: number;
+  /** 相对骨骼基准锚点的垂直偏移百分比 (-40 ~ +40) */
+  dy: number;
+  /** 缩放倍率 (0.5 ~ 2.0) */
+  scale: number;
+  /** 旋转角度 (-45 ~ +45 度) */
+  rotate: number;
+}
+
+export type RigOverrideMap = Record<string, RigPlacement>;
+
+export interface BoneSocketSpec {
+  anchorX: number;
+  anchorY: number;
+  baseWidthPct: number;
+  zIndex: number;
+}
+
+/** 760×760 百分比插槽；与 crown / hairSide / handL / handR / torso 关节语义对应 */
+export const BONE_SOCKETS: Record<string, BoneSocketSpec> = {
+  "hair-crown": { anchorX: 50, anchorY: 14, baseWidthPct: 38, zIndex: 32 },
+  "hair-side":  { anchorX: 63, anchorY: 23, baseWidthPct: 22, zIndex: 33 },
+  "hand-right": { anchorX: 67, anchorY: 67, baseWidthPct: 26, zIndex: 35 },
+  "hand-left":  { anchorX: 33, anchorY: 67, baseWidthPct: 25, zIndex: 35 },
+  "aura-back":  { anchorX: 50, anchorY: 48, baseWidthPct: 92, zIndex: 10 },
+};
+
+export function getSocketForItem(itemId: string, slot: Exclude<WardrobeSlot, "dress" | "memoryCard">): BoneSocketSpec {
+  if (slot === "hairAcc") {
+    if (itemId === "hair-daisy-clip" || itemId === "hair-lace-ribbon") {
+      return BONE_SOCKETS["hair-side"];
+    }
+    return BONE_SOCKETS["hair-crown"];
+  }
+  if (slot === "handheld") {
+    if (itemId === "hand-pocket-watch") {
+      return BONE_SOCKETS["hand-left"];
+    }
+    return BONE_SOCKETS["hand-right"];
+  }
+  return BONE_SOCKETS["aura-back"];
+}
+
+export const DEFAULT_SLOT_RIG: Record<Exclude<WardrobeSlot, "dress" | "memoryCard">, RigPlacement> = {
+  hairAcc:  { dx: 0, dy: 0, scale: 1.0, rotate: 0 },
+  handheld: { dx: 0, dy: 0, scale: 1.0, rotate: 0 },
+  aura:     { dx: 0, dy: 0, scale: 1.0, rotate: 0 },
+};
+
+export const ITEM_DEFAULT_RIG: Record<string, RigPlacement> = {
+  "hair-daisy-clip":        { dx: 0,  dy: 0,  scale: 1.0,  rotate: 12 },
+  "hair-lace-ribbon":       { dx: 2,  dy: -2, scale: 1.05, rotate: 8 },
+  "hair-plush-bunny":       { dx: 0,  dy: -3, scale: 1.12, rotate: 0 },
+  "hair-whale-beret":       { dx: 3,  dy: -1, scale: 1.08, rotate: 8 },
+  "hair-pearl-tiara":       { dx: 0,  dy: -1, scale: 0.96, rotate: 0 },
+  "hair-sunflower-hat":     { dx: 0,  dy: 0,  scale: 1.22, rotate: -3 },
+  "hand-teacup":            { dx: 0,  dy: 0,  scale: 0.95, rotate: 0 },
+  "hand-cookie-basket":     { dx: 2,  dy: 3,  scale: 1.05, rotate: 4 },
+  "hand-sunflower-bouquet": { dx: -2, dy: -2, scale: 1.15, rotate: -10 },
+  "hand-music-box":         { dx: 0,  dy: 2,  scale: 1.0,  rotate: 0 },
+  "hand-whale-globe":       { dx: 0,  dy: 0,  scale: 1.02, rotate: 0 },
+  "hand-pocket-watch":      { dx: 0,  dy: 0,  scale: 0.95, rotate: -8 },
+  "aura-morning-breeze":    { dx: 0,  dy: 0,  scale: 1.0,  rotate: 0 },
+  "aura-honey-amber":       { dx: 0,  dy: 0,  scale: 1.0,  rotate: 0 },
+  "aura-rose-petals":       { dx: 0,  dy: 0,  scale: 1.05, rotate: 0 },
+  "aura-ocean-bubbles":     { dx: 0,  dy: 0,  scale: 1.05, rotate: 0 },
+  "aura-starlight-firefly": { dx: 0,  dy: 0,  scale: 1.08, rotate: 0 },
+};
+
+export function getRigPlacement(
+  itemId: string,
+  slot: Exclude<WardrobeSlot, "dress" | "memoryCard">,
+  overrides: RigOverrideMap = {},
+): RigPlacement {
+  if (overrides[itemId]) return overrides[itemId];
+  if (ITEM_DEFAULT_RIG[itemId]) return ITEM_DEFAULT_RIG[itemId];
+  return DEFAULT_SLOT_RIG[slot];
+}
+
+export function clampRigPlacement(input: Partial<RigPlacement>, fallback: RigPlacement): RigPlacement {
+  const num = (v: unknown, def: number, lo: number, hi: number) =>
+    typeof v === "number" && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : def;
+  return {
+    dx: num(input.dx, fallback.dx, -40, 40),
+    dy: num(input.dy, fallback.dy, -40, 40),
+    scale: num(input.scale, fallback.scale, 0.4, 2.2),
+    rotate: num(input.rotate, fallback.rotate, -60, 60),
+  };
 }
 
 /* ==================== 正运动学（Forward Kinematics, FK）世界坐标解算器 ==================== */

@@ -25,6 +25,7 @@ import {
   type WardrobeItem,
   type WardrobeSlot,
 } from "./world/nikki-wardrobe";
+import { isComfyDressSource, resolveAsset } from "./world/remote-assets";
 import {
   getWearableOverlaySrc,
   loadCutoutImage,
@@ -648,7 +649,7 @@ export function WorldApp() {
     [activeSlot],
   );
 
-  const isComfyDress = currentDress.image.startsWith("assets/nikki/dress-");
+  const isComfyDress = isComfyDressSource(currentDress.image);
   const customDressImg = nikki.customImages?.[currentDress.id];
   const heroSpriteSrc = customDressImg
     ? customDressImg
@@ -669,7 +670,7 @@ export function WorldApp() {
       <div id="nikki-root" className="nk-title-screen" onClick={() => setScreen("lobby")}>
         <div
           className="nk-title-bg"
-          style={{ backgroundImage: `url(${itemImage(currentCard) || "assets/nikki/card-starlight-waltz.png"})` }}
+          style={{ backgroundImage: `url(${itemImage(currentCard) || resolveAsset("assets/nikki/card-starlight-waltz.png")})` }}
           aria-hidden="true"
         />
         <div className="nk-sparkles" aria-hidden="true">
@@ -747,7 +748,7 @@ export function WorldApp() {
           >
             <div
               className="nk-stage-bg"
-              style={{ backgroundImage: `url(${itemImage(currentCard) || currentDress.bgScene || "assets/scenes/home.webp"})` }}
+              style={{ backgroundImage: `url(${itemImage(currentCard) || currentDress.bgScene || resolveAsset("assets/scenes/home.webp")})` }}
               aria-hidden="true"
             />
             <div className="nk-stage-frame" aria-hidden="true" />

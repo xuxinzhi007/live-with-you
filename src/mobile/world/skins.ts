@@ -16,6 +16,7 @@
 import type { CharacterSkinId } from "../engine/types";
 import { CHARACTER_METRICS } from "./character-metrics.ts";
 import { CHARACTER_SKIN_IDS, DEFAULT_CHARACTER_SKIN } from "./state.ts";
+import { resolveAsset } from "./remote-assets.ts";
 
 export { CHARACTER_SKIN_IDS, DEFAULT_CHARACTER_SKIN };
 
@@ -62,7 +63,7 @@ function metricsFor(id: CharacterSkinId): CharacterSkinMetrics {
   };
 }
 
-export const CHARACTER_SKINS: Record<CharacterSkinId, CharacterSkin> = {
+const LOCAL_CHARACTER_SKINS: Record<CharacterSkinId, CharacterSkin> = {
   original: {
     id: "original",
     label: "白色",
@@ -107,6 +108,24 @@ export const CHARACTER_SKINS: Record<CharacterSkinId, CharacterSkin> = {
     avatar: "assets/characters/maid/avatar.webp",
     metrics: metricsFor("maid"),
   },
+};
+
+function remoteSkin(skin: CharacterSkin): CharacterSkin {
+  return {
+    ...skin,
+    idle: resolveAsset(skin.idle),
+    breathe: skin.breathe.map(resolveAsset),
+    react: resolveAsset(skin.react),
+    walk: skin.walk.map(resolveAsset),
+    sit: skin.sit ? resolveAsset(skin.sit) : undefined,
+    sleep: skin.sleep ? resolveAsset(skin.sleep) : undefined,
+    avatar: resolveAsset(skin.avatar),
+  };
+}
+
+export const CHARACTER_SKINS: Record<CharacterSkinId, CharacterSkin> = {
+  original: remoteSkin(LOCAL_CHARACTER_SKINS.original),
+  maid: remoteSkin(LOCAL_CHARACTER_SKINS.maid),
 };
 
 export const CHARACTER_SKIN_LIST: CharacterSkin[] = CHARACTER_SKIN_IDS.map(

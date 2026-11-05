@@ -1,0 +1,318 @@
+﻿{
+  "id": "c8e42a10-6b88-4d99-8f11-wenbao-lora-cutout",
+  "revision": 0,
+  "last_node_id": 18,
+  "last_link_id": 18,
+  "nodes": [
+    {
+      "id": 11,
+      "type": "MarkdownNote",
+      "pos": [40, -40],
+      "size": [760, 240],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "闆疂 LoRA 鎹㈣ + 鑷姩閫忔槑鎶犲浘宸ヤ綔娴侊紙V6锛?,
+      "properties": {},
+      "widgets_values": [
+        "杩欐槸涓撲负銆婇洴瀹?路 楂樺畾琛ｆ┍銆嬫惌寤虹殑鍚岃鑹叉崲瑁呬笌鑷姩鎶犲浘宸ヤ綔娴侊紙涓嶄慨鏀瑰師鏈夊伐浣滄祦锛夛細\n\n1. 搴曟ā锛歮einamix_v12Final.safetensors + 闆疂瑙掕壊 LoRA锛堟ā鍨嬫枃浠堕€夌敤璁粌濂界殑 xiaoyan.safetensors锛屾ā鍨嬪己搴?0.80锛孋LIP 寮哄害 0.80锛夈€俓n2. 淇濇寔鍚屼竴瑙掕壊姣斾緥锛氭鍚戣瘝淇濈暀 `xiaoyan, chibi, full body, solo, 1girl, black hair, short hair, bob cut, bangs, brown eyes, standing, looking at viewer, (white background:1.4), simple background`锛屽彧鏇挎崲涓棿鐨勭ぜ鏈?閰嶉グ鎻忚堪銆俓n3. 鑷姩鎶犲浘锛氳В鐮佸悗鐨勫浘鐗囧悓鏃惰緭鍑恒€屽師鍥俱€嶅拰缁忕敱 ImageColorToMask -> InvertMask -> JoinImageWithAlpha 鍚堟垚鐨勩€岄€忔槑搴?PNG锛圵enbao_Cutout锛夈€嶃€?
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 4,
+      "type": "CheckpointLoaderSimple",
+      "pos": [40, 260],
+      "size": [340, 100],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {"localized_name": "Checkpoint鍚嶇О", "name": "ckpt_name", "type": "COMBO", "widget": {"name": "ckpt_name"}, "link": null}
+      ],
+      "outputs": [
+        {"localized_name": "妯″瀷", "name": "MODEL", "type": "MODEL", "slot_index": 0, "links": [1]},
+        {"localized_name": "CLIP", "name": "CLIP", "type": "CLIP", "slot_index": 1, "links": [2]},
+        {"localized_name": "VAE", "name": "VAE", "type": "VAE", "slot_index": 2, "links": [11]}
+      ],
+      "title": "1. 鍔犺浇鍔ㄦ极搴曟ā (MeinaMix)",
+      "properties": {"Node name for S&R": "CheckpointLoaderSimple", "cnr_id": "comfy-core", "ver": "0.28.0"},
+      "widgets_values": ["meinamix_v12Final.safetensors"]
+    },
+    {
+      "id": 12,
+      "type": "LoraLoader",
+      "pos": [420, 250],
+      "size": [340, 150],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {"localized_name": "妯″瀷", "name": "model", "type": "MODEL", "link": 1},
+        {"localized_name": "CLIP", "name": "clip", "type": "CLIP", "link": 2},
+        {"localized_name": "LoRA鍚嶇О", "name": "lora_name", "type": "COMBO", "widget": {"name": "lora_name"}, "link": null},
+        {"localized_name": "妯″瀷寮哄害", "name": "strength_model", "type": "FLOAT", "widget": {"name": "strength_model"}, "link": null},
+        {"localized_name": "CLIP寮哄害", "name": "strength_clip", "type": "FLOAT", "widget": {"name": "strength_clip"}, "link": null}
+      ],
+      "outputs": [
+        {"localized_name": "妯″瀷", "name": "MODEL", "type": "MODEL", "slot_index": 0, "links": [3]},
+        {"localized_name": "CLIP", "name": "CLIP", "type": "CLIP", "slot_index": 1, "links": [4]}
+      ],
+      "title": "2. 闆疂涓撳睘瑙掕壊 LoRA",
+      "properties": {"Node name for S&R": "LoraLoader", "cnr_id": "comfy-core", "ver": "0.28.0"},
+      "widgets_values": ["xiaoyan.safetensors", 0.8, 0.8]
+    },
+    {
+      "id": 10,
+      "type": "CLIPSetLastLayer",
+      "pos": [800, 270],
+      "size": [270, 80],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {"localized_name": "clip", "name": "clip", "type": "CLIP", "link": 4},
+        {"localized_name": "鍋滄鍦–LIP灞?, "name": "stop_at_clip_layer", "type": "INT", "widget": {"name": "stop_at_clip_layer"}, "link": null}
+      ],
+      "outputs": [
+        {"localized_name": "CLIP", "name": "CLIP", "type": "CLIP", "slot_index": 0, "links": [5, 6]}
+      ],
+      "title": "CLIP Skip (-2)",
+      "properties": {"Node name for S&R": "CLIPSetLastLayer", "cnr_id": "comfy-core", "ver": "0.28.0"},
+      "widgets_values": [-2]
+    },
+    {
+      "id": 6,
+      "type": "CLIPTextEncode",
+      "pos": [1120, 60],
+      "size": [460, 200],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {"localized_name": "clip", "name": "clip", "type": "CLIP", "link": 5},
+        {"localized_name": "鏂囨湰", "name": "text", "type": "STRING", "widget": {"name": "text"}, "link": null}
+      ],
+      "outputs": [
+        {"localized_name": "鏉′欢", "name": "CONDITIONING", "type": "CONDITIONING", "slot_index": 0, "links": [7]}
+      ],
+      "title": "姝ｅ悜鎻愮ず璇嶏紙鍚岃鑹查洴瀹?+ 绾櫧鑳屾櫙渚夸簬鎶犲浘锛?,
+      "properties": {"Node name for S&R": "CLIPTextEncode", "cnr_id": "comfy-core", "ver": "0.28.0"},
+      "widgets_values": [
+        "masterpiece, best quality, xiaoyan, chibi, full body, solo, 1girl, black hair, short hair, bob cut, bangs, brown eyes, cute smile, wearing an elegant dusty rose velvet evening dress with lace collar, standing, front view, looking at viewer, (white background:1.4), simple background"
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 7,
+      "type": "CLIPTextEncode",
+      "pos": [1120, 300],
+      "size": [460, 180],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {"localized_name": "clip", "name": "clip", "type": "CLIP", "link": 6},
+        {"localized_name": "鏂囨湰", "name": "text", "type": "STRING", "widget": {"name": "text"}, "link": null}
+      ],
+      "outputs": [
+        {"localized_name": "鏉′欢", "name": "CONDITIONING", "type": "CONDITIONING", "slot_index": 0, "links": [8]}
+      ],
+      "title": "璐熷悜鎻愮ず璇嶏紙鎺掗櫎缈呰唨/榛戣姹℃煋涓庢潅涔辫儗鏅級",
+      "properties": {"Node name for S&R": "CLIPTextEncode", "cnr_id": "comfy-core", "ver": "0.28.0"},
+      "widgets_values": [
+        "wings, black dress, dark background, complex background, scenery, furniture, window, shadow, floor, cropped, close-up, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, worst quality, low quality, watermark, blurry, multiple girls"
+      ],
+      "color": "#322",
+      "bgcolor": "#533"
+    },
+    {
+      "id": 5,
+      "type": "EmptyLatentImage",
+      "pos": [1120, 520],
+      "size": [300, 140],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {"localized_name": "瀹藉害", "name": "width", "type": "INT", "widget": {"name": "width"}, "link": null},
+        {"localized_name": "楂樺害", "name": "height", "type": "INT", "widget": {"name": "height"}, "link": null},
+        {"localized_name": "鎵归噺澶у皬", "name": "batch_size", "type": "INT", "widget": {"name": "batch_size"}, "link": null}
+      ],
+      "outputs": [
+        {"localized_name": "Latent", "name": "LATENT", "type": "LATENT", "slot_index": 0, "links": [9]}
+      ],
+      "title": "鐢诲竷灏哄",
+      "properties": {"Node name for S&R": "EmptyLatentImage", "cnr_id": "comfy-core", "ver": "0.28.0"},
+      "widgets_values": [512, 640, 1]
+    },
+    {
+      "id": 3,
+      "type": "KSampler",
+      "pos": [1640, 80],
+      "size": [320, 310],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {"localized_name": "妯″瀷", "name": "model", "type": "MODEL", "link": 3},
+        {"localized_name": "姝ｉ潰鏉′欢", "name": "positive", "type": "CONDITIONING", "link": 7},
+        {"localized_name": "璐熼潰鏉′欢", "name": "negative", "type": "CONDITIONING", "link": 8},
+        {"localized_name": "Latent鍥惧儚", "name": "latent_image", "type": "LATENT", "link": 9},
+        {"localized_name": "绉嶅瓙", "name": "seed", "type": "INT", "widget": {"name": "seed"}, "link": null},
+        {"localized_name": "姝ユ暟", "name": "steps", "type": "INT", "widget": {"name": "steps"}, "link": null},
+        {"localized_name": "cfg", "name": "cfg", "type": "FLOAT", "widget": {"name": "cfg"}, "link": null},
+        {"localized_name": "閲囨牱鍣ㄥ悕绉?, "name": "sampler_name", "type": "COMBO", "widget": {"name": "sampler_name"}, "link": null},
+        {"localized_name": "璋冨害鍣?, "name": "scheduler", "type": "COMBO", "widget": {"name": "scheduler"}, "link": null},
+        {"localized_name": "闄嶅櫔", "name": "denoise", "type": "FLOAT", "widget": {"name": "denoise"}, "link": null}
+      ],
+      "outputs": [
+        {"localized_name": "Latent", "name": "LATENT", "type": "LATENT", "slot_index": 0, "links": [10]}
+      ],
+      "title": "閲囨牱鐢熸垚",
+      "properties": {"Node name for S&R": "KSampler", "cnr_id": "comfy-core", "ver": "0.28.0"},
+      "widgets_values": [20261101, "randomize", 26, 6.8, "dpmpp_2m", "karras", 1]
+    },
+    {
+      "id": 8,
+      "type": "VAEDecode",
+      "pos": [2000, 80],
+      "size": [225, 70],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {"localized_name": "Latent", "name": "samples", "type": "LATENT", "link": 10},
+        {"localized_name": "vae", "name": "vae", "type": "VAE", "link": 11}
+      ],
+      "outputs": [
+        {"localized_name": "鍥惧儚", "name": "IMAGE", "type": "IMAGE", "slot_index": 0, "links": [12, 13, 16]}
+      ],
+      "title": "VAE 瑙ｇ爜",
+      "properties": {"Node name for S&R": "VAEDecode", "cnr_id": "comfy-core", "ver": "0.28.0"},
+      "widgets_values": []
+    },
+    {
+      "id": 14,
+      "type": "ImageColorToMask",
+      "pos": [2000, 220],
+      "size": [260, 80],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {"name": "image", "type": "IMAGE", "link": 13},
+        {"name": "color", "type": "INT", "widget": {"name": "color"}, "link": null}
+      ],
+      "outputs": [
+        {"name": "MASK", "type": "MASK", "slot_index": 0, "links": [14]}
+      ],
+      "title": "鎻愬彇绾櫧鑳屾櫙钂欑増",
+      "properties": {"Node name for S&R": "ImageColorToMask", "cnr_id": "comfy-core", "ver": "0.28.0"},
+      "widgets_values": [16777215]
+    },
+    {
+      "id": 15,
+      "type": "InvertMask",
+      "pos": [2300, 220],
+      "size": [210, 60],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {"name": "mask", "type": "MASK", "link": 14}
+      ],
+      "outputs": [
+        {"name": "MASK", "type": "MASK", "slot_index": 0, "links": [15]}
+      ],
+      "title": "鍙嶈浆钂欑増锛堜繚鐣欒鑹蹭富浣擄級",
+      "properties": {"Node name for S&R": "InvertMask", "cnr_id": "comfy-core", "ver": "0.28.0"},
+      "widgets_values": []
+    },
+    {
+      "id": 16,
+      "type": "JoinImageWithAlpha",
+      "pos": [2550, 200],
+      "size": [260, 80],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {"name": "image", "type": "IMAGE", "link": 16},
+        {"name": "alpha", "type": "MASK", "link": 15}
+      ],
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "slot_index": 0, "links": [17]}
+      ],
+      "title": "鍚堟垚閫忔槑 Alpha 閫氶亾",
+      "properties": {"Node name for S&R": "JoinImageWithAlpha", "cnr_id": "comfy-core", "ver": "0.28.0"},
+      "widgets_values": []
+    },
+    {
+      "id": 17,
+      "type": "SaveImage",
+      "pos": [2860, 80],
+      "size": [380, 400],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {"localized_name": "鍥剧墖", "name": "images", "type": "IMAGE", "link": 17},
+        {"localized_name": "鏂囦欢鍚嶅墠缂€", "name": "filename_prefix", "type": "STRING", "widget": {"name": "filename_prefix"}, "link": null}
+      ],
+      "outputs": [],
+      "title": "淇濆瓨閫忔槑鎶犲浘 (Wenbao_Cutout)",
+      "properties": {"Node name for S&R": "SaveImage", "cnr_id": "comfy-core", "ver": "0.28.0"},
+      "widgets_values": ["Wenbao_Cutout"]
+    },
+    {
+      "id": 9,
+      "type": "SaveImage",
+      "pos": [2860, 520],
+      "size": [380, 380],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {"localized_name": "鍥剧墖", "name": "images", "type": "IMAGE", "link": 12},
+        {"localized_name": "鏂囦欢鍚嶅墠缂€", "name": "filename_prefix", "type": "STRING", "widget": {"name": "filename_prefix"}, "link": null}
+      ],
+      "outputs": [],
+      "title": "淇濆瓨鍘熷浘澶囦唤 (Wenbao_Raw)",
+      "properties": {"Node name for S&R": "SaveImage", "cnr_id": "comfy-core", "ver": "0.28.0"},
+      "widgets_values": ["Wenbao_Raw"]
+    }
+  ],
+  "links": [
+    [1, 4, 0, 12, 0, "MODEL"],
+    [2, 4, 1, 12, 1, "CLIP"],
+    [3, 12, 0, 3, 0, "MODEL"],
+    [4, 12, 1, 10, 0, "CLIP"],
+    [5, 10, 0, 6, 0, "CLIP"],
+    [6, 10, 0, 7, 0, "CLIP"],
+    [7, 6, 0, 3, 1, "CONDITIONING"],
+    [8, 7, 0, 3, 2, "CONDITIONING"],
+    [9, 5, 0, 3, 3, "LATENT"],
+    [10, 3, 0, 8, 0, "LATENT"],
+    [11, 4, 2, 8, 1, "VAE"],
+    [12, 8, 0, 9, 0, "IMAGE"],
+    [13, 8, 0, 14, 0, "IMAGE"],
+    [14, 14, 0, 15, 0, "MASK"],
+    [15, 15, 0, 16, 1, "MASK"],
+    [16, 8, 0, 16, 0, "IMAGE"],
+    [17, 16, 0, 17, 0, "IMAGE"]
+  ],
+  "groups": [
+    {"id": 1, "title": "1. 搴曟ā涓庨洴瀹?LoRA", "bounding": [10, 190, 1090, 250], "color": "#3f789e", "flags": {}},
+    {"id": 2, "title": "2. 鍚岃鑹叉崲瑁呮彁绀鸿瘝", "bounding": [1100, 10, 500, 680], "color": "#3f789e", "flags": {}},
+    {"id": 3, "title": "3. 閲囨牱涓庤嚜鍔ㄩ€忔槑鎶犲浘", "bounding": [1620, 10, 1660, 920], "color": "#3f789e", "flags": {}}
+  ],
+  "config": {},
+  "extra": {"ds": {"scale": 0.65, "offset": [0, 60]}},
+  "version": 0.4
+}
+
