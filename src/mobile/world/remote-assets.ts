@@ -18,7 +18,10 @@ export interface RemoteAssetRef {
 /** 把仓库里的 public 相对路径映射到远端分类文件名。 */
 export function mapLocalAsset(localPath: string): RemoteAssetRef | null {
   const path = localPath.replace(/^\//, "");
-  let match = path.match(/^assets\/characters\/(original|maid)\/(.+)$/);
+  // Transparent dress layers for paper-doll stack (not the opaque whole-body Comfy nikki/dress-*.png).
+  let match = path.match(/^assets\/characters\/parts\/dress\/(.+)$/);
+  if (match) return { cat: "dress", name: match[1] };
+  match = path.match(/^assets\/characters\/(original|maid)\/(.+)$/);
   if (match) return { cat: "base", name: `${match[1]}-${match[2]}` };
   match = path.match(/^assets\/nikki\/(dress-.+)$/);
   if (match) return { cat: "dress", name: match[1] };
