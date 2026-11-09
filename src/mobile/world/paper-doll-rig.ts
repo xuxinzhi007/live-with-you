@@ -234,6 +234,7 @@ export function getWearableOverlaySrc(itemId: string, fallbackImg: string): stri
 
 
 const CUTOUT_CACHE = new Map<string, Promise<string>>();
+const WARNED_NO_ALPHA = new Set<string>();
 
 export function loadCutoutImage(src: string, mode: "character" | "accessory" = "character"): Promise<string> {
   if (src.startsWith("data:image/svg+xml")) {
@@ -270,12 +271,23 @@ export function loadCutoutImage(src: string, mode: "character" | "accessory" = "
         const imgData = ctx.getImageData(0, 0, w, h);
         const data = imgData.data;
 
-        // 1. 若原图四角已经是透明像素（如 original/idle.webp），直接原样返回，不做任何裁剪，保持 760x760 骨骼比例！
-        const cornerIndices = [0, (w - 1) * 4, (h - 1) * w * 4, ((h - 1) * w + (w - 1)) * 4];
-        const alreadyTransparent = cornerIndices.every((idx) => data[idx + 3] < 20);
-        if (alreadyTransparent) {
+        // 资产自带 alpha 时直接使用。只看四角会误判（主体可能正好压住角），
+        // 所以按整张图透明像素占比判定：>3% 就认为这张图已经有了正确的透明通道。
+        let transparentPixels = 0;
+        for (let i = 3; i < data.length; i += 4) {
+          if (data[i] < 20) transparentPixels++;
+        }
+        const transparentRatio = transparentPixels / (w * h);
+        if (transparentRatio > 0.03) {
           resolve(src);
           return;
+        }
+        if (!WARNED_NO_ALPHA.has(cacheKey)) {
+          WARNED_NO_ALPHA.add(cacheKey);
+          console.warn(
+            `[paper-doll] ${src} 无 alpha 通道，退回运行时洪水填充。` +
+              `请用 npm run postprocess:alpha 在资产层解决，运行时抠图遇到渐变背景会失败。`,
+          );
         }
 
         // 2. 采样四周边框背景色

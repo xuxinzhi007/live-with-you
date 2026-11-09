@@ -11,7 +11,9 @@
     "test": "npm run test:mobile",
     "test:mobile": "node --experimental-strip-types --test tests/mobile-engine.test.mjs",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "audit:assets": "node tools/audit/asset-audit.mjs",
+    "postprocess:alpha": "node tools/postprocess-alpha.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",

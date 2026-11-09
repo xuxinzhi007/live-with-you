@@ -33,6 +33,13 @@ import {
   rollPavilionGacha,
   stageBondForRank,
   COUPON_PAT_COOLDOWN_MS,
+  normalizeNikkiSave,
+  normalizeItemStars,
+  normalizeUnlockedIds,
+  normalizeEquipped,
+  loadNikkiSaveFrom,
+  NIKKI_SAVE_KEY,
+  NIKKI_LEGACY_KEYS,
 } from "../src/mobile/world/nikki-wardrobe.ts";
 import {
   getBondLevelInfo,
@@ -306,7 +313,11 @@ test("V9 full humanoid biped FK skeleton (with legs), 6-layer cutout slicing and
   const walkAnim = evaluateAnimClip("walk", 0.35);
   const world = solveWorldSkeleton(snowSkel, walkAnim);
   const slices = computeHumanoidPartSlices(snowSkel, world, walkAnim);
-  assert.equal(slices.length, 6, "6 body part layers: legL, legR, armL, torso, armR, head");
+  assert.equal(
+    slices.length,
+    0,
+    "矩形 clipPath 切片已废弃（矩形不是人体轮廓，旋转必穿模），改由 computeSlotLayers 的 slot 叠加替代",
+  );
   assert.notEqual(world.hipL.worldAngle, 0, "left leg swings during walk cycle");
   assert.notEqual(world.hipR.worldAngle, 0, "right leg swings opposite during walk cycle");
 
@@ -354,4 +365,98 @@ test("stage motion state machine: react/equip interrupt and return to idle durat
   assert.equal(nextMotion("react", "idle"), "idle");
   assert.equal(MOTION_DURATION_MS.react, 720);
   assert.equal(MOTION_DURATION_MS.equip, 680);
+});
+
+/* ==================== 存档归一化与迁移链 ==================== */
+
+test("normalizeNikkiSave: 非法槽位与已下架 id 落回默认，不让主装扮槽拿到头饰", () => {
+  const dirty = {
+    equipped: {
+      dress: "hair-daisy-clip",
+      hairAcc: "not-exist-at-all",
+      handheld: "hand-teacup",
+      aura: "aura-morning-breeze",
+      memoryCard: "card-first-tea",
+    },
+  };
+  const out = normalizeNikkiSave(dirty);
+  assert.equal(out.equipped.dress, DEFAULT_EQUIPPED_OUTFIT.dress, "头饰 id 塞进主装扮槽必须落回默认裙子");
+  assert.equal(out.equipped.hairAcc, DEFAULT_EQUIPPED_OUTFIT.hairAcc, "不存在的 id 落回默认");
+  assert.equal(out.equipped.handheld, "hand-teacup", "合法槽位保留原值");
+});
+
+test("normalizeNikkiSave: coupons 的 NaN / 负数 / 小数都被修正", () => {
+  assert.equal(normalizeNikkiSave({ coupons: NaN }).coupons, 40, "NaN 落回默认而不是污染经济系统");
+  assert.equal(normalizeNikkiSave({ coupons: -50 }).coupons, 0, "负数夹到 0");
+  assert.equal(normalizeNikkiSave({ coupons: 12.7 }).coupons, 12, "小数取整");
+  assert.equal(normalizeNikkiSave({ coupons: 1e12 }).coupons, 999999, "超大值夹到上限");
+  assert.equal(normalizeNikkiSave({ coupons: "88" }).coupons, 88, "字符串数字可接受");
+});
+
+test("normalizeNikkiSave: itemStars 只保留合法 id，值夹到 1..5", () => {
+  const out = normalizeItemStars({ "dress-snow-white": 9, "hand-teacup": 0, ghost: 3, "card-first-tea": "4", "aura-ghost": NaN });
+  assert.equal(out["dress-snow-white"], 5, "超上限夹到 5");
+  assert.equal(out["hand-teacup"], 1, "低于下限夹到 1");
+  assert.equal(out["card-first-tea"], 4, "字符串数字可接受");
+  assert.equal("ghost" in out, false, "不在图鉴里的 id 丢弃");
+  assert.equal("aura-ghost" in out, false, "NaN 值且不存在 id 直接丢弃");
+});
+
+test("normalizeNikkiSave: unlockedIds 去重并过滤未知 id", () => {
+  const out = normalizeUnlockedIds(["dress-snow-white", "dress-snow-white", "ghost-item", 42, null]);
+  assert.equal(new Set(out).size, out.length, "无重复");
+  assert.equal(out.includes("ghost-item"), false, "未知 id 过滤");
+  for (const id of DEFAULT_UNLOCKED_ITEM_IDS) {
+    assert.ok(out.includes(id), `默认解锁 ${id} 必须保留`);
+  }
+});
+
+test("normalizeNikkiSave: 垃圾输入返回可用默认值且不抛", () => {
+  for (const junk of [null, undefined, "string", 42, [], { equipped: "oops" }]) {
+    const out = normalizeNikkiSave(junk);
+    assert.ok(out.equipped && out.unlockedIds.length > 0, `${String(junk)} 也要产出可用状态`);
+    assert.ok(Number.isFinite(out.coupons), "coupons 必须有限");
+  }
+});
+
+test("存档迁移链: v4/v5/v6/v7/v8 五种形状都能读到，礼券不丢失", () => {
+  const shapes = {
+    v4: { equipped: { dress: "dress-snow-white" }, coupons: 12 },
+    v5: { equipped: { dress: "dress-rose-waltz" }, coupons: 25, unlockedIds: ["dress-rose-waltz"] },
+    v6: { equipped: { dress: "dress-apricot-tea" }, coupons: 33, itemStars: { "dress-apricot-tea": 3 } },
+    v7: { equipped: { dress: "dress-snow-white" }, coupons: 41, clearedStages: { "ch1": "S" } },
+    v8: { equipped: { dress: "dress-snow-white" }, coupons: 55, clearedStages: { "ch1": "SS" }, itemStars: { "hand-teacup": 2 } },
+  };
+  for (const [version, payload] of Object.entries(shapes)) {
+    const out = normalizeNikkiSave(payload);
+    assert.equal(out.coupons, payload.coupons, `${version} 的礼券不能丢`);
+    assert.ok(WARDROBE_ITEMS.some((it) => it.id === out.equipped.dress && it.slot === "dress"), `${version} 的 dress 必须合法且属于主装扮槽`);
+  }
+});
+
+test("存档迁移链: v7 用户不再被跳过（历史回退链缺 v7 会让该版本用户静默重开）", () => {
+  assert.ok(NIKKI_LEGACY_KEYS.includes("wenbebi-nikki-wardrobe-v7"), "v7 必须在回退链里");
+  assert.equal(NIKKI_SAVE_KEY, "wenbebi-nikki-wardrobe-v8", "当前写入键仍是 v8");
+  const store = {
+    getItem(key) {
+      if (key === "wenbebi-nikki-wardrobe-v7") {
+        return JSON.stringify({ equipped: { dress: "dress-snow-white" }, coupons: 77 });
+      }
+      return null;
+    },
+  };
+  const loaded = loadNikkiSaveFrom(store);
+  assert.equal(loaded.coupons, 77, "只有 v7 存档的用户能读回自己的礼券");
+});
+
+test("存档迁移链: 优先读最新版本，坏 JSON 跳到下一层", () => {
+  const store = {
+    getItem(key) {
+      if (key === NIKKI_SAVE_KEY) return "{broken json";
+      if (key === "wenbebi-nikki-wardrobe-v6") return JSON.stringify({ coupons: 66 });
+      return null;
+    },
+  };
+  assert.equal(loadNikkiSaveFrom(store).coupons, 66, "v8 损坏时回落到 v6");
+  assert.equal(loadNikkiSaveFrom(null).coupons, 40, "无存储时给默认值");
 });

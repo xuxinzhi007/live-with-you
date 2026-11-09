@@ -11,7 +11,7 @@
  * 3. 【心境羁绊卡 CG 全部挂载雯宝 LoRA】：确保 5 张羁绊卡里的主角也是同一个短黑发棕眼的 Q 版雯宝！
  */
 import { mkdir, writeFile, copyFile } from "node:fs/promises";
-import { spawn } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
 import path from "node:path";
 
 const COMFY_URL = process.env.COMFY_BASE_URL || "http://127.0.0.1:8188";
@@ -59,8 +59,8 @@ const ASSET_JOBS = [
   {
     name: "dress-apricot-tea.png",
     kind: "dress",
-    width: 512,
-    height: 640,
+    width: 1024,
+    height: 1280,
     seed: 2026110701,
     lora: LORA_FILE,
     loraStrength: 0.58,
@@ -71,8 +71,8 @@ const ASSET_JOBS = [
   {
     name: "dress-rose-waltz.png",
     kind: "dress",
-    width: 512,
-    height: 640,
+    width: 1024,
+    height: 1280,
     seed: 2026110702,
     lora: LORA_FILE,
     loraStrength: 0.58,
@@ -83,8 +83,8 @@ const ASSET_JOBS = [
   {
     name: "dress-starlight-dream.png",
     kind: "dress",
-    width: 512,
-    height: 640,
+    width: 1024,
+    height: 1280,
     seed: 2026110703,
     lora: LORA_FILE,
     loraStrength: 0.58,
@@ -97,8 +97,8 @@ const ASSET_JOBS = [
   {
     name: "card-first-tea.png",
     kind: "card",
-    width: 512,
-    height: 640,
+    width: 1024,
+    height: 1280,
     seed: 2026110704,
     lora: LORA_FILE,
     loraStrength: 0.65,
@@ -109,8 +109,8 @@ const ASSET_JOBS = [
   {
     name: "card-rainy-window.png",
     kind: "card",
-    width: 512,
-    height: 640,
+    width: 1024,
+    height: 1280,
     seed: 2026110705,
     lora: LORA_FILE,
     loraStrength: 0.65,
@@ -121,8 +121,8 @@ const ASSET_JOBS = [
   {
     name: "card-midnight-cocoa.png",
     kind: "card",
-    width: 512,
-    height: 640,
+    width: 1024,
+    height: 1280,
     seed: 2026110706,
     lora: LORA_FILE,
     loraStrength: 0.65,
@@ -133,8 +133,8 @@ const ASSET_JOBS = [
   {
     name: "card-ocean-promise.png",
     kind: "card",
-    width: 512,
-    height: 640,
+    width: 1024,
+    height: 1280,
     seed: 2026110707,
     lora: LORA_FILE,
     loraStrength: 0.65,
@@ -145,8 +145,8 @@ const ASSET_JOBS = [
   {
     name: "card-starlight-waltz.png",
     kind: "card",
-    width: 512,
-    height: 640,
+    width: 1024,
+    height: 1280,
     seed: 2026110708,
     lora: LORA_FILE,
     loraStrength: 0.65,
@@ -159,8 +159,8 @@ const ASSET_JOBS = [
   {
     name: "item-daisy-clip.png",
     kind: "prop",
-    width: 512,
-    height: 512,
+    width: 1024,
+    height: 1024,
     seed: 2026110711,
     negative: NEGATIVE_PROP,
     prompt:
@@ -169,8 +169,8 @@ const ASSET_JOBS = [
   {
     name: "item-lace-ribbon.png",
     kind: "prop",
-    width: 512,
-    height: 512,
+    width: 1024,
+    height: 1024,
     seed: 2026110712,
     negative: NEGATIVE_PROP,
     prompt:
@@ -179,8 +179,8 @@ const ASSET_JOBS = [
   {
     name: "item-plush-bunny.png",
     kind: "prop",
-    width: 512,
-    height: 512,
+    width: 1024,
+    height: 1024,
     seed: 2026110713,
     negative: NEGATIVE_PROP,
     prompt:
@@ -189,8 +189,8 @@ const ASSET_JOBS = [
   {
     name: "item-whale-beret.png",
     kind: "prop",
-    width: 512,
-    height: 512,
+    width: 1024,
+    height: 1024,
     seed: 2026110714,
     negative: NEGATIVE_PROP,
     prompt:
@@ -199,8 +199,8 @@ const ASSET_JOBS = [
   {
     name: "item-pearl-tiara.png",
     kind: "prop",
-    width: 512,
-    height: 512,
+    width: 1024,
+    height: 1024,
     seed: 2026110715,
     negative: NEGATIVE_PROP,
     prompt:
@@ -209,8 +209,8 @@ const ASSET_JOBS = [
   {
     name: "item-sunflower-hat.png",
     kind: "prop",
-    width: 512,
-    height: 512,
+    width: 1024,
+    height: 1024,
     seed: 2026110716,
     negative: NEGATIVE_PROP,
     prompt:
@@ -219,8 +219,8 @@ const ASSET_JOBS = [
   {
     name: "item-teacup.png",
     kind: "prop",
-    width: 512,
-    height: 512,
+    width: 1024,
+    height: 1024,
     seed: 2026110717,
     negative: NEGATIVE_PROP,
     prompt:
@@ -229,8 +229,8 @@ const ASSET_JOBS = [
   {
     name: "item-cookie-basket.png",
     kind: "prop",
-    width: 512,
-    height: 512,
+    width: 1024,
+    height: 1024,
     seed: 2026110718,
     negative: NEGATIVE_PROP,
     prompt:
@@ -239,8 +239,8 @@ const ASSET_JOBS = [
   {
     name: "item-sunflower-bouquet.png",
     kind: "prop",
-    width: 512,
-    height: 512,
+    width: 1024,
+    height: 1024,
     seed: 2026110719,
     negative: NEGATIVE_PROP,
     prompt:
@@ -249,8 +249,8 @@ const ASSET_JOBS = [
   {
     name: "item-music-box.png",
     kind: "prop",
-    width: 512,
-    height: 512,
+    width: 1024,
+    height: 1024,
     seed: 2026110720,
     negative: NEGATIVE_PROP,
     prompt:
@@ -259,8 +259,8 @@ const ASSET_JOBS = [
   {
     name: "item-whale-globe.png",
     kind: "prop",
-    width: 512,
-    height: 512,
+    width: 1024,
+    height: 1024,
     seed: 2026110721,
     negative: NEGATIVE_PROP,
     prompt:
@@ -269,8 +269,8 @@ const ASSET_JOBS = [
   {
     name: "item-pocket-watch.png",
     kind: "prop",
-    width: 512,
-    height: 512,
+    width: 1024,
+    height: 1024,
     seed: 2026110722,
     negative: NEGATIVE_PROP,
     prompt:
@@ -279,8 +279,8 @@ const ASSET_JOBS = [
   {
     name: "item-morning-breeze.png",
     kind: "prop",
-    width: 512,
-    height: 512,
+    width: 1024,
+    height: 1024,
     seed: 2026110723,
     negative: NEGATIVE_PROP,
     prompt:
@@ -289,8 +289,8 @@ const ASSET_JOBS = [
   {
     name: "item-honey-amber.png",
     kind: "prop",
-    width: 512,
-    height: 512,
+    width: 1024,
+    height: 1024,
     seed: 2026110724,
     negative: NEGATIVE_PROP,
     prompt:
@@ -299,8 +299,8 @@ const ASSET_JOBS = [
   {
     name: "item-rose-petals.png",
     kind: "prop",
-    width: 512,
-    height: 512,
+    width: 1024,
+    height: 1024,
     seed: 2026110725,
     negative: NEGATIVE_PROP,
     prompt:
@@ -309,8 +309,8 @@ const ASSET_JOBS = [
   {
     name: "item-ocean-bubbles.png",
     kind: "prop",
-    width: 512,
-    height: 512,
+    width: 1024,
+    height: 1024,
     seed: 2026110726,
     negative: NEGATIVE_PROP,
     prompt:
@@ -319,14 +319,53 @@ const ASSET_JOBS = [
   {
     name: "item-starlight-firefly.png",
     kind: "prop",
-    width: 512,
-    height: 512,
+    width: 1024,
+    height: 1024,
     seed: 2026110727,
     negative: NEGATIVE_PROP,
     prompt:
       "masterpiece, best quality, anime game icon, no humans, still life, object only, a single star-shaped golden lantern glass bottle glowing with warm yellow light, centered, isolated on (plain solid white background:1.6), simple background",
   },
 ];
+
+let layerDiffuseProbe = null;
+
+function probeObjectInfo() {
+  if (layerDiffuseProbe !== null) return layerDiffuseProbe;
+  try {
+    const res = execFileSync(
+      "curl",
+      ["-sS", "-m", "5", `${COMFY_URL}/object_info`],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+    );
+    layerDiffuseProbe = JSON.parse(res);
+  } catch {
+    layerDiffuseProbe = {};
+  }
+  return layerDiffuseProbe;
+}
+
+const LAYERDIFFUSE_CANDIDATES = [
+  "LayerDiffuseApply",
+  "LayeredDiffusionApply",
+  "LayerDiffusionApply",
+  "TransparentVAEEncode",
+];
+
+function resolveLayerDiffuseNode() {
+  const info = probeObjectInfo();
+  for (const name of LAYERDIFFUSE_CANDIDATES) {
+    if (info && Object.prototype.hasOwnProperty.call(info, name)) {
+      console.log(`[alpha] 使用 ComfyUI 原生透明节点: ${name}`);
+      return name;
+    }
+  }
+  console.log(
+    "[alpha] 未发现 layerdiffuse 节点，改走纯色背景 + postprocess-alpha 回退路线。\n" +
+      "        生成完成后请运行: node tools/postprocess-alpha.mjs",
+  );
+  return null;
+}
 
 function buildComfyGraph({ prompt, negative, width, height, seed, lora, loraStrength = 0.58 }) {
   const useControlnet = CONTROLNET !== "none" && CONTROLNET_IMAGE;
@@ -410,13 +449,11 @@ function buildComfyGraph({ prompt, negative, width, height, seed, lora, loraStre
     graph["3"].inputs.positive = ["23", 0];
   }
 
-  // LayerDiffusion：出透明分层。节点名按 ComfyUI-layerdiffuse 插件约定。
-  // 注意：插件版本差异大，参数名可能不同；此处给最小可用形态，接入时按 /object_info 校准。
-  if (LAYERDIFFUSE) {
-    graph["30"] = {
-      class_type: "LayerDiffuseApply",
-      inputs: { images: ["8", 0] },
-    };
+  // LayerDiffusion：出透明分层。节点名不写死，先用 /object_info 探测真实可用节点，
+  // 探不到就回退到纯色背景 + tools/postprocess-alpha.mjs 后处理，绝不提交猜测的节点名。
+  const ld = LAYERDIFFUSE ? resolveLayerDiffuseNode() : null;
+  if (ld) {
+    graph["30"] = { class_type: ld, inputs: { images: ["8", 0] } };
     graph["9"].inputs.images = ["30", 0];
   }
 

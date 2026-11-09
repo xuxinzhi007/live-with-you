@@ -7,6 +7,7 @@
  */
 import type { CharacterSkinId } from "../engine/types.ts";
 import { resolveAsset } from "./remote-assets.ts";
+import type { AllDressSkeletons } from "./skeleton-system.ts";
 
 export type WardrobeSlot = "dress" | "hairAcc" | "handheld" | "aura" | "memoryCard";
 export type StyleAttr = "sweet" | "elegant" | "pure" | "warm" | "cool";
@@ -1037,4 +1038,138 @@ export function rollPavilionGacha(
     nextStars,
     bondGained,
   };
+}
+
+/* ==================== 存档归一化 ==================== */
+
+export interface SavedNikkiState {
+  equipped: EquippedOutfit;
+  unlockedIds: string[];
+  itemStars: Record<string, number>;
+  clearedStages: Record<string, string>;
+  coupons: number;
+  customImages?: Record<string, string>;
+  dressSkeletons?: AllDressSkeletons;
+}
+
+export const NIKKI_SAVE_KEY = "wenbebi-nikki-wardrobe-v8";
+export const NIKKI_LEGACY_KEYS = [
+  "wenbebi-nikki-wardrobe-v7",
+  "wenbebi-nikki-wardrobe-v6",
+  "wenbebi-nikki-wardrobe-v5",
+  "wenbebi-nikki-wardrobe-v4",
+];
+
+const SAVE_ITEM_IDS = new Set(WARDROBE_ITEMS.map((it) => it.id));
+const SAVE_SLOT_OF = new Map(WARDROBE_ITEMS.map((it) => [it.id, it.slot]));
+const STAR_MIN = 1;
+const STAR_MAX = 5;
+const COUPON_MAX = 999_999;
+
+function isRec(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+function safeInt(v: unknown, min: number, max: number, fallback: number): number {
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  const i = Math.trunc(n);
+  if (i < min) return min;
+  if (i > max) return max;
+  return i;
+}
+
+function defaultSave(): SavedNikkiState {
+  return {
+    equipped: { ...DEFAULT_EQUIPPED_OUTFIT },
+    unlockedIds: [...DEFAULT_UNLOCKED_ITEM_IDS],
+    itemStars: {},
+    clearedStages: {},
+    coupons: 40,
+    customImages: {},
+    dressSkeletons: {},
+  };
+}
+
+export function normalizeEquipped(raw: unknown): EquippedOutfit {
+  const src = isRec(raw) ? raw : {};
+  const out = { ...DEFAULT_EQUIPPED_OUTFIT };
+  for (const slot of WARDROBE_SLOTS) {
+    const id = src[slot];
+    if (typeof id === "string" && SAVE_ITEM_IDS.has(id) && SAVE_SLOT_OF.get(id) === slot) {
+      out[slot] = id;
+    }
+  }
+  return out;
+}
+
+export function normalizeItemStars(raw: unknown): Record<string, number> {
+  if (!isRec(raw)) return {};
+  const out: Record<string, number> = {};
+  for (const [id, v] of Object.entries(raw)) {
+    if (!SAVE_ITEM_IDS.has(id)) continue;
+    const n = typeof v === "number" ? v : Number(v);
+    if (!Number.isFinite(n)) continue;
+    out[id] = safeInt(n, STAR_MIN, STAR_MAX, STAR_MIN);
+  }
+  return out;
+}
+
+export function normalizeUnlockedIds(raw: unknown): string[] {
+  const set = new Set(DEFAULT_UNLOCKED_ITEM_IDS);
+  if (Array.isArray(raw)) {
+    for (const id of raw) {
+      if (typeof id === "string" && SAVE_ITEM_IDS.has(id)) set.add(id);
+    }
+  }
+  return Array.from(set);
+}
+
+function normalizeStringRecord(raw: unknown): Record<string, string> {
+  if (!isRec(raw)) return {};
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (typeof v === "string" && v) out[k] = v;
+  }
+  return out;
+}
+
+export function normalizeNikkiSave(raw: unknown): SavedNikkiState {
+  const fallback = defaultSave();
+  try {
+    if (!isRec(raw)) return fallback;
+    return {
+      equipped: normalizeEquipped(raw.equipped),
+      unlockedIds: normalizeUnlockedIds(raw.unlockedIds),
+      itemStars: normalizeItemStars(raw.itemStars),
+      clearedStages: normalizeStringRecord(raw.clearedStages),
+      coupons: safeInt(raw.coupons, 0, COUPON_MAX, fallback.coupons),
+      customImages: normalizeStringRecord(raw.customImages),
+      dressSkeletons: isRec(raw.dressSkeletons)
+        ? (raw.dressSkeletons as AllDressSkeletons)
+        : {},
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+export function loadNikkiSaveFrom(storage: Pick<Storage, "getItem"> | null | undefined): SavedNikkiState {
+  if (!storage) return defaultSave();
+  const keys = [NIKKI_SAVE_KEY, ...NIKKI_LEGACY_KEYS];
+  for (const key of keys) {
+    let raw: string | null = null;
+    try {
+      raw = storage.getItem(key);
+    } catch {
+      continue;
+    }
+    if (!raw) continue;
+    try {
+      return normalizeNikkiSave(JSON.parse(raw));
+    } catch {
+      continue;
+    }
+  }
+  return defaultSave();
 }

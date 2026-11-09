@@ -589,77 +589,71 @@ export interface PartSliceStyle {
 }
 
 export function computeHumanoidPartSlices(
-  skel: DressSkeleton,
-  world: Record<JointId, WorldJointState>,
-  anim: AnimPoseOffsets,
+  _skel: DressSkeleton,
+  _world: Record<JointId, WorldJointState>,
+  _anim: AnimPoseOffsets,
 ): PartSliceStyle[] {
-  const neckY = skel.neck.y;
-  const hipY = Math.max(skel.hipL.y, skel.hipR.y);
-  const shLX = skel.shoulderL.x;
-  const shRX = skel.shoulderR.x;
+  // 已废弃。矩形 polygon 选区不是人体轮廓，任何旋转都会露边。
+  // 由 computeSlotLayers 的 slot 叠加替代（见 art-research.md）。
+  return [];
+}
 
-  return [
-    // 1. 左腿层 (LegL)：从 hipY 向下到脚底，左半侧，绕 hipL 旋转
-    {
-      part: "legL",
-      zIndex: 16,
-      clipPath: `polygon(18% ${hipY - 3}%, 50.5% ${hipY - 3}%, 50.5% 100%, 18% 100%)`,
-      originX: skel.hipL.x,
-      originY: skel.hipL.y,
-      angle: world.hipL.worldAngle,
-      ty: anim.pelvisDy,
-    },
-    // 2. 右腿层 (LegR)：从 hipY 向下到脚底，右半侧，绕 hipR 旋转
-    {
-      part: "legR",
-      zIndex: 17,
-      clipPath: `polygon(49.5% ${hipY - 3}%, 82% ${hipY - 3}%, 82% 100%, 49.5% 100%)`,
-      originX: skel.hipR.x,
-      originY: skel.hipR.y,
-      angle: world.hipR.worldAngle,
-      ty: anim.pelvisDy,
-    },
-    // 3. 左臂层 (ArmL)：左肩外侧区域，绕 shoulderL 旋转
-    {
-      part: "armL",
-      zIndex: 19,
-      clipPath: `polygon(0% ${neckY - 2}%, ${shLX + 3}% ${neckY - 2}%, ${shLX + 1}% ${hipY + 4}%, 0% ${hipY + 4}%)`,
-      originX: skel.shoulderL.x,
-      originY: skel.shoulderL.y,
-      angle: world.shoulderL.worldAngle,
-      ty: anim.pelvisDy,
-    },
-    // 4. 躯干与裙摆主层 (Torso)：颈部以下、髋部以上（含躯干中心连接），绕 pelvis 旋转
-    {
-      part: "torso",
-      zIndex: 20,
-      clipPath: `polygon(${shLX - 3}% ${neckY - 3}%, ${shRX + 3}% ${neckY - 3}%, ${shRX + 5}% ${hipY + 3}%, ${shLX - 5}% ${hipY + 3}%)`,
-      originX: skel.pelvis.x,
-      originY: skel.pelvis.y,
-      angle: world.pelvis.worldAngle,
-      ty: anim.pelvisDy,
-    },
-    // 5. 右臂层 (ArmR)：右肩外侧区域，绕 shoulderR 旋转
-    {
-      part: "armR",
-      zIndex: 21,
-      clipPath: `polygon(${shRX - 3}% ${neckY - 2}%, 100% ${neckY - 2}%, 100% ${hipY + 4}%, ${shRX - 1}% ${hipY + 4}%)`,
-      originX: skel.shoulderR.x,
-      originY: skel.shoulderR.y,
-      angle: world.shoulderR.worldAngle,
-      ty: anim.pelvisDy,
-    },
-    // 6. 头部层 (Head)：颈部枢轴以上全部区域（带圆弧下沿重叠），绕 neck 枢轴旋转 -> 歪头时整个头部丝滑转动！
-    {
-      part: "head",
-      zIndex: 24,
-      clipPath: `polygon(0% 0%, 100% 0%, 100% ${neckY + 2.5}%, 0% ${neckY + 2.5}%)`,
-      originX: skel.neck.x,
-      originY: skel.neck.y,
-      angle: world.neck.worldAngle,
-      ty: anim.pelvisDy,
-    },
-  ];
+/* ==================== slot 叠加：角色本体单 sprite + 各槽位独立图层 ==================== */
+
+export type OutfitSlotId = "dress" | "hairAcc" | "handheld" | "aura" | "memoryCard";
+
+export interface SlotLayerInput {
+  slot: OutfitSlotId;
+  src: string;
+  /** 相对画布中心的锚点百分比，来自角色骨骼解算结果 */
+  anchorX: number;
+  anchorY: number;
+  scale: number;
+  rotate: number;
+  userDx?: number;
+  userDy?: number;
+  userScale?: number;
+  userRotate?: number;
+  opacity?: number;
+}
+
+export interface SlotLayerStyle {
+  slot: OutfitSlotId;
+  src: string;
+  left: string;
+  top: string;
+  width: string;
+  zIndex: number;
+  transform: string;
+  opacity: number;
+}
+
+/** z 序：数字越大越靠前。光环在背后，羁绊卡作为氛围底层。 */
+const SLOT_Z: Record<OutfitSlotId, number> = {
+  memoryCard: 2,
+  aura: 10,
+  dress: 20,
+  hairAcc: 30,
+  handheld: 40,
+};
+
+export function computeSlotLayers(inputs: SlotLayerInput[]): SlotLayerStyle[] {
+  return inputs
+    .filter((it) => it.src)
+    .map((it) => {
+      const s = it.scale * (it.userScale ?? 1);
+      const rot = it.rotate + (it.userRotate ?? 0);
+      return {
+        slot: it.slot,
+        src: it.src,
+        left: `${it.anchorX + (it.userDx ?? 0)}%`,
+        top: `${it.anchorY + (it.userDy ?? 0)}%`,
+        width: `${88 * s}%`,
+        zIndex: SLOT_Z[it.slot],
+        transform: `translate(-50%, -50%) rotate(${rot}deg)`,
+        opacity: it.opacity ?? 1,
+      };
+    });
 }
 
 /**

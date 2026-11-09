@@ -55,6 +55,11 @@ import {
 } from "./world/skeleton-system";
 import { getBondLevelInfo } from "./world/codex";
 import {
+  NIKKI_SAVE_KEY,
+  loadNikkiSaveFrom,
+  type SavedNikkiState as NormalizedNikkiSave,
+} from "./world/nikki-wardrobe";
+import {
   probeCompanionStatus,
   sendCompanionChatMessage,
   type ChatTurn,
@@ -70,6 +75,8 @@ import {
   type LayerSkinId,
   type StageMotion,
 } from "./world/layered-stage";
+import { WorldScreen } from "./world/WorldScreen";
+import type { RoomProp } from "./world/rooms";
 import "./world.css";
 
 /**
@@ -83,9 +90,9 @@ import "./world.css";
  * - "codex"    : 典藏套装与原画图鉴
  * - "chat"     : 和雯宝私语
  */
-type GameScreen = "title" | "lobby" | "wardrobe" | "rig" | "stages" | "pavilion" | "codex" | "chat";
+type GameScreen = "title" | "lobby" | "world" | "wardrobe" | "rig" | "stages" | "pavilion" | "codex" | "chat";
 
-const WARDROBE_STORAGE_KEY = "wenbebi-nikki-wardrobe-v8";
+const WARDROBE_STORAGE_KEY = NIKKI_SAVE_KEY;
 const ENTERED_LOBBY_KEY = "wenbebi-entered-lobby";
 
 function hasEnteredLobby(): boolean {
@@ -104,57 +111,21 @@ function markEnteredLobby() {
   }
 }
 
-interface SavedNikkiState {
-  equipped: EquippedOutfit;
-  unlockedIds: string[];
-  itemStars: Record<string, number>;
-  clearedStages: Record<string, string>;
-  coupons: number;
-  lastCouponPatAt?: number;
-  customImages?: Record<string, string>;
-  dressSkeletons?: AllDressSkeletons;
-}
+type SavedNikkiState = NormalizedNikkiSave & { lastCouponPatAt?: number };
 
 function loadNikkiState(): SavedNikkiState {
+  const base = loadNikkiSaveFrom(typeof localStorage === "undefined" ? null : localStorage);
+  let lastCouponPatAt: number | undefined;
   try {
-    const raw =
-      localStorage.getItem(WARDROBE_STORAGE_KEY) ||
-      localStorage.getItem("wenbebi-nikki-wardrobe-v6") ||
-      localStorage.getItem("wenbebi-nikki-wardrobe-v4");
-    if (!raw) {
-      return {
-        equipped: { ...DEFAULT_EQUIPPED_OUTFIT },
-        unlockedIds: [...DEFAULT_UNLOCKED_ITEM_IDS],
-        itemStars: {},
-        clearedStages: {},
-        coupons: 40,
-        customImages: {},
-        dressSkeletons: {},
-      };
+    const raw = localStorage.getItem(WARDROBE_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed?.lastCouponPatAt === "number" && Number.isFinite(parsed.lastCouponPatAt)) {
+        lastCouponPatAt = parsed.lastCouponPatAt;
+      }
     }
-    const parsed = JSON.parse(raw);
-    return {
-      equipped: { ...DEFAULT_EQUIPPED_OUTFIT, ...(parsed.equipped || {}) },
-      unlockedIds: Array.from(new Set([...DEFAULT_UNLOCKED_ITEM_IDS, ...(parsed.unlockedIds || [])])),
-      itemStars: parsed.itemStars || {},
-      clearedStages: parsed.clearedStages || {},
-      coupons: typeof parsed.coupons === "number" ? parsed.coupons : 40,
-      lastCouponPatAt: typeof parsed.lastCouponPatAt === "number" ? parsed.lastCouponPatAt : undefined,
-      customImages: parsed.customImages || {},
-      dressSkeletons: parsed.dressSkeletons || {},
-    };
-  } catch {
-    return {
-      equipped: { ...DEFAULT_EQUIPPED_OUTFIT },
-      unlockedIds: [...DEFAULT_UNLOCKED_ITEM_IDS],
-      itemStars: {},
-      clearedStages: {},
-      coupons: 40,
-      customImages: {},
-      dressSkeletons: {},
-    };
-  }
-}
+  } catch { /* ignore */ }
+  return { ...base, lastCouponPatAt };
 
 function saveNikkiState(data: SavedNikkiState) {
   try {
@@ -190,7 +161,14 @@ const QUICK_CHAT_TOPICS = [
 ];
 
 export function WorldApp() {
-  const { state, setSkin, companionAct, grantBond } = useWorldGame();
+  const {
+    state,
+    setSkin,
+    companionAct,
+    grantBond,
+    enterRoom,
+    runProp,
+  } = useWorldGame();
   const [nikki, setNikki] = useState<SavedNikkiState>(loadNikkiState);
   const [screen, setScreen] = useState<GameScreen>(() => openingScreen(hasEnteredLobby()));
   const [activeSlot, setActiveSlot] = useState<WardrobeSlot>("dress");
@@ -1386,6 +1364,18 @@ export function WorldApp() {
         )}
 
         {/* ==================== 画面 4：高定换装衣橱 ==================== */}
+        {screen === "world" && (
+          <WorldScreen
+            room={state.world.room}
+            onEnterRoom={(room) => enterRoom(room)}
+            onPropAction={(prop: RoomProp) => {
+              const res = runProp(prop);
+              return res ? { line: res.line, tone: res.tone } : null;
+            }}
+            onBack={() => setScreen("lobby")}
+          />
+        )}
+
         {screen === "wardrobe" && (
           <section className="nk-panel nk-panel-enter" aria-label="换装衣橱">
             <div className="nk-slot-tabs" role="tablist">
@@ -2047,6 +2037,14 @@ export function WorldApp() {
         >
           <span>🏠</span>
           <small>主大厅</small>
+        </button>
+        <button
+          type="button"
+          className={screen === "world" ? "m-active" : ""}
+          onClick={() => setScreen("world")}
+        >
+          <span>🏡</span>
+          <small>小世界</small>
         </button>
         <button
           type="button"

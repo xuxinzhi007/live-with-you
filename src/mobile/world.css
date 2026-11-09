@@ -2,6 +2,22 @@
    V5 · ComfyUI 全插画卡面 + 丝滑弹簧微交互动效 + 零裁切布局
    ============================================================ */
 
+/* 全局重置：没有这一段，position:fixed 的 #nikki-root 在部分环境下会丢失包含块，
+   子元素的百分比宽度链断裂，表现为整屏空白。 */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
+
 #nikki-root {
   position: fixed;
   inset: 0;
@@ -2556,4 +2572,137 @@
   font-size: 11.5px;
   text-align: center;
   pointer-events: none;
+}
+
+/* ==================== 小世界屏幕 ==================== */
+.nk-world {
+  gap: 8px;
+  overflow: hidden;
+  padding: 10px 12px;
+}
+
+.nk-world-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.nk-world-back {
+  border: none;
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #6b5a4e;
+  min-height: 36px;
+  cursor: pointer;
+}
+
+.nk-world-rooms {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.nk-world-room-tab {
+  border: none;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #8a7a6d;
+  min-height: 36px;
+  cursor: pointer;
+}
+
+.nk-world-room-tab.m-active {
+  background: #f4a0b8;
+  color: #fff;
+  font-weight: 600;
+}
+
+.nk-world-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 240px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #f7efe4;
+}
+
+.nk-world-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nk-world-props {
+  position: absolute;
+  inset: 0;
+}
+
+.nk-world-prop {
+  position: absolute;
+  bottom: 12%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  min-width: 56px;
+}
+
+.nk-world-prop img {
+  width: 100%;
+  height: auto;
+  max-height: 22vh;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(90, 70, 50, 0.22));
+  transition: transform 160ms ease;
+}
+
+.nk-world-prop.m-selected img {
+  transform: translateY(-4px) scale(1.06);
+}
+
+.nk-world-prop span {
+  font-size: 11px;
+  color: #6b5a4e;
+  background: rgba(255, 255, 255, 0.82);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.nk-world-line {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #5c4d42;
+}
+
+.nk-world-actions {
+  padding-bottom: 8px;
+}
+
+.nk-world-action-btn {
+  width: 100%;
+  border: none;
+  border-radius: 14px;
+  padding: 14px;
+  min-height: 44px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #f4a0b8, #e8849f);
+  cursor: pointer;
 }
