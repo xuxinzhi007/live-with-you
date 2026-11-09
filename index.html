@@ -6,10 +6,10 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="和你住在一起" />
+  <meta name="apple-mobile-web-app-title" content="雯宝" />
   <meta name="theme-color" content="#fbf6ea" />
-  <meta name="description" content="玩家扮演雯宝的竖屏小世界：走动、种花、收花、踢球，把每天几分钟留在房间里。" />
-  <title>和你住在一起 · 雯宝的小屋</title>
+  <meta name="description" content="竖屏换装搭配、心境卡收集，以及和雯宝聊天。" />
+  <title>雯宝 · 高定衣橱</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/icon.svg" />
@@ -18,21 +18,6 @@
 </head>
 <body>
   <div id="root"></div>
-  <script>
-    // Live2D Cubism Core（专有文件，不进仓库）。缺失时 Live2D 功能不可用，
-    // 其余功能不受影响。下载：npm run setup:live2d
-    (function () {
-      var s = document.createElement("script");
-      s.src = "/vendor/live2dcubismcore.min.js";
-      s.onload = function () { console.log("[live2d] Cubism Core loaded"); };
-      s.onerror = function () {
-        console.warn("[live2d] Cubism Core 缺失。Live2D 渲染不可用。\n" +
-          "  下载：npm run setup:live2d\n" +
-          "  或手动放 public/vendor/live2dcubismcore.min.js");
-      };
-      document.head.appendChild(s);
-    })();
-  </script>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

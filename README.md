@@ -2,6 +2,8 @@
 
 一款竖屏二次元**换装搭配闯关 + 心境羁绊卡牌收集 + AI 实时陪伴**手游（React + TypeScript + Vite）。
 
+仓库里哪份文档还算数，看 [docs/README.md](./docs/README.md)。游戏入口是 `src/main.tsx` → `src/mobile/WorldApp.tsx`。
+
 ---
 
 ## 1. 核心玩法（《奇迹暖暖 / 闪耀暖暖》式卡牌换装架构）

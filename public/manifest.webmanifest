@@ -1,13 +1,13 @@
 {
-  "name": "和你住在一起 · 雯宝的小屋",
-  "short_name": "和你住在一起",
-  "description": "玩家扮演雯宝的竖屏小世界：走动、种花、收花、踢球，把每天几分钟留在房间里。",
+  "name": "雯宝 · 高定衣橱",
+  "short_name": "雯宝",
+  "description": "竖屏换装搭配、心境卡收集，以及和雯宝聊天。",
   "lang": "zh-CN",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#fbf6ea",
   "theme_color": "#fbf6ea",
-  "orientation": "any",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "/icon.svg",

@@ -20,5 +20,9 @@
 | `mobile-portrait-layout-research.md` | 更早的观察向竖屏布局调研 |
 | `mobile-scene-scale-research.md` | 场景尺度 / Pixi 候选调研 |
 | `multiplayer-portrait-scene-design.md` | 多人竖屏场景设计 |
+| `feedback-backlog.md` | 可走动小屋的体验台账（镜头、家具、下雨） |
+| `mobile-app-strategy-research.md` | 2026-10-20 桌面宠物如何包成 App |
+| `pixel-furniture-plan.md` | 像素家具与旧 sprite 替换方案（原仓库根 `plan.md`） |
+| `styles-mobile.css` | 未被任何页面引用的旧竖屏样式 |
 
 冲突时以现行 `docs/*.md` 与运行时代码为准，不以本目录为准。
