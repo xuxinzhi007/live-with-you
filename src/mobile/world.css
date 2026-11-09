@@ -767,6 +767,23 @@
   100% { opacity: 1; transform: scale(1) translateY(0); filter: brightness(1); }
 }
 
+.nk-paperdoll-rig.m-dress-ready .nk-bone-body {
+  animation: nk-dress-settle 0.42s ease;
+}
+
+@keyframes nk-dress-settle {
+  0% { filter: brightness(1.55) saturate(0.75); }
+  100% { filter: brightness(1) saturate(1); }
+}
+
+.nk-art-pending {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 10px;
+  background: #f6e7ec;
+}
+
 /* 1:1 严格正方形骨骼坐标系：无论高度是 228px 还是放大到 336px，内部百分比锚点与配饰尺寸 100% 同步缩放！ */
 .nk-bone-box {
   position: relative;
@@ -1336,6 +1353,14 @@
   color: #fff;
 }
 
+.nk-stage-pill.m-locked {
+  opacity: 0.55;
+}
+
+.nk-stage-actions button:disabled {
+  opacity: 0.55;
+}
+
 .nk-rank-mini {
   padding: 0 4px;
   border-radius: 999px;
@@ -1481,40 +1506,259 @@
   border: 1px solid rgba(222, 184, 196, 0.55);
 }
 
-.nk-pavilion-hero {
-  padding: 14px 12px;
-  border-radius: 16px;
-  background: linear-gradient(145deg, #fdf0f5 0%, #f5e6fa 55%, #fcecd9 100%);
-  border: 1px solid #ebd0dc;
-  text-align: center;
+.nk-pavilion {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  background:
+    radial-gradient(90% 46% at 50% 22%, rgba(146, 62, 96, 0.45), transparent 68%),
+    #140c14;
+  color: #fff8f3;
 }
 
-.nk-pavilion-tag {
-  display: inline-block;
-  padding: 3px 10px;
+.nk-pavilion-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(18, 8, 16, 0.28) 0%, rgba(18, 8, 16, 0.08) 38%, rgba(10, 6, 12, 0.88) 100%);
+}
+
+.nk-pavilion-body {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 14px 10px;
+}
+
+.nk-pavilion-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nk-pavilion-top h2 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0.12em;
+}
+
+.nk-pavilion-top span {
+  padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.85);
-  color: #b34870;
-  font-size: 10px;
-  font-weight: 700;
+  background: rgba(255, 244, 230, 0.16);
+  font-size: 12px;
 }
 
-.nk-pavilion-hero h2 {
-  margin: 6px 0 4px;
-  font-size: 19px;
-  color: #46353a;
+.nk-wish-carousel {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
 }
 
-.nk-pavilion-hero p {
-  margin: 0 0 10px;
-  font-size: 11.5px;
-  color: #785b64;
+.nk-wish-deck {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
 }
 
-.nk-pavilion-btns {
-  display: grid;
-  grid-template-columns: 1fr 1.25fr;
+.nk-wish-rail {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  gap: 14px;
+  margin: 0;
+  padding: 8px 46px 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.nk-wish-rail.m-drag {
+  scroll-snap-type: none;
+  cursor: grabbing;
+}
+
+.nk-wish-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.nk-wish-banner {
+  position: relative;
+  flex: 0 0 78%;
+  width: 78%;
+  scroll-snap-align: center;
+  min-height: 220px;
+  border: 0;
+  padding: 0;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #2a1622;
+  color: #fff8f3;
+  opacity: 0.55;
+  transform: scale(0.92);
+  transition: transform 220ms ease, opacity 220ms ease, box-shadow 220ms ease;
+}
+
+.nk-wish-banner.m-on {
+  opacity: 1;
+  transform: scale(1);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(255, 228, 196, 0.45);
+}
+
+.nk-wish-banner .m-hero {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+}
+
+.nk-wish-side {
+  position: absolute;
+  bottom: 62px;
+  width: 44px;
+  height: 58px;
+  object-fit: cover;
+  object-position: center 16%;
+  border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 244, 230, 0.4);
+}
+
+.nk-wish-side.m-a { right: 62px; }
+.nk-wish-side.m-b { right: 12px; }
+
+.nk-wish-banner footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 36px 14px 14px;
+  background: linear-gradient(transparent, rgba(12, 6, 10, 0.92));
+  text-align: left;
+}
+
+.nk-wish-banner footer strong {
+  display: block;
+  font-size: 22px;
+  letter-spacing: 0.18em;
+}
+
+.nk-wish-banner footer small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: rgba(255, 244, 230, 0.82);
+}
+
+.nk-wish-arrow {
+  position: absolute;
+  z-index: 3;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 248, 244, 0.94);
+  color: #5c3144;
+  font-size: 24px;
+  line-height: 1;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+}
+
+.nk-wish-arrow:hover:not(:disabled) {
+  background: #fff;
+}
+
+.nk-wish-arrow:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.nk-wish-arrow.m-next {
+  left: auto;
+  right: 6px;
+}
+
+.nk-wish-dots {
+  display: flex;
+  justify-content: center;
   gap: 8px;
+  margin: 2px 0 8px;
+}
+
+.nk-wish-dots button {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 244, 230, 0.28);
+  cursor: pointer;
+}
+
+.nk-wish-dots button.m-on {
+  width: 18px;
+  background: #ffe0b8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nk-wish-banner {
+    transition: none;
+  }
+}
+
+.nk-pavilion-last {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.nk-pavilion-last img {
+  width: 42px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.nk-pavilion-last img.m-SR { box-shadow: 0 0 0 1px #c9b0f2; }
+.nk-pavilion-last img.m-SSR { box-shadow: 0 0 0 1px #ffd56a; }
+
+.nk-pavilion-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 10px;
+}
+
+.nk-pavilion-atelier {
+  align-self: center;
+  margin-top: 8px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 244, 236, 0.72);
+  font-size: 12px;
+  letter-spacing: 0.16em;
 }
 
 .nk-draw-btn {
@@ -1523,10 +1767,10 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
-  height: 50px;
-  border-radius: 13px;
-  background: #fff;
-  border: 1.5px solid #e3b8c7;
+  height: 64px;
+  border-radius: 16px;
+  background: rgba(255, 248, 244, 0.92);
+  border: 0;
   color: #5c3d47;
 }
 
@@ -1535,6 +1779,10 @@
   border: 0;
   color: #fff;
   box-shadow: 0 6px 16px rgba(185, 76, 134, 0.26);
+}
+
+.nk-draw-btn:disabled {
+  opacity: 0.45;
 }
 
 .nk-draw-btn strong {
@@ -1588,12 +1836,224 @@
   object-fit: cover;
 }
 
+.nk-wish-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #12070c;
+}
+
+.nk-wish-overlay.m-R { background: #1a0a12; }
+.nk-wish-overlay.m-SR { background: #100a1c; }
+.nk-wish-overlay.m-SSR { background: #1a1206; }
+
+.nk-wish-rays {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: 140vmax;
+  height: 140vmax;
+  transform: translate(-50%, -50%);
+  background: repeating-conic-gradient(from 0deg, transparent 0 18deg, rgba(243, 183, 203, 0.2) 18deg 20deg);
+  animation: nk-wish-spin 16s linear infinite;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.nk-wish-overlay.m-SR .nk-wish-rays {
+  opacity: 0.85;
+  background: repeating-conic-gradient(from 0deg, transparent 0 11deg, rgba(176, 140, 255, 0.42) 11deg 14deg);
+  animation-duration: 11s;
+}
+
+.nk-wish-overlay.m-SSR .nk-wish-rays {
+  opacity: 1;
+  background: repeating-conic-gradient(from 0deg, transparent 0 8deg, rgba(255, 214, 120, 0.55) 8deg 12deg);
+  animation-duration: 7s;
+}
+
+.nk-wish-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation: nk-wish-flash 0.55s ease forwards;
+}
+
+.nk-wish-overlay.m-R .nk-wish-flash { background: rgba(255, 176, 198, 0.16); }
+.nk-wish-overlay.m-SR .nk-wish-flash { background: rgba(168, 130, 255, 0.42); }
+.nk-wish-overlay.m-SSR .nk-wish-flash { background: rgba(255, 236, 190, 0.78); }
+
+@keyframes nk-wish-flash {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.nk-wish-stage {
+  position: relative;
+  z-index: 1;
+  width: min(340px, 88vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.nk-wish-charge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  color: #fff6ee;
+}
+
+.nk-wish-charge p,
+.nk-wish-focus b,
+.nk-wish-focus span {
+  margin: 0;
+}
+
+.nk-wish-orb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff4d2;
+  box-shadow: 0 0 24px 12px rgba(255, 196, 140, 0.85), 0 0 70px 28px rgba(227, 109, 149, 0.45);
+  animation: nk-wish-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes nk-wish-pulse {
+  0%, 100% { transform: scale(0.7); }
+  50% { transform: scale(1.35); }
+}
+
+@keyframes nk-wish-spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.nk-wish-focus {
+  width: min(300px, 82vw);
+  aspect-ratio: 3 / 4.15;
+  border: 0;
+  border-radius: 18px;
+  padding: 10px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+  color: #fff8f3;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 32%),
+    #8d3d5c;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.nk-wish-focus.m-back {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.2), transparent 36%),
+    #9a4568;
+  animation: nk-wish-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nk-wish-focus.m-back i {
+  width: 54px;
+  height: 54px;
+  margin: auto;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 0 0 8px rgba(255, 255, 255, 0.12);
+}
+
+.nk-wish-focus img {
+  width: 100%;
+  height: 74%;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #fff8f4;
+}
+
+.nk-wish-focus b {
+  font-size: 13px;
+  letter-spacing: 0.14em;
+}
+
+.nk-wish-focus span {
+  font-size: 12px;
+}
+
+.nk-wish-focus.m-open {
+  animation: nk-wish-slam 0.48s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nk-wish-focus.m-R {
+  box-shadow: 0 0 0 1px rgba(243, 183, 203, 0.45), 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.nk-wish-focus.m-SR {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent 34%),
+    #68439a;
+  box-shadow: 0 0 0 1px rgba(210, 186, 255, 0.8), 0 0 28px rgba(150, 110, 230, 0.65), 0 18px 40px rgba(0, 0, 0, 0.35);
+  animation: nk-wish-slam 0.58s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nk-wish-focus.m-SSR {
+  width: min(324px, 86vw);
+  color: #4d3114;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.55), transparent 36%),
+    #f0c15a;
+  box-shadow: 0 0 0 2px rgba(255, 244, 210, 0.95), 0 0 48px rgba(255, 196, 92, 0.95), 0 18px 40px rgba(0, 0, 0, 0.28);
+  animation: nk-wish-slam 0.72s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nk-wish-film {
+  display: flex;
+  gap: 6px;
+  min-height: 8px;
+}
+
+.nk-wish-film em {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.nk-wish-film em.m-on { background: #f3b7cb; }
+.nk-wish-film em.m-SR { background: #c9b0f2; }
+.nk-wish-film em.m-SSR { background: #ffd56a; }
+
+.nk-wish-take {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 244, 236, 0.82);
+  font-size: 13px;
+  letter-spacing: 0.2em;
+}
+
+@keyframes nk-wish-rise {
+  from { opacity: 0; transform: translateY(36px) scale(0.86); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes nk-wish-slam {
+  0% { transform: scale(0.72) rotate(-4deg); filter: brightness(1.6); }
+  70% { transform: scale(1.04) rotate(1deg); filter: brightness(1.1); }
+  100% { transform: scale(1) rotate(0); filter: brightness(1); }
+}
+
 /* 本地 ComfyUI 实时重绘工坊 */
 .nk-comfy-box {
+  position: relative;
+  z-index: 1;
+  margin: 0 14px 12px;
   padding: 12px;
   border-radius: 14px;
-  background: #faf2f6;
-  border: 1px dashed #dfa4b8;
+  background: rgba(255, 248, 244, 0.94);
   display: flex;
   flex-direction: column;
   gap: 8px;

@@ -1,7 +1,7 @@
 /**
  * 世界状态钩子（V5 精简面）：
  * - 统一管理 GameState 本地存储
- * - 对 WorldApp 只暴露 state / setSkin / companionAct（摸摸头、吃点心、送花 → bond）
+ * - 对 WorldApp 暴露 state / setSkin / companionAct / grantBond
  * - 花圃/走动/喷泉等 V2 动作仍留在 actions.ts / codex.ts，供内部与密语上下文使用，不再从本钩子导出
  */
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -41,9 +41,20 @@ export function useWorldGame() {
     return res;
   }, [commit]);
 
+  /** 把已经算好的亲密原数写入世界档。不走送花，也不另加零钱。 */
+  const grantBond = useCallback((amount: number) => {
+    const gained = Math.max(0, Math.floor(amount));
+    const current = stateRef.current;
+    if (!gained) return { bondGained: 0, state: current };
+    const next = { ...current, bond: current.bond + gained };
+    commit(next);
+    return { bondGained: gained, state: next };
+  }, [commit]);
+
   return {
     state,
     setSkin,
     companionAct,
+    grantBond,
   };
 }

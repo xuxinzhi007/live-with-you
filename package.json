@@ -8,6 +8,7 @@
     "dev:lan": "vite --host 0.0.0.0",
     "gen:comfy": "node tools/generate-comfy-assets.mjs",
     "setup:live2d": "node tools/fetch-cubism-core.mjs",
+    "test": "npm run test:mobile",
     "test:mobile": "node --experimental-strip-types --test tests/mobile-engine.test.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview"

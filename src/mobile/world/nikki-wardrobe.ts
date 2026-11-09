@@ -32,6 +32,16 @@ export const SLOT_META: Record<WardrobeSlot, { label: string; short: string; ico
 
 export const WARDROBE_SLOTS: WardrobeSlot[] = ["dress", "hairAcc", "handheld", "aura", "memoryCard"];
 
+/** 幻阁许愿分类。配饰含头饰、手持、香氛；衣服和羁绊各自一池。 */
+export type WishPool = "all" | "dress" | "accessory" | "memory";
+
+export const WISH_POOLS: { id: WishPool; label: string; line: string; slots: WardrobeSlot[] }[] = [
+  { id: "all", label: "全部", line: "衣服、配饰、羁绊一起许", slots: [...WARDROBE_SLOTS] },
+  { id: "dress", label: "衣服", line: "只出连衣裙", slots: ["dress"] },
+  { id: "accessory", label: "配饰", line: "发饰、手持、光环", slots: ["hairAcc", "handheld", "aura"] },
+  { id: "memory", label: "羁绊", line: "只出羁绊卡", slots: ["memoryCard"] },
+];
+
 export interface StyleStats {
   sweet: number;
   elegant: number;
@@ -535,6 +545,23 @@ export const WARDROBE_ITEMS: WardrobeItem[] = LOCAL_WARDROBE_ITEMS.map((item) =>
   bgScene: item.bgScene ? resolveAsset(item.bgScene) : item.bgScene,
 }));
 
+const WISH_RARITY_RANK: Record<ItemRarity, number> = { SSR: 0, SR: 1, R: 2 };
+
+/** 许愿卡面上的三张代表图：该类里稀有度最高的单品。全部池各取衣服、配饰、羁绊一张。 */
+export function showcaseForWishPool(pool: WishPool): WardrobeItem[] {
+  const entry = WISH_POOLS.find((item) => item.id === pool);
+  const slots = new Set(entry?.slots ?? WARDROBE_SLOTS);
+  const ranked = WARDROBE_ITEMS.filter((item) => slots.has(item.slot)).sort(
+    (a, b) => WISH_RARITY_RANK[a.rarity] - WISH_RARITY_RANK[b.rarity],
+  );
+  if (pool === "dress" && ranked.length > 1) return [ranked[1], ranked[0], ranked[2]].filter((item): item is WardrobeItem => Boolean(item));
+  if (pool !== "all") return ranked.slice(0, 3);
+  const groups: WardrobeSlot[][] = [["dress"], ["hairAcc", "handheld", "aura"], ["memoryCard"]];
+  return groups
+    .map((group) => ranked.find((item) => group.includes(item.slot)))
+    .filter((item): item is WardrobeItem => Boolean(item));
+}
+
 export const DEFAULT_UNLOCKED_ITEM_IDS: string[] = [
   "dress-snow-white",
   "hair-daisy-clip",
@@ -735,6 +762,36 @@ export const STYLING_STAGES: StylingStage[] = [
   },
 ];
 
+const STAGE_RANK_AT_LEAST_S = new Set<StageRank>(["S", "SS", "SSS"]);
+
+/** 第 1 话始终开放。后一话要等前一话的最好成绩达到 S / SS / SSS。 */
+export function isStageUnlocked(stageId: string, cleared: Record<string, string> = {}): boolean {
+  const index = STYLING_STAGES.findIndex((stage) => stage.id === stageId);
+  if (index <= 0) return index === 0;
+  const prevRank = cleared[STYLING_STAGES[index - 1].id];
+  return STAGE_RANK_AT_LEAST_S.has(prevRank as StageRank);
+}
+
+/** 闯关弹层展示的亲密，与写入世界档的数量相同。 */
+export function stageBondForRank(rank: StageRank): number {
+  if (rank === "SSS") return 24;
+  if (rank === "S" || rank === "SS") return 12;
+  return 6;
+}
+
+export const COUPON_PAT_COOLDOWN_MS = 60_000;
+
+/** 玩过一次后直接进大厅；只有第一次打开停在封面。 */
+export function openingScreen(hasEntered: boolean): "title" | "lobby" {
+  return hasEntered ? "lobby" : "title";
+}
+
+/** 点角色发礼券：冷却中为 0，否则 2。亲密仍另计。 */
+export function couponsFromPat(lastPatAt: number | undefined, now: number): number {
+  if (typeof lastPatAt !== "number" || now - lastPatAt >= COUPON_PAT_COOLDOWN_MS) return 2;
+  return 0;
+}
+
 /* ==================== 穿搭属性汇总、套装共鸣与打分引擎 ==================== */
 
 export interface OutfitEvaluation {
@@ -820,6 +877,8 @@ export function evaluateOutfitForStage(
     skillLabel = cardItem.skillName || `${STYLE_ATTR_LABELS[cardItem.skillAttr].name}加成`;
   }
 
+  const baseSum = weighted.sweet + weighted.elegant + weighted.pure + weighted.warm + weighted.cool;
+
   // 2. 玩家释放的主动舞台技能加成
   let activeSkillBonus = 0;
   for (const skId of castSkills.slice(0, 2)) {
@@ -829,6 +888,8 @@ export function evaluateOutfitForStage(
       activeSkillBonus += Math.round(weighted[stage.primaryAttr] * sk.bonusMultiplier) + sk.flatBonus;
     } else if (sk.id === "charm") {
       activeSkillBonus += Math.round(weighted[stage.secondaryAttr] * sk.bonusMultiplier) + sk.flatBonus;
+    } else if (sk.id === "shield") {
+      activeSkillBonus += Math.round(baseSum * sk.bonusMultiplier) + sk.flatBonus;
     } else {
       activeSkillBonus += sk.flatBonus;
     }
@@ -837,7 +898,6 @@ export function evaluateOutfitForStage(
   // 3. 套装共鸣加成
   const suitInfo = detectActiveSuit(equipped);
 
-  const baseSum = weighted.sweet + weighted.elegant + weighted.pure + weighted.warm + weighted.cool;
   const totalScore = baseSum + skillBonusScore + activeSkillBonus + suitInfo.bonusScore;
 
   let rank: StageRank = "C";
@@ -927,6 +987,7 @@ export function rollPavilionGacha(
   unlockedIds: Set<string>,
   currentStars: Record<string, number>,
   rng = Math.random,
+  pool: WishPool = "all",
 ): {
   pulls: PavilionPullItem[];
   nextUnlockedIds: string[];
@@ -937,24 +998,25 @@ export function rollPavilionGacha(
   const nextStars: Record<string, number> = { ...currentStars };
   const pulls: PavilionPullItem[] = [];
   let bondGained = 0;
+  const slots = new Set(WISH_POOLS.find((entry) => entry.id === pool)?.slots ?? WARDROBE_SLOTS);
+  const catalog = WARDROBE_ITEMS.filter((item) => slots.has(item.slot));
 
   for (let i = 0; i < count; i++) {
     const guaranteeHigh = count === 5 && i === 4 && !pulls.some((p) => p.item.rarity === "SR" || p.item.rarity === "SSR");
-    const pool = guaranteeHigh
-      ? WARDROBE_ITEMS.filter((it) => it.rarity === "SR" || it.rarity === "SSR")
-      : WARDROBE_ITEMS;
+    const high = catalog.filter((it) => it.rarity === "SR" || it.rarity === "SSR");
+    const source = guaranteeHigh && high.length > 0 ? high : catalog;
 
-    const weights = pool.map((it) => {
+    const weights = source.map((it) => {
       const base = it.rarity === "SSR" ? 14 : it.rarity === "SR" ? 36 : 60;
       return nextUnlocked.has(it.id) ? base : base * 2.2;
     });
     const sum = weights.reduce((a, b) => a + b, 0);
     let r = rng() * sum;
-    let picked = pool[0];
-    for (let j = 0; j < pool.length; j++) {
+    let picked = source[0];
+    for (let j = 0; j < source.length; j++) {
       r -= weights[j];
       if (r <= 0) {
-        picked = pool[j];
+        picked = source[j];
         break;
       }
     }

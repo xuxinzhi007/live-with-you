@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 980" width="100%" height="100%">
+  <defs>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.07"/>
+    </filter>
+    <filter id="red-shadow" x="-4%" y="-4%" width="108%" height="108%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#e03131" flood-opacity="0.10"/>
+    </filter>
+    <marker id="arrow-gray" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M 0 1.5 L 7.5 4.5 L 0 7.5 Z" fill="#495057" />
+    </marker>
+    <marker id="arrow-red" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M 0 1.5 L 7.5 4.5 L 0 7.5 Z" fill="#e03131" />
+    </marker>
+    <style>
+      .title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; font-weight: 800; fill: #1e1e1e; }
+      .subtitle { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif; font-weight: 500; fill: #495057; }
+      .card-title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif; font-weight: 700; font-size: 19px; }
+      .card-sub { font-family: "SF Mono", "Consolas", Menlo, monospace; font-size: 13px; fill: #868e96; }
+      .card-item { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif; font-size: 14.5px; fill: #2b2b2b; }
+      .tag-text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif; font-size: 13px; font-weight: 600; fill: #495057; text-anchor: middle; }
+      .cfg-text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif; font-size: 13px; font-weight: 700; fill: #c92a2a; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <rect width="100%" height="100%" fill="#ffffff" rx="16"/>
+
+  <g transform="translate(620, 50)" text-anchor="middle">
+    <text class="title" font-size="30" y="0">雯宝现行系统架构</text>
+    <text class="subtitle" font-size="16" y="32">入口 WorldApp · 规则在客户端 · 两套本地存档 · 三个外部运行时</text>
+  </g>
+
+  <!-- 卡片 -->
+  
+    <g transform="translate(40, 120)" filter="url(#shadow)">
+      <rect width="360" height="250" rx="14" fill="#ebfbee" stroke="#0ca678" stroke-width="2"/>
+      <text class="card-title" x="180" y="36" text-anchor="middle" fill="#0ca678">1 入口</text>
+      <text class="card-sub" x="180" y="56" text-anchor="middle">src/main.tsx</text>
+      <line x1="25" y1="72" x2="335" y2="72" stroke="#b2f2bb" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <g class="card-item" transform="translate(24, 102)">
+        <text y="0">• 只挂载 WorldApp，无 Pixi</text>
+        <text y="28">• 屏幕机：title / lobby / wardrobe</text>
+        <text y="56">• rig / stages / pavilion / codex</text>
+        <text y="84">• chat 页已写好，底栏没有入口</text>
+      </g>
+    </g>
+
+    <g transform="translate(440, 120)" filter="url(#shadow)">
+      <rect width="360" height="250" rx="14" fill="#f3f0ff" stroke="#7048e8" stroke-width="2"/>
+      <text class="card-title" x="180" y="36" text-anchor="middle" fill="#7048e8">2 规则</text>
+      <text class="card-sub" x="180" y="56" text-anchor="middle">world/nikki-wardrobe.ts</text>
+      <line x1="25" y1="72" x2="335" y2="72" stroke="#d0bfff" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <g class="card-item" transform="translate(24, 102)">
+        <text y="0">• 五槽：dress hairAcc handheld</text>
+        <text y="28">• aura memoryCard · 27 件单品</text>
+        <text y="56">• 6 章闯关、升星、套装共鸣</text>
+        <text y="84">• 幻阁单抽 / 五连保底</text>
+      </g>
+    </g>
+
+    <g transform="translate(840, 120)" filter="url(#shadow)">
+      <rect width="360" height="250" rx="14" fill="#e7f5ff" stroke="#1971c2" stroke-width="2"/>
+      <text class="card-title" x="180" y="36" text-anchor="middle" fill="#1971c2">3 舞台</text>
+      <text class="card-sub" x="180" y="56" text-anchor="middle">paper-doll · skeleton · layered</text>
+      <line x1="25" y1="72" x2="335" y2="72" stroke="#a5d8ff" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <g class="card-item" transform="translate(24, 102)">
+        <text y="0">• SVG 叠加 + 洪水填充抠图</text>
+        <text y="28">• 关节 FK、切片、动画片段</text>
+        <text y="56">• 皮肤 original / maid 呼吸帧</text>
+        <text y="84">• 分层套装目前仅 dress-snow-white</text>
+      </g>
+    </g>
+
+    <g transform="translate(840, 470)" filter="url(#shadow)">
+      <rect width="360" height="250" rx="14" fill="#f1f3f5" stroke="#343a40" stroke-width="2"/>
+      <text class="card-title" x="180" y="36" text-anchor="middle" fill="#212529">6 外部运行时</text>
+      <text class="card-sub" x="180" y="56" text-anchor="middle">不在本仓库进程内</text>
+      <line x1="25" y1="72" x2="335" y2="72" stroke="#ced4da" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <g class="card-item" transform="translate(24, 102)">
+        <text y="0">• 资源库 :8788 /files/{cat}</text>
+        <text y="28">• ComfyUI 127.0.0.1:8188</text>
+        <text y="56">• Ollama，经 companion-scene</text>
+        <text y="84">• 图片失败不会自动切回本地</text>
+      </g>
+    </g>
+
+    <g transform="translate(440, 470)" filter="url(#shadow)">
+      <rect width="360" height="250" rx="14" fill="#fff4e6" stroke="#e8590c" stroke-width="2"/>
+      <text class="card-title" x="180" y="36" text-anchor="middle" fill="#e8590c">5 开发代理</text>
+      <text class="card-sub" x="180" y="56" text-anchor="middle">vite.config.ts 中间件</text>
+      <line x1="25" y1="72" x2="335" y2="72" stroke="#ffc078" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <g class="card-item" transform="translate(24, 102)">
+        <text y="0">• POST /api/comfy/draw</text>
+        <text y="28">• 同源 /.netlify/functions/companion-scene</text>
+        <text y="56">• GET 探活，POST 聊天</text>
+        <text y="84">• 失败回退本地台词，不卡住</text>
+      </g>
+    </g>
+
+    <g transform="translate(40, 470)" filter="url(#shadow)">
+      <rect width="360" height="250" rx="14" fill="#ebfbee" stroke="#0ca678" stroke-width="2"/>
+      <text class="card-title" x="180" y="36" text-anchor="middle" fill="#0ca678">4 本地存档</text>
+      <text class="card-sub" x="180" y="56" text-anchor="middle">localStorage，无云同步</text>
+      <line x1="25" y1="72" x2="335" y2="72" stroke="#b2f2bb" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <g class="card-item" transform="translate(24, 102)">
+        <text y="0">• 衣橱 wenbebi-nikki-wardrobe-v8</text>
+        <text y="28">• 兼容读 v6 / v4，只写 v8</text>
+        <text y="56">• 世界 wenbebi-mobile-game-v2</text>
+        <text y="84">• bond、皮肤、房间上下文</text>
+      </g>
+    </g>
+
+  <!-- 连线与标签 -->
+  
+    <g>
+      <path d="M 400 245 L 440 245" fill="none" stroke="#495057" stroke-width="2.2"  marker-end="url(#arrow-gray)"/>
+      
+      <rect x="374" y="200" width="60" height="22" rx="4" fill="#f1f3f5" />
+      <text class="tag-text" x="404" y="214" text-anchor="middle">穿戴与结算</text>
+    </g>
+
+    <g>
+      <path d="M 800 245 L 840 245" fill="none" stroke="#495057" stroke-width="2.2"  marker-end="url(#arrow-gray)"/>
+      
+      <rect x="774" y="200" width="60" height="22" rx="4" fill="#f1f3f5" />
+      <text class="tag-text" x="804" y="214" text-anchor="middle">立绘与关节</text>
+    </g>
+
+    <g>
+      <path d="M 1020 370 L 1020 470" fill="none" stroke="#495057" stroke-width="2.2"  marker-end="url(#arrow-gray)"/>
+      
+      <rect x="1000" y="386" width="60" height="22" rx="4" fill="#f1f3f5" />
+      <text class="tag-text" x="1030" y="400" text-anchor="middle">拉图 / 生图</text>
+    </g>
+
+    <g>
+      <path d="M 840 595 L 800 595" fill="none" stroke="#495057" stroke-width="2.2"  marker-end="url(#arrow-gray)"/>
+      
+      <rect x="730" y="554" width="60" height="22" rx="4" fill="#f1f3f5" />
+      <text class="tag-text" x="760" y="568" text-anchor="middle">代理转发</text>
+    </g>
+
+    <g>
+      <path d="M 440 595 L 400 595" fill="none" stroke="#495057" stroke-width="2.2"  marker-end="url(#arrow-gray)"/>
+      
+      <rect x="330" y="554" width="60" height="22" rx="4" fill="#f1f3f5" />
+      <text class="tag-text" x="360" y="568" text-anchor="middle">写回浏览器</text>
+    </g>
+
+    <g>
+      <path d="M 220 370 L 220 470" fill="none" stroke="#495057" stroke-width="2.2"  marker-end="url(#arrow-gray)"/>
+      
+      <rect x="200" y="386" width="60" height="22" rx="4" fill="#f1f3f5" />
+      <text class="tag-text" x="230" y="400" text-anchor="middle">启动即读档</text>
+    </g>
+
+  <!-- 配置驱动底框 -->
+  
+    <g transform="translate(40, 760)" filter="url(#red-shadow)">
+      <rect width="1160" height="170" rx="16" fill="#fff5f5" stroke="#e03131" stroke-width="2.5"/>
+      <text class="card-title" x="580" y="36" text-anchor="middle" fill="#c92a2a" font-size="22">留在树里、不是当前主界面</text>
+      <text class="card-sub" x="580" y="58" text-anchor="middle" font-size="14">密语回退文案和世界存档仍会读到</text>
+      <line x1="30" y1="74" x2="1130" y2="74" stroke="#ffc9c9" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <g class="card-item" transform="translate(35, 104)" font-size="15">
+        <text y="0">• rooms.ts / actions.ts / codex.ts 的走动、花圃、喷泉：UI 已不走这条，useWorldGame 只导出 state、setSkin、companionAct</text>
+        <text y="28">• backend-save-contract 与云同步设计未接入。tools/ 生图脚本是离线管线，不在玩家运行时里</text>
+      </g>
+    </g>
+</svg>

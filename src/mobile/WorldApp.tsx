@@ -12,10 +12,16 @@ import {
   WARDROBE_SLOTS,
   computeOutfitStats,
   detectActiveSuit,
+  couponsFromPat,
   evaluateOutfitForStage,
   getWardrobeItem,
+  isStageUnlocked,
+  openingScreen,
   recommendBestOutfitForStage,
   rollPavilionGacha,
+  showcaseForWishPool,
+  stageBondForRank,
+  WISH_POOLS,
   type EquippedOutfit,
   type OutfitEvaluation,
   type PavilionPullItem,
@@ -24,6 +30,7 @@ import {
   type StylingStage,
   type WardrobeItem,
   type WardrobeSlot,
+  type WishPool,
 } from "./world/nikki-wardrobe";
 import { isComfyDressSource, resolveAsset } from "./world/remote-assets";
 import {
@@ -79,6 +86,23 @@ import "./world.css";
 type GameScreen = "title" | "lobby" | "wardrobe" | "rig" | "stages" | "pavilion" | "codex" | "chat";
 
 const WARDROBE_STORAGE_KEY = "wenbebi-nikki-wardrobe-v8";
+const ENTERED_LOBBY_KEY = "wenbebi-entered-lobby";
+
+function hasEnteredLobby(): boolean {
+  try {
+    return localStorage.getItem(ENTERED_LOBBY_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markEnteredLobby() {
+  try {
+    localStorage.setItem(ENTERED_LOBBY_KEY, "1");
+  } catch {
+    // ignore quota / private mode
+  }
+}
 
 interface SavedNikkiState {
   equipped: EquippedOutfit;
@@ -86,6 +110,7 @@ interface SavedNikkiState {
   itemStars: Record<string, number>;
   clearedStages: Record<string, string>;
   coupons: number;
+  lastCouponPatAt?: number;
   customImages?: Record<string, string>;
   dressSkeletons?: AllDressSkeletons;
 }
@@ -114,6 +139,7 @@ function loadNikkiState(): SavedNikkiState {
       itemStars: parsed.itemStars || {},
       clearedStages: parsed.clearedStages || {},
       coupons: typeof parsed.coupons === "number" ? parsed.coupons : 40,
+      lastCouponPatAt: typeof parsed.lastCouponPatAt === "number" ? parsed.lastCouponPatAt : undefined,
       customImages: parsed.customImages || {},
       dressSkeletons: parsed.dressSkeletons || {},
     };
@@ -164,9 +190,9 @@ const QUICK_CHAT_TOPICS = [
 ];
 
 export function WorldApp() {
-  const { state, setSkin, companionAct } = useWorldGame();
+  const { state, setSkin, companionAct, grantBond } = useWorldGame();
   const [nikki, setNikki] = useState<SavedNikkiState>(loadNikkiState);
-  const [screen, setScreen] = useState<GameScreen>("title");
+  const [screen, setScreen] = useState<GameScreen>(() => openingScreen(hasEnteredLobby()));
   const [activeSlot, setActiveSlot] = useState<WardrobeSlot>("dress");
   const [selectedStageId, setSelectedStageId] = useState<string>(STYLING_STAGES[0].id);
   const [inspectedItemId, setInspectedItemId] = useState<string>(DEFAULT_EQUIPPED_OUTFIT.dress);
@@ -193,14 +219,84 @@ export function WorldApp() {
   const [evalModal, setEvalModal] = useState<{
     evalResult: OutfitEvaluation;
     coinsGained: number;
+    bondGained: number;
+    openedNextChapter: boolean;
     bonusUnlockedItem: WardrobeItem | null;
   } | null>(null);
   const [rollingScore, setRollingScore] = useState(0);
   const [showStamp, setShowStamp] = useState(false);
 
   const [gachaResults, setGachaResults] = useState<PavilionPullItem[] | null>(null);
+  const [wishPhase, setWishPhase] = useState<"idle" | "charge" | "reveal">("idle");
+  const [revealedPulls, setRevealedPulls] = useState(0);
+  const heldDressSrc = useRef("");
+  const wishTimer = useRef(0);
   const [comfyPrompt, setComfyPrompt] = useState("wearing a pastel pink sakura dress with white lace ribbon");
   const [comfyBusy, setComfyBusy] = useState(false);
+  const [showAtelier, setShowAtelier] = useState(false);
+  const [wishPool, setWishPool] = useState<WishPool>("all");
+  const wishRailRef = useRef<HTMLDivElement>(null);
+  const wishSettleTimer = useRef(0);
+  const wishDrag = useRef<{ x: number; scroll: number; moved: boolean } | null>(null);
+  const wishSuppressClick = useRef(false);
+
+  const centerWishCard = useCallback((id: WishPool, smooth: boolean) => {
+    const rail = wishRailRef.current;
+    const card = rail?.querySelector<HTMLElement>(`[data-pool="${id}"]`);
+    if (!rail || !card) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    rail.scrollTo({
+      left: card.offsetLeft - (rail.clientWidth - card.offsetWidth) / 2,
+      behavior: smooth && !reduced ? "smooth" : "auto",
+    });
+  }, []);
+
+  const settleWishRail = useCallback(() => {
+    const rail = wishRailRef.current;
+    if (!rail) return;
+    const mid = rail.scrollLeft + rail.clientWidth / 2;
+    let next: WishPool = "all";
+    let best = Number.POSITIVE_INFINITY;
+    for (const card of rail.querySelectorAll<HTMLElement>("[data-pool]")) {
+      const center = card.offsetLeft + card.offsetWidth / 2;
+      const dist = Math.abs(center - mid);
+      if (dist < best) {
+        best = dist;
+        next = (card.dataset.pool as WishPool) || "all";
+      }
+    }
+    setWishPool(next);
+  }, []);
+
+  const wishPoolRef = useRef(wishPool);
+  wishPoolRef.current = wishPool;
+
+  const stepWishPool = useCallback((dir: -1 | 1) => {
+    const index = WISH_POOLS.findIndex((pool) => pool.id === wishPoolRef.current);
+    const next = WISH_POOLS[Math.min(WISH_POOLS.length - 1, Math.max(0, index + dir))];
+    if (!next || next.id === wishPoolRef.current) return;
+    setWishPool(next.id);
+    centerWishCard(next.id, true);
+  }, [centerWishCard]);
+
+  useEffect(() => {
+    if (screen !== "pavilion") return;
+    centerWishCard(wishPoolRef.current, false);
+  }, [centerWishCard, screen]);
+
+  useEffect(() => {
+    const rail = wishRailRef.current;
+    if (screen !== "pavilion" || !rail) return;
+    const onWheel = (event: WheelEvent) => {
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      event.preventDefault();
+      rail.scrollBy({ left: event.deltaY });
+    };
+    rail.addEventListener("wheel", onWheel, { passive: false });
+    return () => rail.removeEventListener("wheel", onWheel);
+  }, [screen]);
+
+  useEffect(() => () => window.clearTimeout(wishSettleTimer.current), []);
 
   const [toast, setToast] = useState<string | null>(null);
   const [popups, setPopups] = useState<{ id: number; text: string }[]>([]);
@@ -256,18 +352,22 @@ export function WorldApp() {
     [nikki.customImages],
   );
 
-  // 自动将当前穿戴的礼服进行防过度透明抠图并对齐到 760×760 骨骼画布
+  // 预先抠好全部礼服。换装时只用已经透明的图，避免先闪出白底原图。
   useEffect(() => {
     let active = true;
-    const src = itemImage(currentDress);
-    void loadCutoutImage(src, "character").then((dataUrl) => {
-      if (!active) return;
-      setCutoutMap((prev) => (prev[currentDress.id] === dataUrl ? prev : { ...prev, [currentDress.id]: dataUrl }));
-    });
+    const jobs = WARDROBE_ITEMS.filter((item) => item.slot === "dress" && isComfyDressSource(item.image));
+    const customSrc = nikki.customImages?.[currentDress.id];
+    const queue = customSrc ? [...jobs, { id: currentDress.id, image: customSrc }] : jobs;
+    for (const item of queue) {
+      void loadCutoutImage(item.image, "character").then((dataUrl) => {
+        if (!active) return;
+        setCutoutMap((prev) => (prev[item.id] === dataUrl ? prev : { ...prev, [item.id]: dataUrl }));
+      });
+    }
     return () => {
       active = false;
     };
-  }, [currentDress, itemImage]);
+  }, [currentDress.id, nikki.customImages]);
 
   const playStageMotion = useCallback((input: StageMotion) => {
     const gen = ++motionGenRef.current;
@@ -383,6 +483,7 @@ export function WorldApp() {
     () => STYLING_STAGES.find((s) => s.id === selectedStageId) ?? STYLING_STAGES[0],
     [selectedStageId],
   );
+  const selectedStageOpen = isStageUnlocked(selectedStage.id, nikki.clearedStages);
 
   const livePreviewEval = useMemo(
     () => evaluateOutfitForStage(selectedStage, nikki.equipped, nikki.itemStars, selectedSkills),
@@ -529,8 +630,7 @@ export function WorldApp() {
       if (item.skinId) setSkin(item.skinId);
       setEquipBurstKey((k) => k + 1);
       playStageMotion(item.slot === "dress" ? "equip" : "react");
-      companionAct("giftFlower", false);
-      pushPopup(`🎉 成功定制并穿戴 ${item.name}！`);
+      pushPopup(`定制并穿戴 ${item.name}`);
       return;
     }
 
@@ -551,7 +651,7 @@ export function WorldApp() {
     setEquipBurstKey((k) => k + 1);
     playStageMotion("react");
     pushPopup(`⭐ ${item.name} 升至 ★${currentStar + 1}`);
-  }, [companionAct, nikki.coupons, nikki.itemStars, playStageMotion, pushPopup, setSkin, showToast, unlockedSet]);
+  }, [nikki.coupons, nikki.itemStars, playStageMotion, pushPopup, setSkin, showToast, unlockedSet]);
 
   const handleLiveComfyGenerate = useCallback(async () => {
     if (comfyBusy) return;
@@ -588,8 +688,14 @@ export function WorldApp() {
 
   const handleTapCharacter = useCallback(() => {
     if (screen === "rig") return;
+    const now = Date.now();
+    const couponsGained = couponsFromPat(nikki.lastCouponPatAt, now);
     const res = companionAct("pat", false);
-    setNikki((prev) => ({ ...prev, coupons: prev.coupons + 2 }));
+    setNikki((prev) => ({
+      ...prev,
+      coupons: prev.coupons + couponsGained,
+      lastCouponPatAt: couponsGained > 0 ? now : prev.lastCouponPatAt,
+    }));
     setEquipBurstKey((k) => k + 1);
     playStageMotion("react");
     const lines = [
@@ -598,8 +704,12 @@ export function WorldApp() {
       `「当前搭配总魅力已经达到 ${totalCharmPower} 分啦！」`,
     ];
     setLobbyLine(lines[Math.floor(Math.random() * lines.length)]);
-    pushPopup(`+${res.bondGained} 亲密 · +2 礼券`);
-  }, [companionAct, currentDress.name, playStageMotion, pushPopup, screen, totalCharmPower]);
+    pushPopup(
+      couponsGained > 0
+        ? `+${res.bondGained} 亲密 · +${couponsGained} 礼券`
+        : `+${res.bondGained} 亲密`,
+    );
+  }, [companionAct, currentDress.name, nikki.lastCouponPatAt, playStageMotion, pushPopup, screen, totalCharmPower]);
 
   const handleAutoRecommend = useCallback((stage: StylingStage) => {
     const best = recommendBestOutfitForStage(stage, unlockedSet, nikki.itemStars);
@@ -622,6 +732,10 @@ export function WorldApp() {
   }, []);
 
   const handleStartStylingEval = useCallback((stage: StylingStage) => {
+    if (!isStageUnlocked(stage.id, nikki.clearedStages)) {
+      showToast("先在上一话拿到 S 级，这一话才会开放");
+      return;
+    }
     const evalResult = evaluateOutfitForStage(stage, nikki.equipped, nikki.itemStars, selectedSkills);
     let bonusUnlockedItem: WardrobeItem | null = null;
     const nextUnlocked = new Set(nikki.unlockedIds);
@@ -636,6 +750,11 @@ export function WorldApp() {
     const bestRank = !prevBest || rankOrder[evalResult.rank] > rankOrder[prevBest] ? evalResult.rank : prevBest;
 
     const coinsGained = evalResult.passedS ? stage.rewardCoins : Math.max(3, Math.floor(stage.rewardCoins / 2));
+    const bondGained = stageBondForRank(evalResult.rank);
+    const nextStage = STYLING_STAGES[STYLING_STAGES.findIndex((item) => item.id === stage.id) + 1];
+    const openedNextChapter = Boolean(
+      evalResult.passedS && nextStage && !isStageUnlocked(nextStage.id, nikki.clearedStages),
+    );
 
     setNikki((prev) => ({
       ...prev,
@@ -643,35 +762,42 @@ export function WorldApp() {
       unlockedIds: Array.from(nextUnlocked),
       clearedStages: { ...prev.clearedStages, [stage.id]: bestRank },
     }));
-
-    companionAct(evalResult.passedS ? "giftFlower" : "snack", evalResult.rank === "SSS");
+    grantBond(bondGained);
 
     setEvalModal({
       evalResult,
       coinsGained,
+      bondGained,
+      openedNextChapter,
       bonusUnlockedItem,
     });
-  }, [companionAct, nikki.clearedStages, nikki.equipped, nikki.itemStars, nikki.unlockedIds, selectedSkills]);
+  }, [grantBond, nikki.clearedStages, nikki.equipped, nikki.itemStars, nikki.unlockedIds, selectedSkills, showToast]);
 
   const handlePavilionDraw = useCallback((count: 1 | 5) => {
+    if (wishPhase !== "idle") return;
     const cost = count === 5 ? 20 : 5;
     if (nikki.coupons < cost) {
       showToast(`许愿 ${count} 次需要 ${cost} 礼券（当前 ${nikki.coupons}）！`);
       return;
     }
-    const res = rollPavilionGacha(count, unlockedSet, nikki.itemStars);
+    const res = rollPavilionGacha(count, unlockedSet, nikki.itemStars, Math.random, wishPool);
     setNikki((prev) => ({
       ...prev,
       coupons: prev.coupons - cost,
       unlockedIds: res.nextUnlockedIds,
       itemStars: res.nextStars,
     }));
-    companionAct("pat", count === 5);
+    grantBond(res.bondGained);
     setGachaResults(res.pulls);
-    setEquipBurstKey((k) => k + 1);
-    playStageMotion("react");
-    pushPopup(`✨ 幻阁抽取 ×${count} · +${res.bondGained} 亲密`);
-  }, [companionAct, nikki.coupons, nikki.itemStars, playStageMotion, pushPopup, showToast, unlockedSet]);
+    setRevealedPulls(0);
+    setWishPhase("charge");
+    window.clearTimeout(wishTimer.current);
+    wishTimer.current = window.setTimeout(() => {
+      setWishPhase("reveal");
+      setRevealedPulls(1);
+    }, 900);
+    pushPopup(`幻阁抽取 ×${count} · +${res.bondGained} 亲密`);
+  }, [grantBond, nikki.coupons, nikki.itemStars, pushPopup, showToast, unlockedSet, wishPhase, wishPool]);
 
   const handleSendChat = useCallback(async (textToSend?: string) => {
     const msg = (textToSend ?? chatInput).trim();
@@ -696,14 +822,14 @@ export function WorldApp() {
 
   const isComfyDress = isComfyDressSource(currentDress.image);
   const customDressImg = nikki.customImages?.[currentDress.id];
-  // Fallback whole-body only (layered mode renders its own stack and does not hard-cut breathe frames).
-  const heroSpriteSrc = customDressImg
-    ? customDressImg
-    : isComfyDress
-      ? cutoutMap[currentDress.id] || currentDress.image
-      : reacting
-        ? activeSkin.react
-        : activeSkin.breathe[breatheIdx % activeSkin.breathe.length] || activeSkin.idle;
+  const preparedDressSrc = (customDressImg || isComfyDress) ? cutoutMap[currentDress.id] || "" : "";
+  if (preparedDressSrc) heldDressSrc.current = preparedDressSrc;
+  // 抠图没好时继续显示上一套透明立绘，不回退到白底原图。
+  const heroSpriteSrc = !isComfyDress && !customDressImg
+    ? reacting
+      ? activeSkin.react
+      : activeSkin.breathe[breatheIdx % activeSkin.breathe.length] || activeSkin.idle
+    : preparedDressSrc || heldDressSrc.current;
 
   const collectionPercent = Math.round((nikki.unlockedIds.length / WARDROBE_ITEMS.length) * 100);
   const inspectedOwned = unlockedSet.has(inspectedItem.id);
@@ -713,7 +839,10 @@ export function WorldApp() {
   /* ==================== 画面 1：正规手游启动封面页 (Title Screen) ==================== */
   if (screen === "title") {
     return (
-      <div id="nikki-root" className="nk-title-screen" onClick={() => setScreen("lobby")}>
+      <div id="nikki-root" className="nk-title-screen" onClick={() => {
+        markEnteredLobby();
+        setScreen("lobby");
+      }}>
         <div
           className="nk-title-bg"
           style={{ backgroundImage: `url(${itemImage(currentCard) || resolveAsset("assets/nikki/card-starlight-waltz.png")})` }}
@@ -749,6 +878,7 @@ export function WorldApp() {
             className="nk-title-start-btn"
             onClick={(e) => {
               e.stopPropagation();
+              markEnteredLobby();
               setScreen("lobby");
             }}
           >
@@ -845,8 +975,7 @@ export function WorldApp() {
 
             {/* ==================== 核心：每套衣服独立的层级骨骼容器 (Hierarchical Skeleton Rig) ==================== */}
             <div
-              key={showLayered ? "layered-wenbao" : `${currentDress.id}-${equipBurstKey}`}
-              className={`nk-paperdoll-rig nk-anim-enter${reacting ? " m-bounce" : ""}${screen === "rig" ? " m-rig-mode" : ""}${showLayered ? " m-layered" : ""} m-motion-${stageMotion}`}
+              className={`nk-paperdoll-rig${reacting ? " m-bounce" : ""}${screen === "rig" ? " m-rig-mode" : ""}${showLayered ? " m-layered" : ""} m-motion-${stageMotion}${preparedDressSrc ? " m-dress-ready" : ""}`}
               onClick={handleTapCharacter}
               role="button"
               tabIndex={0}
@@ -890,7 +1019,7 @@ export function WorldApp() {
                 ) : (
                   partSlices.map((slice) => (
                     <img
-                      key={slice.part}
+                      key={`${slice.part}-${preparedDressSrc ? currentDress.id : "hold"}`}
                       className={`nk-bone-body m-part-${slice.part}`}
                       src={heroSpriteSrc}
                       alt=""
@@ -1240,12 +1369,16 @@ export function WorldApp() {
                     className={`nk-art-card m-rarity-${item.rarity}${isEquipped ? " m-equipped" : ""}${isInspected ? " m-selected" : ""}${!owned ? " m-locked" : ""}`}
                     onClick={() => handleSelectOrEquipItem(item)}
                   >
-                    <img
-                      className="nk-art-img"
-                      src={cutoutMap[item.id] || itemImage(item)}
-                      alt={item.name}
-                      draggable={false}
-                    />
+                    {item.slot === "dress" && isComfyDressSource(item.image) && !cutoutMap[item.id] ? (
+                      <span className="nk-art-pending" aria-hidden="true" />
+                    ) : (
+                      <img
+                        className="nk-art-img"
+                        src={item.slot === "dress" ? cutoutMap[item.id] || itemImage(item) : itemImage(item)}
+                        alt={item.name}
+                        draggable={false}
+                      />
+                    )}
                     {item.rarity === "SSR" && <i className="nk-foil-shimmer" aria-hidden="true" />}
 
                     <div className="nk-art-top">
@@ -1280,15 +1413,20 @@ export function WorldApp() {
               {STYLING_STAGES.map((st) => {
                 const active = st.id === selectedStage.id;
                 const bestRank = nikki.clearedStages[st.id];
+                const open = isStageUnlocked(st.id, nikki.clearedStages);
                 return (
                   <button
                     key={st.id}
                     type="button"
-                    className={`nk-stage-pill${active ? " m-active" : ""}`}
+                    className={`nk-stage-pill${active ? " m-active" : ""}${open ? "" : " m-locked"}`}
                     onClick={() => setSelectedStageId(st.id)}
                   >
                     <span>{st.chapter}</span>
-                    {bestRank && <b className={`nk-rank-mini m-${bestRank}`}>{bestRank}</b>}
+                    {open ? (
+                      bestRank && <b className={`nk-rank-mini m-${bestRank}`}>{bestRank}</b>
+                    ) : (
+                      <b>未开</b>
+                    )}
                   </button>
                 );
               })}
@@ -1329,15 +1467,19 @@ export function WorldApp() {
                   type="button"
                   className="nk-btn-secondary"
                   onClick={() => handleAutoRecommend(selectedStage)}
+                  disabled={!selectedStageOpen}
                 >
-                  💡 最优推荐
+                  最优推荐
                 </button>
                 <button
                   type="button"
                   className="nk-btn-primary"
                   onClick={() => handleStartStylingEval(selectedStage)}
+                  disabled={!selectedStageOpen}
                 >
-                  ⚔️ 开始对决 (预估 {livePreviewEval.rank})
+                  {selectedStageOpen
+                    ? `开始对决 (预估 ${livePreviewEval.rank})`
+                    : "上一话达到 S 后开放"}
                 </button>
               </div>
             </div>
@@ -1346,63 +1488,266 @@ export function WorldApp() {
 
         {/* ==================== 画面 6：星愿幻阁 + 本地 ComfyUI 雯宝 LoRA 实时工坊 ==================== */}
         {screen === "pavilion" && (
-          <section className="nk-full-view nk-panel-enter" aria-label="星愿幻阁">
-            <div className="nk-pavilion-hero">
-              <span className="nk-pavilion-tag">✨ 限时典藏阁 · 重复单品自动升星 (+15%属性)</span>
-              <h2>星愿幻之阁</h2>
-              <p>抽取同角色透明抠图【深海小鲸鱼套装 SSR】【星河眠云套装 SSR】与心境羁绊 CG！持有礼券：<b>{nikki.coupons}</b></p>
-              <div className="nk-pavilion-btns">
-                <button type="button" className="nk-draw-btn" onClick={() => handlePavilionDraw(1)}>
-                  <strong>✨ 许愿 1 次</strong>
-                  <small>消耗 5 礼券</small>
+          <section className="nk-pavilion nk-panel-enter" aria-label="星愿幻阁">
+            <div className="nk-pavilion-veil" />
+            <div className="nk-pavilion-body">
+              <header className="nk-pavilion-top">
+                <h2>星愿幻阁</h2>
+                <span>{nikki.coupons} 礼券</span>
+              </header>
+              <div
+                className="nk-wish-carousel"
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowLeft") {
+                    event.preventDefault();
+                    stepWishPool(-1);
+                  } else if (event.key === "ArrowRight") {
+                    event.preventDefault();
+                    stepWishPool(1);
+                  }
+                }}
+              >
+                <div className="nk-wish-deck">
+                <button
+                  type="button"
+                  className="nk-wish-arrow"
+                  aria-label="上一类"
+                  disabled={wishPool === WISH_POOLS[0].id}
+                  onClick={() => stepWishPool(-1)}
+                >
+                  ‹
                 </button>
-                <button type="button" className="nk-draw-btn m-multi" onClick={() => handlePavilionDraw(5)}>
-                  <strong>🌟 许愿 5 连抽 (特惠)</strong>
-                  <small>消耗 20 礼券 · 必出 SR/SSR！</small>
+                <div
+                  ref={wishRailRef}
+                  className="nk-wish-rail"
+                  role="tablist"
+                  aria-label="许愿分类"
+                  onScroll={() => {
+                    window.clearTimeout(wishSettleTimer.current);
+                    wishSettleTimer.current = window.setTimeout(settleWishRail, 90);
+                  }}
+                  onPointerDown={(event) => {
+                    if (event.button !== 0) return;
+                    const rail = wishRailRef.current;
+                    if (!rail) return;
+                    wishDrag.current = { x: event.clientX, scroll: rail.scrollLeft, moved: false };
+                    rail.setPointerCapture(event.pointerId);
+                  }}
+                  onPointerMove={(event) => {
+                    const drag = wishDrag.current;
+                    const rail = wishRailRef.current;
+                    if (!drag || !rail) return;
+                    const dx = event.clientX - drag.x;
+                    if (Math.abs(dx) > 6) {
+                      drag.moved = true;
+                      rail.classList.add("m-drag");
+                    }
+                    if (!drag.moved) return;
+                    rail.scrollLeft = drag.scroll - dx;
+                  }}
+                  onPointerUp={() => {
+                    const moved = wishDrag.current?.moved ?? false;
+                    wishDrag.current = null;
+                    wishRailRef.current?.classList.remove("m-drag");
+                    if (!moved) return;
+                    wishSuppressClick.current = true;
+                    settleWishRail();
+                  }}
+                  onPointerCancel={() => {
+                    wishDrag.current = null;
+                    wishRailRef.current?.classList.remove("m-drag");
+                  }}
+                  onClickCapture={(event) => {
+                    if (!wishSuppressClick.current) return;
+                    wishSuppressClick.current = false;
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                >
+                  {WISH_POOLS.map((pool) => {
+                    const faces = showcaseForWishPool(pool.id);
+                    const [hero, ...sides] = faces;
+                    const count = WARDROBE_ITEMS.filter((item) => pool.slots.includes(item.slot)).length;
+                    return (
+                      <button
+                        key={pool.id}
+                        type="button"
+                        role="tab"
+                        data-pool={pool.id}
+                        aria-selected={wishPool === pool.id}
+                        className={`nk-wish-banner${wishPool === pool.id ? " m-on" : ""}`}
+                        onClick={() => {
+                          setWishPool(pool.id);
+                          centerWishCard(pool.id, true);
+                        }}
+                      >
+                        {hero && <img className="m-hero" src={itemImage(hero)} alt="" />}
+                        {sides.map((item, index) => (
+                          <img
+                            key={item.id}
+                            className={`nk-wish-side m-${index === 0 ? "a" : "b"}`}
+                            src={itemImage(item)}
+                            alt=""
+                          />
+                        ))}
+                        <footer>
+                          <strong>{pool.label}</strong>
+                          <small>
+                            {count} 件 · {pool.line}
+                          </small>
+                        </footer>
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  className="nk-wish-arrow m-next"
+                  aria-label="下一类"
+                  disabled={wishPool === WISH_POOLS[WISH_POOLS.length - 1].id}
+                  onClick={() => stepWishPool(1)}
+                >
+                  ›
+                </button>
+                </div>
+                <div className="nk-wish-dots">
+                  {WISH_POOLS.map((pool) => (
+                    <button
+                      key={pool.id}
+                      type="button"
+                      className={wishPool === pool.id ? "m-on" : ""}
+                      aria-label={pool.label}
+                      aria-pressed={wishPool === pool.id}
+                      onClick={() => {
+                        setWishPool(pool.id);
+                        centerWishCard(pool.id, true);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {wishPhase === "idle" && gachaResults && (
+                <div className="nk-pavilion-last">
+                  {gachaResults.map((res, idx) => (
+                    <img
+                      key={`${res.item.id}-${idx}`}
+                      src={itemImage(res.item)}
+                      alt={res.item.name}
+                      className={`m-${res.item.rarity}`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              <div className="nk-pavilion-actions">
+                <button type="button" className="nk-draw-btn" onClick={() => handlePavilionDraw(1)} disabled={wishPhase !== "idle"}>
+                  <strong>许愿 1 次</strong>
+                  <small>5 礼券</small>
+                </button>
+                <button type="button" className="nk-draw-btn m-multi" onClick={() => handlePavilionDraw(5)} disabled={wishPhase !== "idle"}>
+                  <strong>许愿 5 连</strong>
+                  <small>20 礼券</small>
                 </button>
               </div>
+
+              <button type="button" className="nk-pavilion-atelier" onClick={() => setShowAtelier((open) => !open)}>
+                {showAtelier ? "收起裁缝铺" : "裁缝铺"}
+              </button>
             </div>
 
-            {gachaResults && (
-              <div className="nk-gacha-results">
-                <h3>🎉 本次许愿收获</h3>
-                <div className="nk-gacha-grid">
-                  {gachaResults.map((res, idx) => (
-                    <div
-                      key={`${res.item.id}-${idx}`}
-                      className={`nk-gacha-card m-${res.item.rarity}`}
-                      style={{ animationDelay: `${idx * 90}ms` }}
-                    >
-                      <span className={`nk-rarity-badge m-${res.item.rarity}`}>
-                        {res.item.rarity} · {res.isNew ? "NEW!" : `升至 ★${res.newStarLevel}`}
-                      </span>
-                      <img className="nk-gacha-thumb" src={itemImage(res.item)} alt={res.item.name} />
-                      <strong>{res.item.name}</strong>
-                      <small>{SLOT_META[res.item.slot].label}</small>
+            {wishPhase !== "idle" && gachaResults && (
+              <div
+                className={`nk-wish-overlay${wishPhase === "charge" ? " m-charge" : ` m-${gachaResults[Math.max(0, revealedPulls - 1)]?.item.rarity ?? "back"}`}`}
+                role="dialog"
+                aria-modal="true"
+                aria-label="星愿揭晓"
+              >
+                <i
+                  key={`rays-${revealedPulls}`}
+                  className="nk-wish-rays"
+                  aria-hidden="true"
+                />
+                <i key={`flash-${revealedPulls}`} className="nk-wish-flash" aria-hidden="true" />
+                <div className="nk-wish-stage">
+                  {wishPhase === "charge" ? (
+                    <div className="nk-wish-charge">
+                      <i className="nk-wish-orb" />
+                      <p>星愿落下</p>
                     </div>
-                  ))}
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        key={revealedPulls}
+                        className={`nk-wish-focus${revealedPulls > 0 ? ` m-open m-${gachaResults[revealedPulls - 1].item.rarity}` : " m-back"}`}
+                        onClick={() => {
+                          if (revealedPulls >= gachaResults.length) {
+                            window.clearTimeout(wishTimer.current);
+                            setWishPhase("idle");
+                            return;
+                          }
+                          setRevealedPulls((count) => count + 1);
+                        }}
+                      >
+                        {revealedPulls > 0 ? (
+                          <>
+                            <img src={itemImage(gachaResults[revealedPulls - 1].item)} alt="" />
+                            <b>{gachaResults[revealedPulls - 1].item.rarity}</b>
+                            <span>
+                              {gachaResults[revealedPulls - 1].isNew
+                                ? gachaResults[revealedPulls - 1].item.name
+                                : `升至 ★${gachaResults[revealedPulls - 1].newStarLevel}`}
+                            </span>
+                          </>
+                        ) : (
+                          <i />
+                        )}
+                      </button>
+                      <div className="nk-wish-film" aria-hidden="true">
+                        {gachaResults.map((res, idx) => (
+                          <em key={`${res.item.id}-${idx}`} className={idx < revealedPulls ? `m-on m-${res.item.rarity}` : ""} />
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        className="nk-wish-take"
+                        onClick={() => {
+                          window.clearTimeout(wishTimer.current);
+                          if (revealedPulls < gachaResults.length) {
+                            setRevealedPulls((count) => count + 1);
+                            return;
+                          }
+                          setWishPhase("idle");
+                        }}
+                      >
+                        {revealedPulls < gachaResults.length ? "下一张" : "收下"}
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             )}
 
-            <div className="nk-comfy-box">
-              <div className="nk-comfy-head">
-                <strong>🎨 雯宝 LoRA 换装抠图工坊 (xiaoyan.safetensors)</strong>
-                <small>正在为【{inspectedItem.name}】生成同角色立绘并绑定专属骨骼树</small>
+            {showAtelier && (
+              <div className="nk-comfy-box">
+                <div className="nk-comfy-head">
+                  <strong>为【{inspectedItem.name}】重绘卡面</strong>
+                </div>
+                <div className="nk-comfy-row">
+                  <input
+                    type="text"
+                    value={comfyPrompt}
+                    onChange={(e) => setComfyPrompt(e.target.value)}
+                    placeholder="描述想要的样子"
+                    disabled={comfyBusy}
+                  />
+                  <button type="button" disabled={comfyBusy} onClick={() => void handleLiveComfyGenerate()}>
+                    {comfyBusy ? "绘制中" : "绘制"}
+                  </button>
+                </div>
               </div>
-              <div className="nk-comfy-row">
-                <input
-                  type="text"
-                  value={comfyPrompt}
-                  onChange={(e) => setComfyPrompt(e.target.value)}
-                  placeholder="输入新礼服英文描述（生成后自动抠图并可在🦴骨骼台微调关节）…"
-                  disabled={comfyBusy}
-                />
-                <button type="button" disabled={comfyBusy} onClick={() => void handleLiveComfyGenerate()}>
-                  {comfyBusy ? "生成中…" : "✨ LoRA生图"}
-                </button>
-              </div>
-            </div>
+            )}
           </section>
         )}
 
@@ -1571,7 +1916,10 @@ export function WorldApp() {
               </div>
             )}
 
-            <p className="nk-eval-comment">{evalModal.evalResult.comment}（获得 +{evalModal.coinsGained} 礼券）</p>
+            <p className="nk-eval-comment">
+              {evalModal.evalResult.comment}（获得 +{evalModal.coinsGained} 礼券 · +{evalModal.bondGained} 亲密）
+              {evalModal.openedNextChapter ? " 下一话已开放。" : ""}
+            </p>
 
             <div className="nk-eval-actions">
               <button

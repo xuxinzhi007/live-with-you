@@ -23,11 +23,16 @@ import {
   WARDROBE_SLOTS,
   computeOutfitStats,
   detectActiveSuit,
+  couponsFromPat,
   evaluateOutfitForStage,
   getItemStarMultiplier,
   getWardrobeItem,
+  isStageUnlocked,
+  openingScreen,
   recommendBestOutfitForStage,
   rollPavilionGacha,
+  stageBondForRank,
+  COUPON_PAT_COOLDOWN_MS,
 } from "../src/mobile/world/nikki-wardrobe.ts";
 import {
   getBondLevelInfo,
@@ -182,6 +187,29 @@ test("V4 Nikki styling stage evaluation: weighted 5-dim score, suit resonance, a
   assert.equal(maxEval.rank, "SSS");
   assert.equal(maxEval.passedS, true);
   assert.ok(maxEval.totalScore >= stage1.sssScore);
+
+  const shieldEval = evaluateOutfitForStage(stage1, DEFAULT_EQUIPPED_OUTFIT, {}, ["shield"]);
+  const weightedSum =
+    shieldEval.weightedStats.sweet +
+    shieldEval.weightedStats.elegant +
+    shieldEval.weightedStats.pure +
+    shieldEval.weightedStats.warm +
+    shieldEval.weightedStats.cool;
+  assert.equal(shieldEval.activeSkillBonus, Math.round(weightedSum * 0.12) + 420);
+
+  assert.equal(isStageUnlocked("stage-1", {}), true);
+  assert.equal(isStageUnlocked("stage-2", {}), false);
+  assert.equal(isStageUnlocked("stage-2", { "stage-1": "A" }), false);
+  assert.equal(isStageUnlocked("stage-2", { "stage-1": "S" }), true);
+  assert.equal(isStageUnlocked("stage-3", { "stage-1": "SSS" }), false);
+  assert.equal(stageBondForRank("C"), 6);
+  assert.equal(stageBondForRank("S"), 12);
+  assert.equal(stageBondForRank("SSS"), 24);
+  assert.equal(couponsFromPat(undefined, 1_000), 2);
+  assert.equal(couponsFromPat(1_000, 1_000 + COUPON_PAT_COOLDOWN_MS - 1), 0);
+  assert.equal(couponsFromPat(1_000, 1_000 + COUPON_PAT_COOLDOWN_MS), 2);
+  assert.equal(openingScreen(false), "title");
+  assert.equal(openingScreen(true), "lobby");
 });
 
 test("V4 Star Pavilion gacha: 1-pull and 5-pull with guaranteed SR/SSR and duplicate star-up", () => {
@@ -194,6 +222,10 @@ test("V4 Star Pavilion gacha: 1-pull and 5-pull with guaranteed SR/SSR and dupli
     "5-pull guarantees at least one SR or SSR item even on worst RNG",
   );
   assert.ok(draw5.bondGained >= 30);
+  const dressOnly = rollPavilionGacha(5, initialUnlocked, {}, () => 0.2, "dress");
+  assert.ok(dressOnly.pulls.every((pull) => pull.item.slot === "dress"));
+  const accessoryOnly = rollPavilionGacha(5, initialUnlocked, {}, () => 0.2, "accessory");
+  assert.ok(accessoryOnly.pulls.every((pull) => pull.item.slot !== "dress" && pull.item.slot !== "memoryCard"));
 
   // Drawing an already unlocked item increments its star level up to 5
   const firstId = draw5.pulls[0].item.id;
