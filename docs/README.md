@@ -11,6 +11,7 @@
 | [product-charter.md](./product-charter.md) | 产品约束 |
 | [game-direction.md](./game-direction.md) | 方向摘要 |
 | [current-state-and-next.md](./current-state-and-next.md) | 代码现在做到哪、下一步 |
+| [handoff-implemented-ops.md](./handoff-implemented-ops.md) | 已经落地的玩家操作和幻阁交接 |
 | [mobile-architecture.md](./mobile-architecture.md) | 模块各管什么 |
 
 ## 调研，不是运行时
