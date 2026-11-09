@@ -1574,15 +1574,15 @@
 
 .nk-wish-rail {
   flex: 1;
-  width: 100%;
+  width: auto;
   min-width: 0;
   min-height: 0;
   display: flex;
   gap: 14px;
-  margin: 0;
-  padding: 8px 46px 12px;
+  margin: 0 56px;
+  padding: 8px max(46px, calc((100% - min(78%, 340px)) / 2)) 12px;
   overflow-x: auto;
-  scroll-snap-type: x mandatory;
+  scroll-snap-type: none;
   scrollbar-width: none;
   cursor: grab;
   touch-action: pan-y;
@@ -1599,8 +1599,8 @@
 
 .nk-wish-banner {
   position: relative;
-  flex: 0 0 78%;
-  width: 78%;
+  flex: 0 0 min(78%, 340px);
+  width: min(78%, 340px);
   scroll-snap-align: center;
   min-height: 220px;
   border: 0;
@@ -1611,13 +1611,20 @@
   color: #fff8f3;
   opacity: 0.55;
   transform: scale(0.92);
-  transition: transform 220ms ease, opacity 220ms ease, box-shadow 220ms ease;
+  transition: transform 460ms cubic-bezier(0.22, 1, 0.36, 1), opacity 460ms ease, box-shadow 460ms ease;
+}
+
+.nk-wish-rail.m-drag .nk-wish-banner {
+  transition: none;
 }
 
 .nk-wish-banner.m-on {
-  opacity: 1;
-  transform: scale(1);
   box-shadow: 0 18px 36px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(255, 228, 196, 0.45);
+}
+
+.nk-wish-banner img {
+  -webkit-user-drag: none;
+  pointer-events: none;
 }
 
 .nk-wish-banner .m-hero {
@@ -1670,7 +1677,7 @@
 .nk-wish-arrow {
   position: absolute;
   z-index: 3;
-  left: 6px;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
   width: 36px;
@@ -1689,6 +1696,10 @@
   background: #fff;
 }
 
+#nikki-root button.nk-wish-arrow:active {
+  transform: translateY(-50%) scale(0.94);
+}
+
 .nk-wish-arrow:disabled {
   opacity: 0.38;
   cursor: default;
@@ -1696,7 +1707,7 @@
 
 .nk-wish-arrow.m-next {
   left: auto;
-  right: 6px;
+  right: 12px;
 }
 
 .nk-wish-dots {

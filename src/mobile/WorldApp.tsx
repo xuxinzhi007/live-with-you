@@ -236,37 +236,103 @@ export function WorldApp() {
   const [showAtelier, setShowAtelier] = useState(false);
   const [wishPool, setWishPool] = useState<WishPool>("all");
   const wishRailRef = useRef<HTMLDivElement>(null);
-  const wishSettleTimer = useRef(0);
-  const wishDrag = useRef<{ x: number; scroll: number; moved: boolean } | null>(null);
+  const wishGlide = useRef(0);
+  const wishDrag = useRef<{
+    x: number;
+    scroll: number;
+    moved: boolean;
+    lastT: number;
+    lastScroll: number;
+    velocity: number;
+  } | null>(null);
   const wishSuppressClick = useRef(false);
 
-  const centerWishCard = useCallback((id: WishPool, smooth: boolean) => {
+  const wishScrollTarget = useCallback((id: WishPool) => {
     const rail = wishRailRef.current;
     const card = rail?.querySelector<HTMLElement>(`[data-pool="${id}"]`);
-    if (!rail || !card) return;
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    rail.scrollTo({
-      left: card.offsetLeft - (rail.clientWidth - card.offsetWidth) / 2,
-      behavior: smooth && !reduced ? "smooth" : "auto",
-    });
+    if (!rail || !card) return null;
+    const railBox = rail.getBoundingClientRect();
+    const cardBox = card.getBoundingClientRect();
+    const delta = cardBox.left + cardBox.width / 2 - (railBox.left + railBox.width / 2);
+    return rail.scrollLeft + delta;
   }, []);
 
-  const settleWishRail = useCallback(() => {
+  const nearestWishPool = useCallback((projectedScroll: number) => {
     const rail = wishRailRef.current;
-    if (!rail) return;
-    const mid = rail.scrollLeft + rail.clientWidth / 2;
+    if (!rail) return wishPoolRef.current;
     let next: WishPool = "all";
     let best = Number.POSITIVE_INFINITY;
     for (const card of rail.querySelectorAll<HTMLElement>("[data-pool]")) {
-      const center = card.offsetLeft + card.offsetWidth / 2;
-      const dist = Math.abs(center - mid);
+      const id = (card.dataset.pool as WishPool) || "all";
+      const target = wishScrollTarget(id);
+      if (target == null) continue;
+      const dist = Math.abs(target - projectedScroll);
       if (dist < best) {
         best = dist;
-        next = (card.dataset.pool as WishPool) || "all";
+        next = id;
       }
     }
-    setWishPool(next);
+    return next;
+  }, [wishScrollTarget]);
+
+  const paintWishScales = useCallback(() => {
+    const rail = wishRailRef.current;
+    if (!rail) return;
+    let nearest: WishPool = wishPoolRef.current;
+    let best = Number.POSITIVE_INFINITY;
+    for (const card of rail.querySelectorAll<HTMLElement>("[data-pool]")) {
+      const delta =
+        card.offsetLeft -
+        rail.offsetLeft +
+        card.offsetWidth / 2 -
+        rail.scrollLeft -
+        rail.clientWidth / 2;
+      const stride = card.offsetWidth || 280;
+      const closeness = Math.max(0, 1 - Math.abs(delta) / stride);
+      card.style.transform = `scale(${(0.92 + 0.08 * closeness).toFixed(3)})`;
+      card.style.opacity = (0.55 + 0.45 * closeness).toFixed(3);
+      if (Math.abs(delta) < best) {
+        best = Math.abs(delta);
+        nearest = (card.dataset.pool as WishPool) || "all";
+      }
+    }
+    if (nearest !== wishPoolRef.current) setWishPool(nearest);
   }, []);
+
+  const glideWishTo = useCallback((id: WishPool) => {
+    const rail = wishRailRef.current;
+    const target = wishScrollTarget(id);
+    if (!rail || target == null) return;
+    cancelAnimationFrame(wishGlide.current);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced || Math.abs(target - rail.scrollLeft) < 1) {
+      rail.scrollLeft = target;
+      rail.classList.remove("m-drag");
+      paintWishScales();
+      setWishPool(id);
+      return;
+    }
+    rail.classList.add("m-drag");
+    const from = rail.scrollLeft;
+    const distance = target - from;
+    const duration = Math.min(520, Math.max(320, Math.abs(distance) * 0.55));
+    const started = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - started) / duration);
+      const eased = 1 - (1 - t) ** 3;
+      rail.scrollLeft = from + distance * eased;
+      paintWishScales();
+      if (t < 1) {
+        wishGlide.current = requestAnimationFrame(tick);
+        return;
+      }
+      rail.scrollLeft = target;
+      rail.classList.remove("m-drag");
+      paintWishScales();
+      setWishPool(id);
+    };
+    wishGlide.current = requestAnimationFrame(tick);
+  }, [paintWishScales, wishScrollTarget]);
 
   const wishPoolRef = useRef(wishPool);
   wishPoolRef.current = wishPool;
@@ -275,28 +341,43 @@ export function WorldApp() {
     const index = WISH_POOLS.findIndex((pool) => pool.id === wishPoolRef.current);
     const next = WISH_POOLS[Math.min(WISH_POOLS.length - 1, Math.max(0, index + dir))];
     if (!next || next.id === wishPoolRef.current) return;
-    setWishPool(next.id);
-    centerWishCard(next.id, true);
-  }, [centerWishCard]);
+    glideWishTo(next.id);
+  }, [glideWishTo]);
 
   useEffect(() => {
     if (screen !== "pavilion") return;
-    centerWishCard(wishPoolRef.current, false);
-  }, [centerWishCard, screen]);
+    const align = () => {
+      const rail = wishRailRef.current;
+      const target = wishScrollTarget(wishPoolRef.current);
+      if (rail && target != null) rail.scrollLeft = target;
+    };
+    align();
+    const frame = requestAnimationFrame(() => {
+      align();
+      paintWishScales();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [paintWishScales, screen, wishScrollTarget]);
 
   useEffect(() => {
     const rail = wishRailRef.current;
     if (screen !== "pavilion" || !rail) return;
+    let cooling = false;
     const onWheel = (event: WheelEvent) => {
-      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
       event.preventDefault();
-      rail.scrollBy({ left: event.deltaY });
+      const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+      if (cooling || Math.abs(delta) < 8) return;
+      cooling = true;
+      stepWishPool(delta > 0 ? 1 : -1);
+      window.setTimeout(() => {
+        cooling = false;
+      }, 280);
     };
     rail.addEventListener("wheel", onWheel, { passive: false });
     return () => rail.removeEventListener("wheel", onWheel);
-  }, [screen]);
+  }, [screen, stepWishPool]);
 
-  useEffect(() => () => window.clearTimeout(wishSettleTimer.current), []);
+  useEffect(() => () => cancelAnimationFrame(wishGlide.current), []);
 
   const [toast, setToast] = useState<string | null>(null);
   const [popups, setPopups] = useState<{ id: number; text: string }[]>([]);
@@ -1522,15 +1603,20 @@ export function WorldApp() {
                   className="nk-wish-rail"
                   role="tablist"
                   aria-label="许愿分类"
-                  onScroll={() => {
-                    window.clearTimeout(wishSettleTimer.current);
-                    wishSettleTimer.current = window.setTimeout(settleWishRail, 90);
-                  }}
                   onPointerDown={(event) => {
                     if (event.button !== 0) return;
                     const rail = wishRailRef.current;
                     if (!rail) return;
-                    wishDrag.current = { x: event.clientX, scroll: rail.scrollLeft, moved: false };
+                    cancelAnimationFrame(wishGlide.current);
+                    rail.classList.add("m-drag");
+                    wishDrag.current = {
+                      x: event.clientX,
+                      scroll: rail.scrollLeft,
+                      moved: false,
+                      lastT: performance.now(),
+                      lastScroll: rail.scrollLeft,
+                      velocity: 0,
+                    };
                     rail.setPointerCapture(event.pointerId);
                   }}
                   onPointerMove={(event) => {
@@ -1538,24 +1624,37 @@ export function WorldApp() {
                     const rail = wishRailRef.current;
                     if (!drag || !rail) return;
                     const dx = event.clientX - drag.x;
-                    if (Math.abs(dx) > 6) {
-                      drag.moved = true;
-                      rail.classList.add("m-drag");
-                    }
+                    if (Math.abs(dx) > 4) drag.moved = true;
                     if (!drag.moved) return;
-                    rail.scrollLeft = drag.scroll - dx;
+                    const now = performance.now();
+                    const nextScroll = drag.scroll - dx;
+                    const dt = Math.max(8, now - drag.lastT);
+                    const instant = (nextScroll - drag.lastScroll) / dt;
+                    drag.velocity = drag.velocity * 0.65 + instant * 0.35;
+                    drag.lastT = now;
+                    drag.lastScroll = nextScroll;
+                    rail.scrollLeft = nextScroll;
+                    paintWishScales();
                   }}
                   onPointerUp={() => {
-                    const moved = wishDrag.current?.moved ?? false;
+                    const drag = wishDrag.current;
+                    const rail = wishRailRef.current;
                     wishDrag.current = null;
-                    wishRailRef.current?.classList.remove("m-drag");
-                    if (!moved) return;
+                    if (!rail) return;
+                    if (!drag?.moved) {
+                      rail.classList.remove("m-drag");
+                      return;
+                    }
                     wishSuppressClick.current = true;
-                    settleWishRail();
+                    const stride = rail.querySelector<HTMLElement>("[data-pool]")?.offsetWidth ?? 280;
+                    const coast = Math.max(-stride * 0.85, Math.min(stride * 0.85, drag.velocity * 180));
+                    glideWishTo(nearestWishPool(rail.scrollLeft + coast));
                   }}
                   onPointerCancel={() => {
+                    const rail = wishRailRef.current;
                     wishDrag.current = null;
-                    wishRailRef.current?.classList.remove("m-drag");
+                    if (!rail) return;
+                    glideWishTo(nearestWishPool(rail.scrollLeft));
                   }}
                   onClickCapture={(event) => {
                     if (!wishSuppressClick.current) return;
@@ -1576,18 +1675,16 @@ export function WorldApp() {
                         data-pool={pool.id}
                         aria-selected={wishPool === pool.id}
                         className={`nk-wish-banner${wishPool === pool.id ? " m-on" : ""}`}
-                        onClick={() => {
-                          setWishPool(pool.id);
-                          centerWishCard(pool.id, true);
-                        }}
+                        onClick={() => glideWishTo(pool.id)}
                       >
-                        {hero && <img className="m-hero" src={itemImage(hero)} alt="" />}
+                        {hero && <img className="m-hero" src={itemImage(hero)} alt="" draggable={false} />}
                         {sides.map((item, index) => (
                           <img
                             key={item.id}
                             className={`nk-wish-side m-${index === 0 ? "a" : "b"}`}
                             src={itemImage(item)}
                             alt=""
+                            draggable={false}
                           />
                         ))}
                         <footer>
@@ -1618,10 +1715,7 @@ export function WorldApp() {
                       className={wishPool === pool.id ? "m-on" : ""}
                       aria-label={pool.label}
                       aria-pressed={wishPool === pool.id}
-                      onClick={() => {
-                        setWishPool(pool.id);
-                        centerWishCard(pool.id, true);
-                      }}
+                      onClick={() => glideWishTo(pool.id)}
                     />
                   ))}
                 </div>
