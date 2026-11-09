@@ -25,11 +25,11 @@
 | `MeinaMix_同角色换姿势.json` | 与姿势训练集_v2 重复 → **并入/让位** 姿势训练集_v2（训练采图）与官方换装抠图（礼服） |
 | `MeinaMix_小燕_成长后站姿_solo02.json` | 单姿势特化 → 用官方 dress 换姿势参考即可 |
 | `MeinaMix_训练集出图.json` / `_mcpfix` | 训练辅助 → 保留给采数据，不当衣柜 |
-| `MeinaMix_文生图.json` / `图生图` / `补全全身` / `全身统一` | 早期短图 → **experimental only** |
-| `MeinaMix_小燕LoRA.json` | **保留为 unofficial 试提示词** |
-| `MeinaMix_小燕_姿势训练集_v2.json` | **保留**：锁脸+锁姿采训练图；礼服正式帧改走「换装抠图」官方版 |
+| `MeinaMix_文生图.json` / `图生图` / `补全全身` / `全身统一` | 早期短图 → **experimental only**；`补全全身` 已于 2026-11-08 移入 `_archive_20261108`（半身扩图，禁止雯宝四层） |
+| `MeinaMix_小燕LoRA.json` | **保留为 unofficial 试提示词**（在 `_archive_20261106`） |
+| `MeinaMix_小燕_姿势训练集_v2.json` | **保留（live）**：已挂 `xiaoyan` LoRA 0.8 + 锁脸+锁姿采训练图；礼服正式帧改走「换装抠图」官方版 |
 
-未删除任何工作流文件，只升级了官方换装抠图，并在 MarkdownNote 写明阶段。
+未删除任何工作流文件。调整版 2026-11-08：v2 补 LoRA；混淆 live 文件移入 `_archive_20261108`。细节见 `PIPELINE-XIAOYAN-MANAGEMENT.md`。
 
 ## 残留抽奖风险
 
