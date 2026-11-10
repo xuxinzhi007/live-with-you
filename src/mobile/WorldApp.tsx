@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWorldGame } from "./world/useWorldGame";
 import {
   DEFAULT_EQUIPPED_OUTFIT,
-  DEFAULT_UNLOCKED_ITEM_IDS,
-  SLOT_META,
   STYLE_ATTR_LABELS,
   STYLING_SKILLS,
   STYLING_STAGES,
@@ -81,6 +79,11 @@ import { ChatScreen } from "./screens/ChatScreen";
 import { StagesScreen } from "./screens/StagesScreen";
 import { WardrobeScreen } from "./screens/WardrobeScreen";
 import { useNikkiState } from "./store/useNikkiState";
+import { useScreenState } from "./store/useScreenState";
+import { useUIState } from "./store/useUIState";
+import { useChatState } from "./store/useChatState";
+import { usePavilionState } from "./store/usePavilionState";
+import { useRigState } from "./store/useRigState";
 import type { RoomProp } from "./world/rooms";
 import "./world.css";
 
@@ -132,36 +135,29 @@ export function WorldApp() {
     runProp,
   } = useWorldGame();
   const { nikki, setNikki, hasEnteredLobby: hasEnteredLobbyFlag, markEnteredLobby: markEnteredLobbyFn } = useNikkiState();
-  const [screen, setScreen] = useState<GameScreen>(() => {
-    // 深链优先：?screen=world 直达某屏，便于分享与自动化验收。
-    if (typeof location !== "undefined") {
-      const want = new URLSearchParams(location.search).get("screen");
-      const allowed: GameScreen[] = ["title", "lobby", "world", "wardrobe", "rig", "stages", "pavilion", "codex", "chat"];
-      if (allowed.includes(want as GameScreen)) return want as GameScreen;
-    }
-    return openingScreen(hasEnteredLobbyFlag);
-  });
+  const { screen, setScreen } = useScreenState();
   const [activeSlot, setActiveSlot] = useState<WardrobeSlot>("dress");
   const [selectedStageId, setSelectedStageId] = useState<string>(STYLING_STAGES[0].id);
   const [inspectedItemId, setInspectedItemId] = useState<string>(DEFAULT_EQUIPPED_OUTFIT.dress);
   const [selectedSkills, setSelectedSkills] = useState<StylingSkill["id"][]>(["smile", "charm"]);
 
   // 骨骼校准工作台：Setup 绑定对位模式 vs Pose 动作摆姿模式 + 全身骨骼动画播放器
-  const [rigMode, setRigMode] = useState<"setup" | "pose">("pose");
-  const [animClip, setAnimClip] = useState<AnimClipId>("idle");
-  const [animTime, setAnimTime] = useState(0);
-  const [selectedJoint, setSelectedJoint] = useState<JointId>("head");
-  const [draggingJoint, setDraggingJoint] = useState<JointId | null>(null);
+  const {
+    rigMode, setRigMode,
+    animClip, setAnimClip,
+    animTime, setAnimTime,
+    selectedJoint, setSelectedJoint,
+    draggingJoint, setDraggingJoint,
+    cutoutMap, setCutoutMap,
+    breatheIdx, setBreatheIdx,
+    reacting, setReacting,
+    stageMotion, setStageMotion,
+    equipBurstKey, setEquipBurstKey,
+    layeredReady, setLayeredReady,
+    lobbyLine, setLobbyLine,
+  } = useRigState();
   const boneBoxRef = useRef<HTMLDivElement>(null);
-
-  const [cutoutMap, setCutoutMap] = useState<Record<string, string>>({});
-  const [breatheIdx, setBreatheIdx] = useState(0);
-  const [reacting, setReacting] = useState(false);
-  const [stageMotion, setStageMotion] = useState<StageMotion>("idle");
   const motionGenRef = useRef(0);
-  const [layeredReady, setLayeredReady] = useState(false);
-  const [equipBurstKey, setEquipBurstKey] = useState(0);
-  const [lobbyLine, setLobbyLine] = useState("「欢迎回来～点右边『换装』试新裙子，或点『骨骼』直接拖动关节点位哦！」");
 
   // PK 走秀动态滚分演出状态
   const [evalModal, setEvalModal] = useState<{
@@ -174,15 +170,17 @@ export function WorldApp() {
   const [rollingScore, setRollingScore] = useState(0);
   const [showStamp, setShowStamp] = useState(false);
 
-  const [gachaResults, setGachaResults] = useState<PavilionPullItem[] | null>(null);
-  const [wishPhase, setWishPhase] = useState<"idle" | "charge" | "reveal">("idle");
-  const [revealedPulls, setRevealedPulls] = useState(0);
+  const {
+    gachaResults, setGachaResults,
+    wishPhase, setWishPhase,
+    wishPool, setWishPool,
+    revealedPulls, setRevealedPulls,
+    comfyPrompt, setComfyPrompt,
+    comfyBusy, setComfyBusy,
+    showAtelier, setShowAtelier,
+  } = usePavilionState();
   const heldDressSrc = useRef("");
   const wishTimer = useRef(0);
-  const [comfyPrompt, setComfyPrompt] = useState("wearing a pastel pink sakura dress with white lace ribbon");
-  const [comfyBusy, setComfyBusy] = useState(false);
-  const [showAtelier, setShowAtelier] = useState(false);
-  const [wishPool, setWishPool] = useState<WishPool>("all");
   const wishRailRef = useRef<HTMLDivElement>(null);
   const wishGlide = useRef(0);
   const wishDrag = useRef<{
@@ -327,21 +325,14 @@ export function WorldApp() {
 
   useEffect(() => () => cancelAnimationFrame(wishGlide.current), []);
 
-  const [toast, setToast] = useState<string | null>(null);
-  const [popups, setPopups] = useState<{ id: number; text: string }[]>([]);
+  const { toast, showToast, popups, pushPopup } = useUIState();
+  const {
+    chatHistory, setChatHistory,
+    chatInput, setChatInput,
+    chatBusy, setChatBusy,
+    companionConn, setCompanionConn,
+  } = useChatState();
 
-  const [companionConn, setCompanionConn] = useState<CompanionConnection | null>(null);
-  const [chatHistory, setChatHistory] = useState<ChatTurn[]>([
-    {
-      role: "assistant",
-      content: "欢迎来到高定搭配工坊～每套生成的衣服现在都有自己独立的骨骼树，进入『🦴 骨骼』模式可以直接按住我身上的关节点拖动微调哦！",
-    },
-  ]);
-  const [chatInput, setChatInput] = useState("");
-  const [chatBusy, setChatBusy] = useState(false);
-
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const popupIdRef = useRef(1);
 
   // 30FPS 驱动全身双足 FK 骨骼动画（呼吸/歪头/挥手/踏步走/欢呼）
   // 节流：每 33ms 才 setState 一次，避免 60fps 打满。只在有骨骼动画的屏幕跑。
@@ -470,20 +461,6 @@ export function WorldApp() {
     rafId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(rafId);
   }, [evalModal]);
-
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2600);
-  }, []);
-
-  const pushPopup = useCallback((text: string) => {
-    const id = popupIdRef.current++;
-    setPopups((prev) => [...prev.slice(-3), { id, text }]);
-    setTimeout(() => {
-      setPopups((prev) => prev.filter((p) => p.id !== id));
-    }, 1350);
-  }, []);
 
   const unlockedSet = useMemo(() => new Set(nikki.unlockedIds), [nikki.unlockedIds]);
   const bondInfo = useMemo(() => getBondLevelInfo(state.bond), [state.bond]);
