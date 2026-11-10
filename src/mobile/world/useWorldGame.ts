@@ -1,13 +1,16 @@
 /**
  * 世界状态钩子（V5 精简面）：
  * - 统一管理 GameState 本地存储
- * - 对 WorldApp 暴露 state / setSkin / companionAct / grantBond
- * - 花圃/走动/喷泉等 V2 动作仍留在 actions.ts / codex.ts，供内部与密语上下文使用，不再从本钩子导出
+ * - 对 WorldApp 暴露 state / setSkin / companionAct / grantBond / enterRoom / runProp
+ * - 花圃/喷泉等 V2 动作仍在 actions.ts / codex.ts；enterRoom/runProp 供小世界屏幕使用
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CharacterSkinId, GameState } from "../engine/types";
 import { loadGameState, saveGameState } from "../engine/storage";
 import { interactWithCompanion } from "./codex";
+import { applyPropAction, enterRoom as enterRoomState } from "./actions";
+import type { RoomProp } from "./rooms";
+import type { WorldRoomId } from "../engine/types";
 
 export function useWorldGame() {
   const [state, setState] = useState<GameState>(() => loadGameState());
@@ -51,10 +54,22 @@ export function useWorldGame() {
     return { bondGained: gained, state: next };
   }, [commit]);
 
+  const enterRoom = useCallback((room: WorldRoomId) => {
+    commit(enterRoomState(stateRef.current, room));
+  }, [commit]);
+
+  const runProp = useCallback((prop: RoomProp) => {
+    const outcome = applyPropAction(stateRef.current, prop);
+    commit(outcome.state);
+    return outcome;
+  }, [commit]);
+
   return {
     state,
     setSkin,
     companionAct,
     grantBond,
+    enterRoom,
+    runProp,
   };
 }

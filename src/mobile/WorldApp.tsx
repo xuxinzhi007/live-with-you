@@ -126,6 +126,7 @@ function loadNikkiState(): SavedNikkiState {
     }
   } catch { /* ignore */ }
   return { ...base, lastCouponPatAt };
+}
 
 function saveNikkiState(data: SavedNikkiState) {
   try {
@@ -170,7 +171,15 @@ export function WorldApp() {
     runProp,
   } = useWorldGame();
   const [nikki, setNikki] = useState<SavedNikkiState>(loadNikkiState);
-  const [screen, setScreen] = useState<GameScreen>(() => openingScreen(hasEnteredLobby()));
+  const [screen, setScreen] = useState<GameScreen>(() => {
+    // 深链优先：?screen=world 直达某屏，便于分享与自动化验收。
+    if (typeof location !== "undefined") {
+      const want = new URLSearchParams(location.search).get("screen");
+      const allowed: GameScreen[] = ["title", "lobby", "world", "wardrobe", "rig", "stages", "pavilion", "codex", "chat"];
+      if (allowed.includes(want as GameScreen)) return want as GameScreen;
+    }
+    return openingScreen(hasEnteredLobby());
+  });
   const [activeSlot, setActiveSlot] = useState<WardrobeSlot>("dress");
   const [selectedStageId, setSelectedStageId] = useState<string>(STYLING_STAGES[0].id);
   const [inspectedItemId, setInspectedItemId] = useState<string>(DEFAULT_EQUIPPED_OUTFIT.dress);
