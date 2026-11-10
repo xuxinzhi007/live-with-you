@@ -1,0 +1,31 @@
+exit 0
+cmd npm run test:mobile
+
+> live-with-you@0.1.0 test:mobile
+> node --experimental-strip-types --test tests/mobile-engine.test.mjs
+
+✔ new save records use schema v2 and preserve the game state (1.409125ms)
+✔ legacy saves are normalized and clamp invalid values (0.100209ms)
+✔ every character skin ships the full frame set and exists on disk (1.536416ms)
+✔ V4 Nikki wardrobe: 5 slots, 27 R/SR/SSR items, 5-dimension style stats and all ComfyUI anime illustrations exist on disk (0.352291ms)
+✔ V4 Nikki styling stage evaluation: weighted 5-dim score, suit resonance, active skills and S/SS/SSS ranks (0.30825ms)
+✔ V4 Star Pavilion gacha: 1-pull and 5-pull with guaranteed SR/SSR and duplicate star-up (0.193708ms)
+✔ bond level progression and offline chat fallback (0.727167ms)
+✔ V7 scale-invariant 760x760 bone sockets, transparent wearable overlays and custom user adjustments (0.101625ms)
+✔ V9 full humanoid biped FK skeleton (with legs), 6-layer cutout slicing and cascade joint dragging (0.367875ms)
+✔ normalizeNikkiSave: 非法槽位与已下架 id 落回默认，不让主装扮槽拿到头饰 (0.165458ms)
+✔ normalizeNikkiSave: coupons 的 NaN / 负数 / 小数都被修正 (0.077917ms)
+✔ normalizeNikkiSave: itemStars 只保留合法 id，值夹到 1..5 (0.05225ms)
+✔ normalizeNikkiSave: unlockedIds 去重并过滤未知 id (0.0445ms)
+✔ normalizeNikkiSave: 垃圾输入返回可用默认值且不抛 (0.050042ms)
+✔ 存档迁移链: v4/v5/v6/v7/v8 五种形状都能读到，礼券不丢失 (0.105708ms)
+✔ 存档迁移链: v7 用户不再被跳过（历史回退链缺 v7 会让该版本用户静默重开） (0.063917ms)
+✔ 存档迁移链: 优先读最新版本，坏 JSON 跳到下一层 (0.044583ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 117.24075

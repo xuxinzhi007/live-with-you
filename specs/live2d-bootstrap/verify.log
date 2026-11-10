@@ -1,0 +1,23 @@
+exit 0
+cmd npm run test:mobile
+
+> live-with-you@0.1.0 test:mobile
+> node --experimental-strip-types --test tests/mobile-engine.test.mjs
+
+✔ new save records use schema v2 and preserve the game state (1.123875ms)
+✔ legacy saves are normalized and clamp invalid values (0.117417ms)
+✔ every character skin ships the full frame set and exists on disk (1.562208ms)
+✔ V4 Nikki wardrobe: 5 slots, 27 R/SR/SSR items, 5-dimension style stats and all ComfyUI anime illustrations exist on disk (0.393084ms)
+✔ V4 Nikki styling stage evaluation: weighted 5-dim score, suit resonance, active skills and S/SS/SSS ranks (0.542667ms)
+✔ V4 Star Pavilion gacha: 1-pull and 5-pull with guaranteed SR/SSR and duplicate star-up (0.497375ms)
+✔ bond level progression and offline chat fallback (2.27525ms)
+✔ V7 scale-invariant 760x760 bone sockets, transparent wearable overlays and custom user adjustments (0.351083ms)
+✔ V9 full humanoid biped FK skeleton (with legs), 6-layer cutout slicing and cascade joint dragging (0.483042ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 180.165875
