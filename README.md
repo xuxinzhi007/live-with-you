@@ -4,6 +4,8 @@
 
 仓库里哪份文档还算数，看 [docs/README.md](./docs/README.md)。游戏入口是 `src/main.tsx` → `src/mobile/WorldApp.tsx`。
 
+**系统架构与玩法流程图** → [docs/architecture-map.md](./docs/architecture-map.md)（换装闯关 / 抽卡 / 小世界 / AI 陪伴 / 经济闭环 / 亲密系统）
+
 ---
 
 ## 1. 核心玩法（《奇迹暖暖 / 闪耀暖暖》式卡牌换装架构）
