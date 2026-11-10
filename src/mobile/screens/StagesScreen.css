@@ -1,0 +1,167 @@
+/* ---------- 4. 主题闯关面板 ---------- */
+
+.nk-stage-selector {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.nk-stage-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #ead8de;
+  background: #fdf7f9;
+  color: #6e525b;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.nk-stage-pill.m-active {
+  background: #df6990;
+  border-color: #df6990;
+  color: #fff;
+}
+
+.nk-stage-pill.m-locked {
+  opacity: 0.55;
+}
+
+.nk-stage-actions button:disabled {
+  opacity: 0.55;
+}
+
+.nk-rank-mini {
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ffe9a8;
+  color: #9c5b16;
+  font-size: 9px;
+}
+
+.nk-stage-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.nk-stage-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.nk-stage-ic {
+  font-size: 26px;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: #fdf0f4;
+}
+
+.nk-stage-vs-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.nk-stage-title-box {
+  flex: 1;
+  min-width: 0;
+}
+
+.nk-stage-title-box h3 {
+  margin: 0;
+  font-size: 13px;
+  color: #46353a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nk-rival-tag {
+  font-size: 9.5px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #f5e6ec;
+  color: #8c5868;
+  white-space: nowrap;
+}
+
+.nk-stage-title-box p {
+  margin: 2px 0 0;
+  font-size: 10.5px;
+  color: #7d626a;
+  line-height: 1.35;
+}
+
+.nk-skill-picker {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow-x: auto;
+}
+
+.nk-skill-label {
+  font-size: 10px;
+  color: #7d5f68;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.nk-skill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid #e6cfd7;
+  background: #fff;
+  color: #6e525b;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.nk-skill-chip.m-on {
+  background: #fce4ec;
+  border-color: #df6990;
+  color: #b83b66;
+}
+
+.nk-stage-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 8px;
+}
+
+.nk-btn-primary,
+.nk-btn-secondary {
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.nk-btn-primary {
+  background: linear-gradient(135deg, #e36d95, #c84b76);
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(200, 75, 118, 0.24);
+}
+
+.nk-btn-secondary {
+  background: #f5e6ec;
+  color: #6e4d57;
+}

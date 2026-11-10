@@ -1,3 +1,4 @@
+import "./StagesScreen.css";
 import {
   STYLING_SKILLS,
   STYLING_STAGES,

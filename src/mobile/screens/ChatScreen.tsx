@@ -1,3 +1,4 @@
+import "./ChatScreen.css";
 import { useEffect, useRef } from "react";
 import type { CompanionConnection, ChatTurn } from "../world/companion-bridge";
 

@@ -1,3 +1,4 @@
+import "./CodexScreen.css";
 import { SUIT_DEFS, WARDROBE_ITEMS, type SavedNikkiState } from "../world/nikki-wardrobe";
 
 interface CodexScreenProps {

@@ -1,3 +1,4 @@
+import "./WardrobeScreen.css";
 import {
   SLOT_META,
   STYLE_ATTR_LABELS,
