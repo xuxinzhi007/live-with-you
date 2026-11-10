@@ -344,12 +344,20 @@ export function WorldApp() {
   const popupIdRef = useRef(1);
 
   // 30FPS 驱动全身双足 FK 骨骼动画（呼吸/歪头/挥手/踏步走/欢呼）
+  // 节流：每 33ms 才 setState 一次，避免 60fps 打满。只在有骨骼动画的屏幕跑。
   useEffect(() => {
+    const needsAnim =
+      screen === "lobby" || screen === "wardrobe" || screen === "rig" || screen === "stages";
+    if (!needsAnim) return;
     if (screen === "rig" && rigMode === "setup") return;
     let raf = 0;
+    let last = 0;
     const t0 = performance.now();
     const loop = (now: number) => {
-      setAnimTime((now - t0) / 1000);
+      if (now - last >= 33) {
+        last = now;
+        setAnimTime((now - t0) / 1000);
+      }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
