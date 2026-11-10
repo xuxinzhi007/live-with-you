@@ -8,6 +8,7 @@
  * 参考 Blender 2D Cutout / Spine / Live2D / LÖVE 2D 标准双足人体骨骼架构（Biped Rig）。
  */
 import type { WardrobeSlot } from "./nikki-wardrobe.ts";
+import { evaluateAnimClip as evaluateKeyframeClip } from "./anim-clips.ts";
 
 export type JointId =
   | "pelvis"
@@ -425,61 +426,10 @@ export interface AnimPoseOffsets {
   pelvisDy: number;
 }
 
-/** 5 套全身骨骼动作曲线（时间 t 单位：秒） */
+/** @deprecated 使用 anim-clips.ts 的关键帧系统 */
 export function evaluateAnimClip(clip: AnimClipId, t: number): AnimPoseOffsets {
-  switch (clip) {
-    case "tilt":
-      return {
-        torsoRot: Math.sin(t * 2.2) * 2.5,
-        headRot: 12 + Math.sin(t * 2.2) * 4,
-        armLRot: -8 + Math.sin(t * 2.2) * 5,
-        armRRot: 10 - Math.sin(t * 2.2) * 5,
-        legLRot: Math.sin(t * 2.2) * 2,
-        legRRot: -Math.sin(t * 2.2) * 2,
-        pelvisDy: Math.abs(Math.sin(t * 2.2)) * -0.8,
-      };
-    case "wave":
-      return {
-        torsoRot: Math.sin(t * 3) * 2,
-        headRot: -6 + Math.sin(t * 3) * 3,
-        armLRot: -28 + Math.sin(t * 7.5) * 18,
-        armRRot: 8 + Math.cos(t * 3) * 4,
-        legLRot: 0,
-        legRRot: 0,
-        pelvisDy: Math.sin(t * 3) * -0.6,
-      };
-    case "walk":
-      return {
-        torsoRot: Math.sin(t * 5.5) * 3.5,
-        headRot: Math.sin(t * 5.5 - 0.4) * 4,
-        armLRot: Math.sin(t * 5.5) * 18,
-        armRRot: -Math.sin(t * 5.5) * 18,
-        legLRot: -Math.sin(t * 5.5) * 20,
-        legRRot: Math.sin(t * 5.5) * 20,
-        pelvisDy: Math.abs(Math.cos(t * 5.5)) * -2.2,
-      };
-    case "cheer":
-      return {
-        torsoRot: Math.sin(t * 6) * 4,
-        headRot: Math.sin(t * 6) * 6,
-        armLRot: -32 - Math.abs(Math.sin(t * 6)) * 16,
-        armRRot: 32 + Math.abs(Math.sin(t * 6)) * 16,
-        legLRot: -10 * Math.abs(Math.sin(t * 6)),
-        legRRot: 10 * Math.abs(Math.sin(t * 6)),
-        pelvisDy: -Math.abs(Math.sin(t * 6)) * 4.5,
-      };
-    case "idle":
-    default:
-      return {
-        torsoRot: Math.sin(t * 1.8) * 1.2,
-        headRot: Math.sin(t * 1.8 - 0.5) * 2.4,
-        armLRot: Math.sin(t * 1.8) * 3.2,
-        armRRot: -Math.sin(t * 1.8) * 3.2,
-        legLRot: 0,
-        legRRot: 0,
-        pelvisDy: Math.sin(t * 1.8) * -0.7,
-      };
-  }
+  // 委托给关键帧动画系统
+  return evaluateKeyframeClip(clip, t);
 }
 
 export interface WorldJointState {
