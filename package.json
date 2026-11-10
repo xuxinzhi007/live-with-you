@@ -8,7 +8,7 @@
     "dev:lan": "vite --host 0.0.0.0",
     "gen:comfy": "node tools/generate-comfy-assets.mjs",
     "setup:live2d": "node tools/fetch-cubism-core.mjs",
-    "test": "npm run test:mobile",
+    "test": "npm run test:unit && npm run test:mobile",
     "test:mobile": "node --experimental-strip-types --test tests/mobile-engine.test.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
@@ -18,7 +18,10 @@
     "lint:fix": "eslint src tools tests --ext .ts,.tsx,.mjs --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tools/**/*.{mjs,py}\" \"tests/**/*.mjs\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.0.5",
@@ -28,15 +31,20 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.8",
     "@typescript-eslint/eslint-plugin": "^8.72.2",
     "@typescript-eslint/parser": "^8.72.2",
+    "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^10.14.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "jsdom": "^31.0.0",
     "prettier": "^3.9.10",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0"
   },
   "engines": {
     "node": ">=22.6"
