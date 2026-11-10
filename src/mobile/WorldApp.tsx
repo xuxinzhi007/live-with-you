@@ -76,6 +76,10 @@ import {
   type StageMotion,
 } from "./world/layered-stage";
 import { WorldScreen } from "./world/WorldScreen";
+import { CodexScreen } from "./screens/CodexScreen";
+import { ChatScreen } from "./screens/ChatScreen";
+import { StagesScreen } from "./screens/StagesScreen";
+import { WardrobeScreen } from "./screens/WardrobeScreen";
 import type { RoomProp } from "./world/rooms";
 import "./world.css";
 
@@ -1386,184 +1390,37 @@ export function WorldApp() {
         )}
 
         {screen === "wardrobe" && (
-          <section className="nk-panel nk-panel-enter" aria-label="换装衣橱">
-            <div className="nk-slot-tabs" role="tablist">
-              {WARDROBE_SLOTS.map((slot) => {
-                const meta = SLOT_META[slot];
-                const active = activeSlot === slot;
-                return (
-                  <button
-                    key={slot}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    className={`nk-slot-tab${active ? " m-active" : ""}`}
-                    onClick={() => {
-                      setActiveSlot(slot);
-                      setInspectedItemId(nikki.equipped[slot]);
-                    }}
-                  >
-                    <span>{meta.icon}</span>
-                    <b>{meta.short}</b>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="nk-slim-bar">
-              <div className="nk-slim-info">
-                <span className={`nk-rarity-badge m-${inspectedItem.rarity}`}>{inspectedItem.rarity}</span>
-                <strong>{inspectedItem.name}</strong>
-                <span className="nk-item-stars">{"★".repeat(inspectedStars)}</span>
-                <small>
-                  {STYLE_ATTR_LABELS[inspectedItem.mainTag].name}+{inspectedItem.stats[inspectedItem.mainTag]} ·{" "}
-                  {inspectedItem.skillName || `${STYLE_ATTR_LABELS[inspectedItem.subTag].name}+${inspectedItem.stats[inspectedItem.subTag]}`}
-                </small>
-              </div>
-              <button
-                type="button"
-                className={`nk-slim-btn${inspectedOwned ? "" : " m-craft"}`}
-                onClick={() => handleUpgradeOrCraftItem(inspectedItem)}
-              >
-                {inspectedOwned
-                  ? inspectedStars < 5
-                    ? `⭐ 升星 (${inspectedStars * 8}券)`
-                    : "✨ 已满星"
-                  : `🔨 定制 (${inspectedItem.rarity === "SSR" ? 28 : inspectedItem.rarity === "SR" ? 16 : 10}券)`}
-              </button>
-            </div>
-
-            <div className="nk-carousel">
-              {slotItems.map((item) => {
-                const owned = unlockedSet.has(item.id);
-                const isEquipped = nikki.equipped[item.slot] === item.id;
-                const isInspected = inspectedItem.id === item.id;
-                const stars = nikki.itemStars[item.id] ?? 1;
-                const mainMeta = STYLE_ATTR_LABELS[item.mainTag];
-                const subMeta = STYLE_ATTR_LABELS[item.subTag];
-
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`nk-art-card m-rarity-${item.rarity}${isEquipped ? " m-equipped" : ""}${isInspected ? " m-selected" : ""}${!owned ? " m-locked" : ""}`}
-                    onClick={() => handleSelectOrEquipItem(item)}
-                  >
-                    {item.slot === "dress" && isComfyDressSource(item.image) && !cutoutMap[item.id] ? (
-                      <span className="nk-art-pending" aria-hidden="true" />
-                    ) : (
-                      <img
-                        className="nk-art-img"
-                        src={item.slot === "dress" ? cutoutMap[item.id] || itemImage(item) : itemImage(item)}
-                        alt={item.name}
-                        draggable={false}
-                      />
-                    )}
-                    {item.rarity === "SSR" && <i className="nk-foil-shimmer" aria-hidden="true" />}
-
-                    <div className="nk-art-top">
-                      <span className={`nk-rarity-badge m-${item.rarity}`}>{item.rarity}</span>
-                      {isEquipped ? (
-                        <span className="nk-equipped-pill">穿戴</span>
-                      ) : (
-                        <span className="nk-art-stars">{"★".repeat(stars)}</span>
-                      )}
-                    </div>
-
-                    {!owned && <span className="nk-art-lock">🔒 未解锁</span>}
-
-                    <div className="nk-art-footer">
-                      <strong className="nk-art-name">{item.name}</strong>
-                      <div className="nk-art-tags">
-                        <span style={{ background: mainMeta.tagBg, color: mainMeta.color }}>{mainMeta.name}</span>
-                        <span style={{ background: subMeta.tagBg, color: subMeta.color }}>{subMeta.name}</span>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
+          <WardrobeScreen
+            nikki={nikki}
+            activeSlot={activeSlot}
+            inspectedItem={inspectedItem}
+            inspectedStars={inspectedStars}
+            inspectedOwned={inspectedOwned}
+            slotItems={slotItems}
+            unlockedSet={unlockedSet}
+            cutoutMap={cutoutMap}
+            itemImage={itemImage}
+            onSelectSlot={(slot) => {
+              setActiveSlot(slot);
+              setInspectedItemId(nikki.equipped[slot]);
+            }}
+            onSelectOrEquip={handleSelectOrEquipItem}
+            onUpgradeOrCraft={handleUpgradeOrCraftItem}
+          />
         )}
 
-        {/* ==================== 画面 5：主题出行搭配闯关 ==================== */}
         {screen === "stages" && (
-          <section className="nk-panel nk-panel-enter" aria-label="主题搭配闯关">
-            <div className="nk-stage-selector">
-              {STYLING_STAGES.map((st) => {
-                const active = st.id === selectedStage.id;
-                const bestRank = nikki.clearedStages[st.id];
-                const open = isStageUnlocked(st.id, nikki.clearedStages);
-                return (
-                  <button
-                    key={st.id}
-                    type="button"
-                    className={`nk-stage-pill${active ? " m-active" : ""}${open ? "" : " m-locked"}`}
-                    onClick={() => setSelectedStageId(st.id)}
-                  >
-                    <span>{st.chapter}</span>
-                    {open ? (
-                      bestRank && <b className={`nk-rank-mini m-${bestRank}`}>{bestRank}</b>
-                    ) : (
-                      <b>未开</b>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="nk-stage-detail">
-              <div className="nk-stage-head">
-                <span className="nk-stage-ic">{selectedStage.icon}</span>
-                <div className="nk-stage-title-box">
-                  <div className="nk-stage-vs-line">
-                    <h3>{selectedStage.chapter} · {selectedStage.title}</h3>
-                    <span className="nk-rival-tag">对手: {selectedStage.rivalName} ({selectedStage.rivalScore})</span>
-                  </div>
-                  <p>{selectedStage.desc}</p>
-                </div>
-              </div>
-
-              <div className="nk-skill-picker">
-                <span className="nk-skill-label">技能(2项)：</span>
-                {STYLING_SKILLS.map((sk) => {
-                  const chosen = selectedSkills.includes(sk.id);
-                  return (
-                    <button
-                      key={sk.id}
-                      type="button"
-                      className={`nk-skill-chip${chosen ? " m-on" : ""}`}
-                      onClick={() => handleToggleSkill(sk.id)}
-                    >
-                      <span>{sk.icon}</span>
-                      <b>{sk.name}</b>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="nk-stage-actions">
-                <button
-                  type="button"
-                  className="nk-btn-secondary"
-                  onClick={() => handleAutoRecommend(selectedStage)}
-                  disabled={!selectedStageOpen}
-                >
-                  最优推荐
-                </button>
-                <button
-                  type="button"
-                  className="nk-btn-primary"
-                  onClick={() => handleStartStylingEval(selectedStage)}
-                  disabled={!selectedStageOpen}
-                >
-                  {selectedStageOpen
-                    ? `开始对决 (预估 ${livePreviewEval.rank})`
-                    : "上一话达到 S 后开放"}
-                </button>
-              </div>
-            </div>
-          </section>
+          <StagesScreen
+            nikki={nikki}
+            selectedStage={selectedStage}
+            selectedSkills={selectedSkills}
+            livePreviewEval={livePreviewEval}
+            selectedStageOpen={selectedStageOpen}
+            onSelectStage={setSelectedStageId}
+            onToggleSkill={handleToggleSkill}
+            onAutoRecommend={handleAutoRecommend}
+            onStartEval={handleStartStylingEval}
+          />
         )}
 
         {/* ==================== 画面 6：星愿幻阁 + 本地 ComfyUI 雯宝 LoRA 实时工坊 ==================== */}
@@ -1844,198 +1701,23 @@ export function WorldApp() {
           </section>
         )}
 
-        {/* ==================== 画面 7：四大典藏套装 & 全插画图鉴 ==================== */}
         {screen === "codex" && (
-          <section className="nk-full-view nk-panel-enter" aria-label="全衣橱图鉴">
-            <div className="nk-codex-head">
-              <div>
-                <h2>典藏套装与原画图鉴</h2>
-                <p>已收集 {nikki.unlockedIds.length} / {WARDROBE_ITEMS.length} 件 ({collectionPercent}%)</p>
-              </div>
-              <div className="nk-codex-bar">
-                <i style={{ width: `${collectionPercent}%` }} />
-              </div>
-            </div>
-
-            <div className="nk-suit-gallery">
-              {SUIT_DEFS.map((suit) => {
-                const ownedPieces = suit.itemIds.filter((id) => unlockedSet.has(id)).length;
-                const complete = ownedPieces === suit.itemIds.length;
-                return (
-                  <div key={suit.id} className={`nk-suit-card${complete ? " m-complete" : ""}`}>
-                    <div className="nk-suit-top">
-                      <span className={`nk-rarity-badge m-${suit.rarity}`}>{suit.rarity}</span>
-                      <strong>{suit.name}</strong>
-                      <span className="nk-suit-prog">{ownedPieces}/{suit.itemIds.length}</span>
-                    </div>
-                    <p>{suit.themeDesc}</p>
-                    <small className="nk-suit-bonus">
-                      ✨ 共鸣加成：<b>+{suit.bonusScore}</b> 魅力分
-                    </small>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="nk-codex-list">
-              {WARDROBE_ITEMS.map((item) => {
-                const owned = unlockedSet.has(item.id);
-                const stars = nikki.itemStars[item.id] ?? 1;
-                return (
-                  <div key={item.id} className={`nk-codex-row${owned ? "" : " m-locked"}`}>
-                    <img className="nk-codex-thumb" src={itemImage(item)} alt={item.name} />
-                    <div className="nk-codex-info">
-                      <div className="nk-codex-title">
-                        <span className={`nk-rarity-badge m-${item.rarity}`}>{item.rarity}</span>
-                        <strong>{owned ? item.name : `${item.name} (未解锁)`}</strong>
-                        {owned && <span className="nk-item-stars">{"★".repeat(stars)}</span>}
-                      </div>
-                      <p>{item.desc}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
+          <CodexScreen nikki={nikki} unlockedSet={unlockedSet} itemImage={itemImage} />
         )}
 
-        {/* ==================== 画面 8：和雯宝聊聊 ==================== */}
         {screen === "chat" && (
-          <section className="nk-full-view nk-chat-view nk-panel-enter" aria-label="和雯宝聊聊">
-            <div className="nk-chat-head">
-              <img src={activeSkin.avatar} alt="" />
-              <div>
-                <h2>和雯宝私语</h2>
-                <small>{companionConn?.connected ? `已连接 ${companionConn.model}` : "贴心陪伴模式（随时回复）"}</small>
-              </div>
-            </div>
-            <div className="nk-chat-messages">
-              {chatHistory.map((turn, idx) => (
-                <div key={idx} className={`nk-chat-bubble m-${turn.role}`}>
-                  {turn.content}
-                </div>
-              ))}
-              {chatBusy && <div className="nk-chat-bubble m-assistant">雯宝正在认真想…</div>}
-            </div>
-            <div className="nk-chat-topics">
-              {QUICK_CHAT_TOPICS.map((topic) => (
-                <button key={topic} type="button" onClick={() => void handleSendChat(topic)} disabled={chatBusy}>
-                  {topic}
-                </button>
-              ))}
-            </div>
-            <form
-              className="nk-chat-form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void handleSendChat();
-              }}
-            >
-              <input
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                placeholder="对雯宝说点什么吧…"
-                maxLength={200}
-              />
-              <button type="submit" disabled={chatBusy || !chatInput.trim()}>发送</button>
-            </form>
-          </section>
+          <ChatScreen
+            activeSkinAvatar={activeSkin.avatar}
+            companionConn={companionConn}
+            chatHistory={chatHistory}
+            chatBusy={chatBusy}
+            chatInput={chatInput}
+            onChatInputChange={setChatInput}
+            onSendChat={(text) => void handleSendChat(text)}
+          />
         )}
+
       </main>
-
-      <div className="nk-popups" aria-hidden="true">
-        {popups.map((p) => (
-          <div key={p.id} className="nk-popup">{p.text}</div>
-        ))}
-      </div>
-      {toast && <div className="nk-toast" role="status">{toast}</div>}
-
-      {/* 搭配对决动态走秀跳分结算弹窗 */}
-      {evalModal && (
-        <div className="nk-modal-backdrop" role="dialog" aria-modal="true" aria-label="搭配评比结果">
-          <div className="nk-eval-card nk-modal-pop">
-            <div className={`nk-rank-stamp m-${evalModal.evalResult.rank}${showStamp ? " m-slam" : ""}`}>
-              <span>评级</span>
-              <strong>{evalModal.evalResult.rank}</strong>
-            </div>
-            <h2>{evalModal.evalResult.stage.title}</h2>
-            <p className="nk-eval-total">
-              我方得分 <b>{rollingScore}</b> vs {evalModal.evalResult.stage.rivalName} ({evalModal.evalResult.stage.rivalScore})
-            </p>
-
-            <div className="nk-eval-bars">
-              {(Object.keys(STYLE_ATTR_LABELS) as StyleAttr[]).map((attr, idx) => {
-                const meta = STYLE_ATTR_LABELS[attr];
-                const val = evalModal.evalResult.weightedStats[attr];
-                const pct = Math.min(100, Math.round((val / 1800) * 100));
-                return (
-                  <div key={attr} className="nk-eval-bar-row">
-                    <span style={{ color: meta.color }}>{meta.name}</span>
-                    <div className="nk-eval-bar-track">
-                      <i
-                        className="nk-bar-fill-anim"
-                        style={{
-                          width: `${pct}%`,
-                          background: meta.color,
-                          animationDelay: `${idx * 90}ms`,
-                        }}
-                      />
-                    </div>
-                    <b>+{val}</b>
-                  </div>
-                );
-              })}
-              <div className="nk-eval-bar-row m-skill">
-                <span>🃏 羁绊：{evalModal.evalResult.skillLabel}</span>
-                <b>+{evalModal.evalResult.skillBonusScore}</b>
-              </div>
-              <div className="nk-eval-bar-row m-skill">
-                <span>✨ 舞台技能释放加成</span>
-                <b>+{evalModal.evalResult.activeSkillBonus}</b>
-              </div>
-              {evalModal.evalResult.activeSuit && (
-                <div className="nk-eval-bar-row m-skill">
-                  <span>👑 {evalModal.evalResult.activeSuit.name}共鸣</span>
-                  <b>+{evalModal.evalResult.suitBonusScore}</b>
-                </div>
-              )}
-            </div>
-
-            {evalModal.bonusUnlockedItem && (
-              <div className="nk-eval-unlock">
-                <span>🎁 首通 S 级限定图纸解锁：</span>
-                <strong>{evalModal.bonusUnlockedItem.name}</strong>
-              </div>
-            )}
-
-            <p className="nk-eval-comment">
-              {evalModal.evalResult.comment}（获得 +{evalModal.coinsGained} 礼券 · +{evalModal.bondGained} 亲密）
-              {evalModal.openedNextChapter ? " 下一话已开放。" : ""}
-            </p>
-
-            <div className="nk-eval-actions">
-              <button
-                type="button"
-                className="nk-btn-secondary"
-                onClick={() => {
-                  setEvalModal(null);
-                  setScreen("wardrobe");
-                }}
-              >
-                去升星/换装
-              </button>
-              <button
-                type="button"
-                className="nk-btn-primary"
-                onClick={() => setEvalModal(null)}
-              >
-                收下奖励
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 底部 5 项核心导航 */}
       <nav className="nk-nav" aria-label="主导航">
