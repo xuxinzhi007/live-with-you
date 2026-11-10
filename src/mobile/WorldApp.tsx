@@ -80,6 +80,7 @@ import { CodexScreen } from "./screens/CodexScreen";
 import { ChatScreen } from "./screens/ChatScreen";
 import { StagesScreen } from "./screens/StagesScreen";
 import { WardrobeScreen } from "./screens/WardrobeScreen";
+import { useNikkiState } from "./store/useNikkiState";
 import type { RoomProp } from "./world/rooms";
 import "./world.css";
 
@@ -95,50 +96,6 @@ import "./world.css";
  * - "chat"     : 和雯宝私语
  */
 type GameScreen = "title" | "lobby" | "world" | "wardrobe" | "rig" | "stages" | "pavilion" | "codex" | "chat";
-
-const WARDROBE_STORAGE_KEY = NIKKI_SAVE_KEY;
-const ENTERED_LOBBY_KEY = "wenbebi-entered-lobby";
-
-function hasEnteredLobby(): boolean {
-  try {
-    return localStorage.getItem(ENTERED_LOBBY_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function markEnteredLobby() {
-  try {
-    localStorage.setItem(ENTERED_LOBBY_KEY, "1");
-  } catch {
-    // ignore quota / private mode
-  }
-}
-
-type SavedNikkiState = NormalizedNikkiSave & { lastCouponPatAt?: number };
-
-function loadNikkiState(): SavedNikkiState {
-  const base = loadNikkiSaveFrom(typeof localStorage === "undefined" ? null : localStorage);
-  let lastCouponPatAt: number | undefined;
-  try {
-    const raw = localStorage.getItem(WARDROBE_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (typeof parsed?.lastCouponPatAt === "number" && Number.isFinite(parsed.lastCouponPatAt)) {
-        lastCouponPatAt = parsed.lastCouponPatAt;
-      }
-    }
-  } catch { /* ignore */ }
-  return { ...base, lastCouponPatAt };
-}
-
-function saveNikkiState(data: SavedNikkiState) {
-  try {
-    localStorage.setItem(WARDROBE_STORAGE_KEY, JSON.stringify(data));
-  } catch {
-    // ignore quota error
-  }
-}
 
 function CoinSvg() {
   return (
@@ -174,7 +131,7 @@ export function WorldApp() {
     enterRoom,
     runProp,
   } = useWorldGame();
-  const [nikki, setNikki] = useState<SavedNikkiState>(loadNikkiState);
+  const { nikki, setNikki, hasEnteredLobby: hasEnteredLobbyFlag, markEnteredLobby: markEnteredLobbyFn } = useNikkiState();
   const [screen, setScreen] = useState<GameScreen>(() => {
     // 深链优先：?screen=world 直达某屏，便于分享与自动化验收。
     if (typeof location !== "undefined") {
@@ -182,7 +139,7 @@ export function WorldApp() {
       const allowed: GameScreen[] = ["title", "lobby", "world", "wardrobe", "rig", "stages", "pavilion", "codex", "chat"];
       if (allowed.includes(want as GameScreen)) return want as GameScreen;
     }
-    return openingScreen(hasEnteredLobby());
+    return openingScreen(hasEnteredLobbyFlag);
   });
   const [activeSlot, setActiveSlot] = useState<WardrobeSlot>("dress");
   const [selectedStageId, setSelectedStageId] = useState<string>(STYLING_STAGES[0].id);
@@ -385,10 +342,6 @@ export function WorldApp() {
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const popupIdRef = useRef(1);
-
-  useEffect(() => {
-    saveNikkiState(nikki);
-  }, [nikki]);
 
   // 30FPS 驱动全身双足 FK 骨骼动画（呼吸/歪头/挥手/踏步走/欢呼）
   useEffect(() => {
@@ -912,7 +865,7 @@ export function WorldApp() {
   if (screen === "title") {
     return (
       <div id="nikki-root" className="nk-title-screen" onClick={() => {
-        markEnteredLobby();
+        markEnteredLobbyFn();
         setScreen("lobby");
       }}>
         <div
@@ -950,7 +903,7 @@ export function WorldApp() {
             className="nk-title-start-btn"
             onClick={(e) => {
               e.stopPropagation();
-              markEnteredLobby();
+              markEnteredLobbyFn();
               setScreen("lobby");
             }}
           >

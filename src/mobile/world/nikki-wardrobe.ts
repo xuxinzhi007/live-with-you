@@ -1048,6 +1048,7 @@ export interface SavedNikkiState {
   itemStars: Record<string, number>;
   clearedStages: Record<string, string>;
   coupons: number;
+  lastCouponPatAt?: number;
   customImages?: Record<string, string>;
   dressSkeletons?: AllDressSkeletons;
 }
