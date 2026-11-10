@@ -87,8 +87,13 @@ README.md            写「Pixi 舞台」      代码已经删了 Pixi
 │  (134 行)    │  (114 行)    │  (114 行)    │  (139 行)      │
 │  + .css      │  + .css      │  + .css      │  + .css        │
 ├──────────────┴──────────────┴──────────────┴───────────────┤
-│  状态层   store/useNikkiState.ts  ← 换装存档                │
-│           world/useWorldGame.ts   ← 世界存档                │
+│  状态层   store/useScreenState.ts   ← 路由 + URL 同步        │
+│           store/useUIState.ts       ← toast + popups         │
+│           store/useChatState.ts     ← 聊天历史/输入/连接      │
+│           store/usePavilionState.ts ← 抽卡/动画/ComfyUI      │
+│           store/useRigState.ts      ← 骨骼校准/动画/抠图      │
+│           store/useNikkiState.ts    ← 换装存档               │
+│           world/useWorldGame.ts     ← 世界存档               │
 ├────────────────────────────────────────────────────────────┤
 │  业务层   world/nikki-wardrobe.ts  (1176 行) 换装/抽卡/闯关 │
 │           world/codex.ts           (840 行)  亲密/图鉴/聊天  │
@@ -332,7 +337,8 @@ SavedNikkiState {
 
 | 债 | 严重程度 | 影响 | 计划 |
 |---|---|---|---|
-| WorldApp.tsx 还有 1736 行 | 高 | 改任何屏幕都要读完全文件 | 继续拆 pavilion/rig |
+| WorldApp.tsx 还有 ~1700 行 | 高 | 改任何屏幕都要读完全文件 | 继续拆 pavilion/rig |
+| 8 个业务 state 未收拢 | 中 | activeSlot/selectedStageId 等仍在 WorldApp | 并入 useNikkiState |
 | pavilion/rig 未拆 | 高 | 拖拽动画状态耦合 | 需先统一动画状态 |
 | `latest` 版本已锁但无 CI | 中 | 本地通过 ≠ 远端通过 | 加 GitHub Actions |
 | lint 46 个问题 | 中 | 历史遗留 | 随拆分逐步清 |
