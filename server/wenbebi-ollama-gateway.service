@@ -1,0 +1,15 @@
+[Unit]
+Description=Wenbebi Ollama public gateway
+After=network-online.target
+
+[Service]
+Environment=LISTEN_HOST=0.0.0.0
+Environment=LISTEN_PORT=8787
+Environment=OLLAMA_UPSTREAM=http://127.0.0.1:11434
+Environment=OLLAMA_API_TOKEN=change-me
+ExecStart=/usr/bin/python3 /root/wenbebi-ollama-gateway.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import HTMLFlipBook from "react-pageflip";
 import { startGame } from "./game/runtime";
+import { requestCompanionChat, requestCompanionStatus } from "./game/companion";
 import { wenbebi } from "./game/data/pet";
 import { roomSpots } from "./game/data/room";
 
@@ -10,7 +12,8 @@ const MOBILE_GUIDE_KEY = "wenbebi-mobile-guide-v1";
 const JOURNAL_KEY = "wenbebi-life-journal-v1";
 type MemoryPhoto = { id: string; src: string; title: string };
 type JournalEntry = { id: string; title: string; copy: string; time: number };
-const MAX_MEMORY_PHOTOS = 6;
+type CompanionStatus = { model: string; models: Array<{ name: string; size: number; parameterSize: string }> };
+type ChatTurn = { role: "user" | "assistant"; content: string };
 const MAX_MEMORY_UPLOAD_BYTES = 12_000_000;
 const MEMORY_IMAGE_MAX_EDGE = 1280;
 const sceneLabels = {
@@ -43,7 +46,7 @@ function loadMemories(): MemoryPhoto[] {
   try {
     const saved = JSON.parse(localStorage.getItem(MEMORIES_KEY) || "[]");
     return Array.isArray(saved)
-      ? saved.filter((item): item is MemoryPhoto => typeof item?.id === "string" && typeof item?.src === "string" && typeof item?.title === "string").slice(0, 6)
+      ? saved.filter((item): item is MemoryPhoto => typeof item?.id === "string" && typeof item?.src === "string" && typeof item?.title === "string")
       : [];
   } catch {
     return [];
@@ -122,10 +125,26 @@ export function App() {
   const [layout, setLayout] = useState(loadRoomLayout);
   const [isMemoryOpen, setIsMemoryOpen] = useState(false);
   const [memories, setMemories] = useState<MemoryPhoto[]>(loadMemories);
+  const [memoryPage, setMemoryPage] = useState(0);
+  const memoryBookRef = useRef<any>(null);
+  const memoryPageRef = useRef(0);
+  const memoryCounterRef = useRef<HTMLSpanElement>(null);
+  const memoryTotalRef = useRef(2);
+  const [memoryPortrait, setMemoryPortrait] = useState(true);
+  const memorySwipeStartRef = useRef<number | null>(null);
+  const [memoryBookSize, setMemoryBookSize] = useState({ width: 320, height: 460 });
   const [showMobileTip, setShowMobileTip] = useState(shouldShowMobileGuide);
   const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding);
   const [memoryNotice, setMemoryNotice] = useState("");
   const [journal, setJournal] = useState<JournalEntry[]>(loadJournal);
+  const [companionStatus, setCompanionStatus] = useState<CompanionStatus | null>(null);
+  const [companionStatusState, setCompanionStatusState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [companionStatusError, setCompanionStatusError] = useState("");
+  const [chatTurns, setChatTurns] = useState<ChatTurn[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatBusy, setChatBusy] = useState(false);
+  const [chatError, setChatError] = useState("");
+  const [talkOpen, setTalkOpen] = useState(false);
 
   useEffect(() => {
     if (layoutSaveTimerRef.current) window.clearTimeout(layoutSaveTimerRef.current);
@@ -172,6 +191,21 @@ export function App() {
   }, [isMemoryOpen]);
 
   useEffect(() => {
+    const updateBookSize = () => {
+      const mobile = window.innerWidth <= 520;
+      const width = Math.min(340, Math.max(260, window.innerWidth - (mobile ? 82 : 96)));
+      const height = mobile
+        ? Math.min(390, Math.max(300, Math.round(window.innerHeight * 0.42)))
+        : Math.min(500, Math.max(360, Math.round(window.innerHeight * 0.58)));
+      setMemoryBookSize({ width, height });
+      setMemoryPortrait(mobile);
+    };
+    updateBookSize();
+    window.addEventListener("resize", updateBookSize);
+    return () => window.removeEventListener("resize", updateBookSize);
+  }, []);
+
+  useEffect(() => {
     if (!showMobileTip) return;
     const timer = window.setTimeout(() => {
       setShowMobileTip(false);
@@ -185,6 +219,33 @@ export function App() {
   useEffect(() => {
     appRef.current?.dispatchEvent(new CustomEvent("scene:change", { detail: scene }));
   }, [scene]);
+
+  useEffect(() => {
+    const app = appRef.current;
+    if (!app) return;
+    const openTalk = () => setTalkOpen(true);
+    const closeTalk = () => setTalkOpen(false);
+    app.addEventListener("companion:talk", openTalk);
+    app.addEventListener("companion:talk-end", closeTalk);
+    return () => {
+      app.removeEventListener("companion:talk", openTalk);
+      app.removeEventListener("companion:talk-end", closeTalk);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!talkOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setTalkOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [talkOpen]);
+
+  useEffect(() => {
+    if (talkOpen) setIsDecorating(false);
+    appRef.current?.dispatchEvent(new Event("hud:change"));
+  }, [talkOpen]);
 
   useEffect(() => {
     const app = appRef.current;
@@ -205,18 +266,15 @@ export function App() {
       setMemoryNotice("照片请小于 12MB");
       return;
     }
-    if (memories.length >= MAX_MEMORY_PHOTOS) {
-      setMemoryNotice("回忆录最多保存 6 张照片");
-      return;
-    }
     setMemoryNotice("正在整理照片…");
     void compressMemoryPhoto(file)
       .then((source) => {
-        const next = [...memories, { id: `${Date.now()}-${Math.random()}`, src: source, title: file.name.replace(/\.[^.]+$/, "") }].slice(0, MAX_MEMORY_PHOTOS);
+        const next = [...memories, { id: `${Date.now()}-${Math.random()}`, src: source, title: file.name.replace(/\.[^.]+$/, "") }];
         try {
           // 先确认能写入，再更新画面；刷新后不会出现“刚才有、现在没了”的假保存。
           localStorage.setItem(MEMORIES_KEY, JSON.stringify(next));
           setMemories(next);
+          setMemoryPage(next.length);
         } catch {
           setMemoryNotice("浏览器存储已满；请删除一张旧照片后再试");
           return;
@@ -235,7 +293,65 @@ export function App() {
       return;
     }
     setMemories(next);
+    setMemoryPage((page) => Math.min(page, Math.max(0, next.length - 1)));
     setMemoryNotice("");
+  }
+
+  memoryTotalRef.current = memories.length + 2;
+
+  function changeMemoryPage(nextPage: number) {
+    const currentPage = memoryPageRef.current;
+    if (nextPage < 0) {
+      setMemoryNotice("已经是第一页");
+      return;
+    }
+    if (nextPage > memories.length + 1) {
+      setMemoryNotice("已经是最后一页");
+      return;
+    }
+    const pageFlip = memoryBookRef.current?.pageFlip?.();
+    if (pageFlip) {
+      if (nextPage > currentPage) pageFlip.flipNext("top");
+      else if (nextPage < currentPage) pageFlip.flipPrev("top");
+      return;
+    }
+    setMemoryPage(Math.max(0, Math.min(nextPage, memories.length - 1)));
+    setMemoryNotice("");
+  }
+
+  const handleMemoryFlip = useCallback((event: { data: number }) => {
+    memoryPageRef.current = event.data;
+    if (memoryCounterRef.current) {
+      memoryCounterRef.current.textContent = `${Math.min(event.data + 1, memoryTotalRef.current)} / ${memoryTotalRef.current}`;
+    }
+  }, []);
+
+  const handleMemoryInit = useCallback((event: { data: number }) => {
+    memoryPageRef.current = event.data;
+    if (memoryCounterRef.current) {
+      memoryCounterRef.current.textContent = `${Math.min(event.data + 1, memoryTotalRef.current)} / ${memoryTotalRef.current}`;
+    }
+  }, []);
+
+  function handleMemoryTouchStart(event: React.TouchEvent<HTMLElement>) {
+    memorySwipeStartRef.current = event.changedTouches[0]?.clientX ?? null;
+  }
+
+  function handleMemoryTouchEnd(event: React.TouchEvent<HTMLElement>) {
+    const startX = memorySwipeStartRef.current;
+    memorySwipeStartRef.current = null;
+    const endX = event.changedTouches[0]?.clientX;
+    if (startX === null || endX === undefined) return;
+    const delta = endX - startX;
+    if (Math.abs(delta) < 48) return;
+    const pageAtRelease = memoryPageRef.current;
+    window.setTimeout(() => {
+      if (memoryPageRef.current !== pageAtRelease) return;
+      const pageFlip = memoryBookRef.current?.pageFlip?.();
+      if (!pageFlip) return;
+      if (delta > 0 && pageAtRelease > 0) pageFlip.flipPrev("top");
+      if (delta < 0 && pageAtRelease < memoryTotalRef.current - 1) pageFlip.flipNext("top");
+    }, 90);
   }
 
   function finishOnboarding() {
@@ -245,6 +361,39 @@ export function App() {
       // 无痕模式下仍允许关闭本次引导。
     }
     setShowOnboarding(false);
+  }
+
+  async function checkCompanionStatus() {
+    setCompanionStatusState("loading");
+    setCompanionStatusError("");
+    try {
+      const next = await requestCompanionStatus();
+      setCompanionStatus(next);
+      setCompanionStatusState("ready");
+    } catch (error) {
+      setCompanionStatusState("error");
+      setCompanionStatusError(error instanceof Error ? error.message : "无法连接模型服务");
+    }
+  }
+
+  async function sendCompanionChat(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const text = chatInput.trim();
+    if (!text || chatBusy) return;
+    setChatInput("");
+    setChatError("");
+    setChatBusy(true);
+    const history = chatTurns.slice(-8);
+    setChatTurns((current) => [...current, { role: "user", content: text }]);
+    try {
+      const next = await requestCompanionChat(text, history) as { reply: string };
+      setChatTurns((current) => [...current, { role: "assistant", content: next.reply }]);
+      appRef.current?.dispatchEvent(new CustomEvent("companion:said", { detail: { text: next.reply } }));
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : "雯宝暂时说不了话");
+    } finally {
+      setChatBusy(false);
+    }
   }
 
   function startFurnitureDrag(event: React.PointerEvent<HTMLButtonElement>, id: string) {
@@ -302,7 +451,7 @@ export function App() {
   }
 
   return (
-    <div ref={appRef} className="game-app" data-scene={scene} data-decorating={isDecorating || undefined} data-memory-open={isMemoryOpen || undefined} data-onboarding={showOnboarding || undefined}>
+    <div ref={appRef} className="game-app" data-scene={scene} data-decorating={isDecorating || undefined} data-talking={talkOpen || undefined} data-memory-open={isMemoryOpen || undefined} data-onboarding={showOnboarding || undefined}>
       <div id="viewport">
         <div id="world">
           <div className={`room room--${scene}`}>
@@ -353,7 +502,7 @@ export function App() {
         </div>
       </div>
 
-      <header className="mobile-presence" aria-label={`${wenbebi.name}当前状态`}>
+      <a className="mobile-presence" href="?character" aria-label={`查看${wenbebi.name}角色详情`}>
         <span className="mobile-presence__avatar" aria-hidden="true">
           <img src={`assets/${wenbebi.sprites.idle}.webp`} alt="" draggable={false} />
         </span>
@@ -362,7 +511,7 @@ export function App() {
           <small>{sceneLabels[scene]} · 在这里陪你</small>
         </span>
         <span className="mobile-presence__signal" aria-hidden="true">·</span>
-      </header>
+      </a>
 
       <section className="life-bag" aria-label="生活背包">
         <button type="button" id="bagToggle" aria-expanded="false"><span className="life-bag__icon" aria-hidden="true">✦</span> 收集 <span data-bag-total>0</span></button>
@@ -374,6 +523,19 @@ export function App() {
           <span>小纪念 <strong data-bag-mementos>0</strong></span>
           <span>零钱 <strong data-bag-coins>0</strong></span>
           <small data-life-hint>街区里的相遇，会慢慢留在生活里。</small>
+          <div className="life-bag__model-status">
+            <button type="button" className="model-status-trigger" onClick={checkCompanionStatus} disabled={companionStatusState === "loading"}>
+              <span>连接状态</span><small>{companionStatusState === "loading" ? "检查中…" : companionStatusState === "ready" ? "已连接" : companionStatusState === "error" ? "未连接" : "查看"}</small>
+            </button>
+            {companionStatusState === "ready" && companionStatus && (
+              <div className="model-status" aria-live="polite">
+                <strong>{companionStatus.model}</strong>
+                <span>已安装 {companionStatus.models.length} 个模型</span>
+                <small>{companionStatus.models.map((model) => model.name).join(" · ")}</small>
+              </div>
+            )}
+            {companionStatusState === "error" && <p className="model-status model-status--error" role="status">{companionStatusError}</p>}
+          </div>
         </div>
       </section>
 
@@ -390,17 +552,17 @@ export function App() {
 
       <aside className="desk-plate" id="plate" aria-label="小屋操作">
         <div className="desk-plate__top">
-          <button type="button" className="desk-plate__memory" onClick={() => setIsMemoryOpen(true)}>
+          <button type="button" className="desk-plate__memory" onClick={() => { setTalkOpen(false); setIsMemoryOpen(true); }}>
             <span aria-hidden="true">◌</span><small>回忆</small>
           </button>
-          <button type="button" className="desk-plate__decorate" aria-pressed={isDecorating} onClick={() => setIsDecorating((value) => !value)}>
+          <button type="button" className="desk-plate__decorate" aria-pressed={isDecorating} onClick={() => { setTalkOpen(false); setIsDecorating((value) => !value); }}>
             <span aria-hidden="true">⌂</span><small>{isDecorating ? "完成" : "布置"}</small>
           </button>
           <button type="button" className="desk-plate__menu" id="menuToggle" aria-expanded="false" aria-controls="plateExtra">
             <span aria-hidden="true">···</span><small>更多</small>
           </button>
         </div>
-        <p className="desk-plate__hint">{scene === "balcony" ? "点花盆、藤椅或楼梯 · 拖空白处看风景" : scene === "street" ? "点喷泉、花摊、长椅或路口 · 拖空白处散步" : scene === "cafe" ? "点吧台或窗边小桌 · 从门口回街区" : "摸摸她的头 · 点家具互动 · 从门口出门"}</p>
+        <p className="desk-plate__hint">{scene === "balcony" ? "点花盆、藤椅或楼梯 · 拖空白处看风景" : scene === "street" ? "点喷泉、花摊、长椅或路口 · 拖空白处散步" : scene === "cafe" ? "点吧台或窗边小桌 · 从门口回街区" : "摸摸头 · 点身体说一句 · 点家具互动 · 从门口出门"}</p>
         <div className="desk-plate__drawer-heading">
           <strong>雯宝今天</strong>
           <span>状态</span>
@@ -420,8 +582,28 @@ export function App() {
         </div>
       </aside>
 
+      <form className="talk-dock" hidden={!talkOpen} onSubmit={sendCompanionChat} aria-label="和雯宝说话">
+        {(chatBusy || chatError) && (
+          <p className={`talk-dock__status${chatError ? " talk-dock__status--error" : ""}`} role="status">
+            {chatError || "雯宝在想…"}
+          </p>
+        )}
+        <div className="talk-dock__row">
+          <input
+            value={chatInput}
+            onChange={(event) => setChatInput(event.target.value)}
+            maxLength={400}
+            placeholder="说一句…"
+            disabled={chatBusy}
+            aria-label="对雯宝说的话"
+          />
+          <button type="submit" disabled={chatBusy || !chatInput.trim()}>发送</button>
+          <button type="button" onClick={() => setTalkOpen(false)}>收起</button>
+        </div>
+      </form>
+
       <p className={`mobile-gesture-tip${showMobileTip ? " is-visible" : ""}`} aria-live="polite">
-        {isDecorating ? "拖动家具布置 · 双指查看全景" : scene === "balcony" ? "点花盆、藤椅或楼梯 · 双指查看风景" : scene === "street" ? "点喷泉、花摊、长椅或路口 · 双指散步" : scene === "cafe" ? "点吧台或窗边小桌 · 从门口回街区" : "点角色互动 · 从门口一起出门"}
+        {isDecorating ? "拖动家具布置 · 双指查看全景" : scene === "balcony" ? "点花盆、藤椅或楼梯 · 双指查看风景" : scene === "street" ? "点喷泉、花摊、长椅或路口 · 双指散步" : scene === "cafe" ? "点吧台或窗边小桌 · 从门口回街区" : "摸摸头 · 点身体说一句 · 从门口一起出门"}
       </p>
 
       <div className="life-event" id="lifeEvent" role="dialog" aria-modal="true" aria-label="街区偶遇" hidden>
@@ -450,7 +632,7 @@ export function App() {
             <p className="onboarding__eyebrow">欢迎回家</p>
             <h2>和雯宝一起生活</h2>
             <ul>
-              <li><span>1</span>点雯宝，摸摸头或和她玩。</li>
+              <li><span>1</span>摸摸头，或点她身体说一句。</li>
               <li><span>2</span>点家具，她会自己走过去互动。</li>
               <li><span>3</span>饿了点点心，困了带她去床上。</li>
               <li><span>4</span>从门口或楼梯出发，和她一起去街区。</li>
@@ -470,23 +652,64 @@ export function App() {
               </div>
               <button className="memory-book__close" type="button" aria-label="关闭回忆录" onClick={() => setIsMemoryOpen(false)}>x</button>
             </header>
-            <div className="memory-book__photos">
-              {memories.map((memory) => (
-                <figure className="memory-photo" key={memory.id}>
-                  <img src={memory.src} alt={memory.title} />
-                  <figcaption>{memory.title}</figcaption>
-                  <button type="button" aria-label={`删除照片 ${memory.title}`} onClick={() => removeMemory(memory.id)}>x</button>
-                </figure>
-              ))}
-              {memories.length < MAX_MEMORY_PHOTOS && (
-                <label className="memory-photo memory-photo--add">
+            <section className="memory-book__page" aria-label="照片回忆" onTouchStart={handleMemoryTouchStart} onTouchEnd={handleMemoryTouchEnd}>
+              <HTMLFlipBook
+                ref={memoryBookRef}
+                startPage={0}
+                width={memoryBookSize.width}
+                height={memoryBookSize.height}
+                size="stretch"
+                minWidth={260}
+                maxWidth={340}
+                minHeight={360}
+                maxHeight={500}
+                drawShadow
+                maxShadowOpacity={0.28}
+                flippingTime={620}
+                usePortrait={memoryPortrait}
+                startZIndex={0}
+                showCover
+                mobileScrollSupport
+                swipeDistance={32}
+                autoSize
+                clickEventForward
+                useMouseEvents
+                showPageCorners
+                disableFlipByClick={!memoryPortrait}
+                style={{}}
+                onInit={handleMemoryInit}
+                onFlip={handleMemoryFlip}
+                className="memory-flip-book"
+              >
+                <div className="memory-flip-page memory-flip-page--cover" key="memory-cover">
+                  <p className="memory-book__eyebrow">OUR LITTLE DAYS</p>
+                  <h3>和你住在一起</h3>
+                  <p>把想留下来的时刻，收进这一页。</p>
+                  <span className="memory-flip-page__mark">雯宝的小屋</span>
+                </div>
+                {memories.map((memory) => (
+                  <div className="memory-flip-page" key={memory.id}>
+                    <figure className="memory-photo">
+                      <img src={memory.src} alt={memory.title} />
+                      <figcaption>{memory.title}</figcaption>
+                      <button type="button" aria-label={`删除照片 ${memory.title}`} onClick={() => removeMemory(memory.id)}>x</button>
+                    </figure>
+                  </div>
+                ))}
+                <label className="memory-flip-page memory-flip-page--add" key="memory-add">
                   <input type="file" accept="image/*" onChange={addMemoryPhoto} />
-                  <span>+</span>
-                  <small>添加照片</small>
+                  <span>＋</span>
+                  <strong>收进下一页</strong>
+                  <small>把今天留在这里</small>
                 </label>
-              )}
-              {memories.length === 0 && <p className="memory-book__empty">留一张给今天的回忆</p>}
-            </div>
+              </HTMLFlipBook>
+              <div className="memory-page__controls">
+                <button type="button" className="memory-page__nav" aria-label="上一页" aria-disabled={memoryPageRef.current === 0} onClick={() => changeMemoryPage(memoryPageRef.current - 1)}>‹</button>
+                <span ref={memoryCounterRef}>{`${Math.min(memoryPageRef.current + 1, memories.length + 2)} / ${memories.length + 2}`}</span>
+                <button type="button" className="memory-page__nav" aria-label="下一页" aria-disabled={memoryPageRef.current >= memories.length + 1} onClick={() => changeMemoryPage(memoryPageRef.current + 1)}>›</button>
+              </div>
+              <p className="memory-page__hint">左右滑动翻页 · 书页会记住你停留的地方</p>
+            </section>
             <section className="memory-book__journal" aria-label="生活小记">
               <p className="memory-book__eyebrow">LITTLE DAYS</p>
               <h3>生活小记</h3>
