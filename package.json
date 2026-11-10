@@ -13,18 +13,30 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "audit:assets": "node tools/audit/asset-audit.mjs",
-    "postprocess:alpha": "node tools/postprocess-alpha.mjs"
+    "postprocess:alpha": "node tools/postprocess-alpha.mjs",
+    "lint": "eslint src tools tests --ext .ts,.tsx,.mjs",
+    "lint:fix": "eslint src tools tests --ext .ts,.tsx,.mjs --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tools/**/*.{mjs,py}\" \"tests/**/*.mjs\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "vite": "latest"
+    "@vitejs/plugin-react": "^6.0.5",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "vite": "^8.2.1"
   },
   "devDependencies": {
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
-    "typescript": "latest"
+    "@eslint/js": "^10.0.1",
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.8",
+    "@typescript-eslint/eslint-plugin": "^8.72.2",
+    "@typescript-eslint/parser": "^8.72.2",
+    "eslint": "^10.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=22.6"
