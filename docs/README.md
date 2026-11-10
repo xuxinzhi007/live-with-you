@@ -13,7 +13,7 @@
 | [current-state-and-next.md](./current-state-and-next.md) | 代码现在做到哪、下一步 |
 | [handoff-implemented-ops.md](./handoff-implemented-ops.md) | 已经落地的玩家操作和幻阁交接 |
 | [mobile-architecture.md](./mobile-architecture.md) | 模块各管什么 |
-| [architecture-map.md](./architecture-map.md) | 系统架构图 + 玩法流程图（换装/闯关/抽卡/小世界/AI陪伴/经济闭环） |
+| [architecture-map.md](./architecture-map.md) | 系统架构 + 玩法流程 + Git 历史阻塞分析（换装/闯关/抽卡/小世界/AI陪伴/经济闭环） |
 
 ## 调研，不是运行时
 
