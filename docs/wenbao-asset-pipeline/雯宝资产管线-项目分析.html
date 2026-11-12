@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>雯宝资产管线 · PRD、设计说明与架构（2026-11-13）</title>
+<style>
+  :root {
+    --paper: #f4efe6;
+    --ink: #1c1915;
+    --muted: #5c564c;
+    --line: #d4cbb8;
+    --card: #fffaf2;
+    --accent: #1f4d4a;
+    --accent-soft: #e4efe9;
+    --warn: #8b3a2f;
+    --warn-soft: #f6ece8;
+    --hold: #6b5a2e;
+    --hold-soft: #f3ecd4;
+    --shadow: 0 1px 0 rgba(28,25,21,.06);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.7 "Source Han Sans SC", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  header.hero {
+    background: #172826;
+    color: #f4efe6;
+    padding: 36px 28px 28px;
+  }
+  header.hero .wrap, nav .wrap, main, footer { max-width: 980px; margin: 0 auto; }
+  header.hero p.kicker {
+    letter-spacing: .14em;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #b7c7c3;
+    margin: 0 0 8px;
+  }
+  header.hero h1 {
+    font-family: "Source Han Serif SC", "Noto Serif SC", "Songti SC", "STSong", serif;
+    font-weight: 600;
+    font-size: 28px;
+    line-height: 1.3;
+    margin: 0 0 12px;
+  }
+  header.hero .meta { color: #c9d5d2; font-size: 13.5px; margin: 0; }
+  header.hero .scope {
+    margin: 18px 0 0;
+    padding: 10px 14px;
+    border-left: 3px solid #c4a574;
+    background: rgba(255,255,255,.06);
+    font-size: 14px;
+    line-height: 1.6;
+    color: #e8efe9;
+  }
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: rgba(244,239,230,.94);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  nav .wrap { display: flex; gap: 4px; padding: 8px 20px; flex-wrap: wrap; }
+  nav a {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 14px;
+    padding: 6px 12px;
+    border-radius: 999px;
+  }
+  nav a:hover, nav a:focus { background: var(--accent-soft); }
+  main { padding: 28px 20px 64px; }
+  section { margin-bottom: 56px; }
+  h2 {
+    font-family: "Source Han Serif SC", "Noto Serif SC", "Songti SC", serif;
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0 0 18px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  h3 { font-size: 18px; margin: 28px 0 10px; }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 0 0 14px; padding-left: 1.3em; }
+  li { margin: 4px 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card);
+    font-size: 14px;
+    margin: 0 0 18px;
+    box-shadow: var(--shadow);
+  }
+  th, td {
+    border: 1px solid var(--line);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #ece5d6; font-weight: 600; }
+  code, .path {
+    font-family: "IBM Plex Mono", "Source Han Mono SC", "Consolas", monospace;
+    font-size: 0.86em;
+    background: #ece6d8;
+    padding: 0 .28em;
+    border-radius: 3px;
+    word-break: break-all;
+  }
+  pre {
+    background: #1c1915;
+    color: #f4efe6;
+    padding: 14px 16px;
+    overflow: auto;
+    font: 12.5px/1.55 "IBM Plex Mono", "Consolas", monospace;
+    border-radius: 6px;
+  }
+  .note, .warn, .hold {
+    padding: 12px 14px;
+    margin: 0 0 16px;
+    border-radius: 4px;
+    font-size: 14.5px;
+  }
+  .note { background: var(--accent-soft); border-left: 3px solid var(--accent); }
+  .warn { background: var(--warn-soft); border-left: 3px solid var(--warn); }
+  .hold { background: var(--hold-soft); border-left: 3px solid var(--hold); }
+  /* flow diagrams */
+  .flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 8px;
+    margin: 0 0 22px;
+  }
+  .flow .box {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    min-width: 140px;
+    flex: 1 1 140px;
+    font-size: 13.5px;
+    line-height: 1.45;
+  }
+  .flow .box strong { display: block; font-size: 13px; margin-bottom: 4px; color: var(--accent); }
+  .flow .box.paused { background: var(--hold-soft); border-style: dashed; }
+  .flow .box.archive { background: #eee; color: var(--muted); }
+  .flow .arrow {
+    flex: 0 0 auto;
+    align-self: center;
+    color: var(--accent);
+    font-size: 18px;
+  }
+  .stack { display: grid; gap: 10px; margin: 0 0 22px; }
+  .stack .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .chip {
+    display: inline-block;
+    font-size: 12px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    margin-left: 6px;
+  }
+  footer {
+    padding: 20px;
+    color: var(--muted);
+    font-size: 13px;
+    border-top: 1px solid var(--line);
+  }
+  @media print {
+    nav { position: static; }
+    header.hero { break-after: avoid; }
+    a { color: inherit; }
+  }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <p class="kicker">live-with-you · 雯宝</p>
+    <h1>资产管线 · PRD、设计说明与架构</h1>
+    <p class="meta">2026-11-13 · Asia/Shanghai · 小燕资产管线 · 本机工程 <code style="background:#243b38;color:#f4efe6;padding:1px 6px;">C:\\Users\\ZhuanZ1\\Desktop\\wenbebi</code> · 分支 <code style="background:#243b38;color:#f4efe6;padding:1px 6px;">featurle/xinzhi_feat</code></p>
+    <p class="scope">本文只覆盖资产管线：母图、Qwen 正式出图契约、过审 caption、训练门禁、与舞台槽位的对齐。整包产品 PRD 由 Live With You 出；Comfy 正式出图流程由 comfyui 出。角色不显示由 Live With You 牵头查。不改仓库、不开训、不改官方 Qwen JSON、不恢复四层。</p>
+  </div>
+</header>
+<nav><div class="wrap">
+  <a href="#prd">PRD</a>
+  <a href="#design">设计说明</a>
+  <a href="#arch">架构</a>
+  <a href="#inventory">过审清单</a>
+  <a href="#paths">路径</a>
+</div></nav>
+<main>
+
+<section id="prd">
+  <h2>一、产品需求（PRD）</h2>
+  <h3>1. 当前目标</h3>
+  <p>把雯宝的正式出图稳定在 Qwen 官方线上，身份以母图为准，过审图先沉淀为可训素材，但这轮不开训、不入库、不改客户端。</p>
+  <ol>
+    <li>正式出图只走 <code>Qwen_Image_Edit_2509_Q4_官方出图.json</code>：母图 <code>Wenbao_redraw_00001_.png</code> 加提示词。</li>
+    <li>过审衍生图留在 <code>D:\lora_train\xiaoyan\derived_qwen_20261112_accepted\</code>（目前 10 张图 + 10 份 caption），先不写入 <code>10_xiaoyan</code>。</li>
+    <li>这轮不开训；<code>wenbao_v1</code> / 旧 LoRA 保留在磁盘，但不作为正式出图，也<strong>不能</strong>挂到 Qwen 上。</li>
+    <li>四层生成、拆层、上传、写入 <code>:8788</code> 正式库，仍等用户亲口恢复。</li>
+    <li>客户端「星愿幻阁」<code>/api/comfy/draw</code> 仍走旧 MeinaMix 代理——对齐由 Live With You 在用户点头后改，comfyui 提供官方 API 调用方式。资产侧不改仓库。</li>
+  </ol>
+
+  <h3>2. 范围</h3>
+  <p><strong>做：</strong>守住母图与默认衣服、五官标准；为过审 Qwen 衍生图写 caption；看守训练门禁；把舞台槽位契约写清楚；输出本套文档。</p>
+  <p><strong>不做：</strong>不改「角色不显示」的客户端代码；不改官方 Qwen JSON；不重开已归档的 MeinaMix 官方线；不把过审图自动写入 <code>10_xiaoyan</code>；不找回用户删除的 25 张；不把 <code>held_out</code> / <code>held_aside</code> 搬回训练集；不恢复四层；不把 SD 1.5 LoRA 挂到 Qwen；不新建第三条正式生产工作流。</p>
+
+  <h3>3. 成功标准</h3>
+  <table>
+    <thead><tr><th>项</th><th>达标条件</th></tr></thead>
+    <tbody>
+      <tr><td>身份</td><td>对照母图可认出同一人：短黑发、齐刘海、棕眼、轻轻笑着；比例正常，不是 Q 版大头</td></tr>
+      <tr><td>默认衣服</td><td>白短袖 T 恤（胸袋按画面实际左右标）、白短裤、白鞋；白底干净</td></tr>
+      <tr><td>正式工作流</td><td>只跑官方 Qwen JSON，母图锁定，8GB 上用已验证的 Q4 组合</td></tr>
+      <tr><td>过审素材</td><td>每张过审图有一一对应的 <code>wenbao</code> caption；拒收图不打标签、不入库</td></tr>
+      <tr><td>训练</td><td>未获同意时保持关闭；将来只用过审集合，走 LoRA，不走 DreamBooth</td></tr>
+      <tr><td>舞台</td><td>将来入库必须是带正确 alpha 的 760×760，脚底约 y=748、中心 x≈380；入库后客户端不再二次洪水抠图</td></tr>
+    </tbody>
+  </table>
+  <p>用户已确认：当前 Qwen 官方出图没有问题。本轮不以旧 501/601/701 过门为成功标准。</p>
+
+  <h3>4. 现状快照（2026-11-13 本机核对）</h3>
+  <ul>
+    <li>Comfy live 工作流：<code>Qwen_Image_Edit_2509_Q4_官方出图.json</code>、<code>Qwen_Image_Edit_2509_Q4_experimental.json</code>、<code>.index.json</code>。MeinaMix 官方两份 JSON 在 <code>_archive_20261113_meinamix</code>（未删除）。</li>
+    <li>母图：<code>D:\lora_train\xiaoyan\10_xiaoyan\Wenbao_redraw_00001_.png</code>（白 T、白短裤、白鞋、正面站立）。</li>
+    <li>训练集 <code>10_xiaoyan</code>：6 张图 + 6 份 caption，未改动。这 6 张不够单独开训。</li>
+    <li>过审衍生集：10 张 PNG + 10 份 TXT。拒收 Q 版大头 4 张在 <code>held_aside</code>，无 caption。</li>
+    <li>客户端 <code>PHASE1_LAYERED_OUTFIT_IDS = []</code>，分层舞台关闭。</li>
+    <li>本地工程有未提交修改。本文不提交、不覆盖这些改动。</li>
+  </ul>
+
+  <h3>5. 需求条目</h3>
+  <table>
+    <thead><tr><th>ID</th><th>优先级</th><th>需求</th><th>现状</th></tr></thead>
+    <tbody>
+      <tr><td>A-01</td><td>P0</td><td>正式出图以母图 + Qwen 官方 JSON 为准</td><td>已落地，用户过目通过</td></tr>
+      <tr><td>A-02</td><td>P0</td><td>过审图按统一规则 caption，只写 accepted 目录</td><td>10 张已完成；后续同样处理</td></tr>
+      <tr><td>A-03</td><td>P0</td><td>训练门禁：未同意不开训，不自动灌入 <code>10_xiaoyan</code></td><td>守住</td></tr>
+      <tr><td>A-04</td><td>P1</td><td>文档化舞台交付契约（760 规格、透明、分层槽位）</td><td>本文给出；四层仍暂停</td></tr>
+      <tr><td>A-05</td><td>P1</td><td>为客户端对齐 Qwen 提供资产侧契约</td><td>契约已写；改代码等用户点头</td></tr>
+      <tr><td>A-06</td><td>P2</td><td>过审集合足够且团队同意后，再评估第一版 wenbao LoRA</td><td>未开始</td></tr>
+    </tbody>
+  </table>
+
+  <h3>6. 风险</h3>
+  <ul>
+    <li><strong>左右细节漂移：</strong>Qwen 改角度时胸袋等可能对调。caption 按画面实际标；正式提示词若要锁左右，需写明。</li>
+    <li><strong>白鞋发灰：</strong>远侧鞋可能略偏灰。caption 仍写 <code>white shoes</code>，避免将来 LoRA 学会灰鞋。</li>
+    <li><strong>架构不兼容：</strong>SD 1.5 的 <code>wenbao_v1.safetensors</code> / <code>xiaoyan.safetensors</code> 不能挂到 Qwen（底模和文本编码器都不同）。</li>
+    <li><strong>运行时抠图：</strong>客户端洪水填充会打穿浅色衣服，也去不掉灰渐变。未入库前不要靠运行时抠图当正式交付。</li>
+    <li><strong>远端资源无自动回退：</strong>产品文档写明 <code>VITE_ASSET_BASE_URL</code>（默认 <code>http://192.168.124.77:8788</code>）加载失败时没有 onerror 回退。角色不显示由 Live With You 排查；资产侧本轮未向正式库写入新图。</li>
+    <li><strong>8GB 显存：</strong>官方 fp8 UNet 装不进，必须维持已验证的 Q4 GGUF + Lightning 8 步组合。</li>
+  </ul>
+</section>
+
+<section id="design">
+  <h2>二、设计说明</h2>
+  <h3>1. 身份怎么锁</h3>
+  <p>正式身份不靠「再训一个马上挂上的 LoRA」，而靠一张已经验收的母图，用指令式图像编辑改视角和姿势、保持同一人。这是图像编辑模型的典型用法：把「是谁」放在输入图里，提示词只描述「改什么」，并声明其余保持不变。旧的「文生图 + 角色 LoRA + IPAdapter + OpenPose」已归档，不是现行正式出图。</p>
+  <ul>
+    <li><strong>身份与默认衣服标准：</strong><code>Wenbao_redraw_00001_.png</code>。短黑发、齐刘海、大圆棕眼、轻轻笑着；白短袖 T 恤（母图胸袋在角色右侧胸部，画面左侧）、白短裤、白鞋；正面站立、全身、脚可见、纯白底。</li>
+    <li><strong>比例：</strong>正常动漫比例。待机图只作五官参考，不锁成 Q 版大头。正式提示词和新 caption 都不写 <code>chibi</code> / Q 版 / 大头。</li>
+    <li><strong>质量条：</strong>特征正常、角色正确、画面干净。用户已确认当前官方出图可通过。</li>
+  </ul>
+
+  <div class="warn"><strong>不能把旧 LoRA 挂到 Qwen。</strong><code>wenbao_v1.safetensors</code> 和 <code>xiaoyan.safetensors</code> 是给 SD 1.5（MeinaMix）用的，作用在 SD UNet 和 CLIP 上。Qwen-Image-Edit-2509 是另一套骨架（Qwen2.5-VL + 自己的 DiT，VAE 是 <code>qwen_image_vae</code>），权重对不上。群内已约定：客户端对齐时走「母图 + 提示词」，不挂 <code>wenbao_v1</code>。磁盘上的 LoRA 保留，只属于已归档的 MeinaMix 路径（须显式 <code>--legacy-meinamix</code>）。</div>
+
+  <h3>2. 正式出图工作流契约</h3>
+  <p>文件 <code>Qwen_Image_Edit_2509_Q4_官方出图.json</code>。以下为 2026-11-13 从 live 官方 JSON 读到的已验证组合（8GB 上跑通，不要随意改）：</p>
+  <table>
+    <thead><tr><th>槽位</th><th>值</th><th>注意</th></tr></thead>
+    <tbody>
+      <tr><td>母图</td><td><code>Wenbao_redraw_00001_.png</code></td><td>LoadImage；原生 512×768，不用 FluxKontextImageScale</td></tr>
+      <tr><td>UNet</td><td><code>Qwen-Image-Edit-2509-Q4_K_M.gguf</code></td><td>UnetLoaderGGUF。官方 fp8 约 16GB，8GB 用 Q4</td></tr>
+      <tr><td>CLIP</td><td><code>qwen_2.5_vl_7b_fp8_scaled.safetensors</code>，type <code>qwen_image</code></td><td>必须用 <code>CLIPLoader</code>，不是 <code>CLIPLoaderGGUF</code></td></tr>
+      <tr><td>VAE</td><td><code>qwen_image_vae.safetensors</code></td><td>—</td></tr>
+      <tr><td>加速 LoRA</td><td><code>Qwen-Image-Edit-2509-Lightning-8steps-V1.0-bf16.safetensors</code>，强度 1.0</td><td><code>LoraLoaderModelOnly</code>；这是 Qwen 的 Lightning，<em>不是</em>角色 LoRA</td></tr>
+      <tr><td>采样位移</td><td>AuraFlow shift 3.0</td><td><code>ModelSamplingAuraFlow</code></td></tr>
+      <tr><td>CFGNorm</td><td>1.0</td><td>—</td></tr>
+      <tr><td>KSampler</td><td>seed <code>25091201</code> fixed，8 步，CFG 1.0，<code>euler</code> / <code>simple</code>，denoise 1.0</td><td>—</td></tr>
+      <tr><td>负向</td><td>空</td><td>—</td></tr>
+      <tr><td>输出前缀（当前）</td><td><code>wenbao_qwen_edit_official/wenbao_q4_left34</code></td><td>换角度时改前缀，避免覆盖</td></tr>
+    </tbody>
+  </table>
+  <p>提示词原则：只改镜头或姿势，明确同一人、同一张脸、同一套衣服、白底、全身、脚可见；写出白 T / 白短裤 / 白鞋和要保持的五官；明确自然动漫比例、不要 Q 版；换角度时写清左右与俯仰，不要混用。实验文件 <code>Qwen_Image_Edit_2509_Q4_experimental.json</code> 保留，不是正式出图默认。</p>
+
+  <h3>3. Caption 规则</h3>
+  <p>给将来的 LoRA 用，不是给 Qwen 官方出图用（官方出图吃自然语言提示词）。</p>
+  <ol>
+    <li>触发词 <code>wenbao</code> 打头，然后 <code>1girl, solo</code>。</li>
+    <li>齐刘海、大圆棕眼、轻轻笑着等身份特征锁在触发词里，不要写进每张 caption。</li>
+    <li>caption 只写该图会变的部分：衣服、姿势、构图、视角、画面上实际出现的口袋 / ahoge 等。</li>
+    <li>过审衍生集里只要画面就是默认套装，就写 <code>white t-shirt, white shorts, white shoes</code>。</li>
+    <li>口袋、手的位置按画面实际标，不要想当然写成「标准双手背后」或母图的左右。</li>
+    <li>远鞋略灰仍写 <code>white shoes</code>，不要写成灰鞋。</li>
+    <li>新过审图不写 <code>chibi</code> / Q 版 / 大头。旧 6 张同伴图里画面本身是 Q 版的仍保留 <code>chibi</code>，这轮不改。</li>
+    <li>只把 caption 写在过审目录；未同意前不写入 <code>10_xiaoyan</code>。拒收目录不打标签。</li>
+  </ol>
+
+  <h3 id="inventory">4. 过审集合清单（截至 2026-11-12）</h3>
+  <p>目录 <code>D:\lora_train\xiaoyan\derived_qwen_20261112_accepted\</code></p>
+  <table>
+    <thead><tr><th>批次</th><th>文件</th><th>要点</th></tr></thead>
+    <tbody>
+      <tr><td>角度 · 09:05<br>caption 未改</td><td><code>left34</code> / <code>right34</code> / <code>left_profile</code> / <code>right_profile</code> / <code>back34</code></td><td><code>right34</code> 标 <code>right chest pocket</code>；右侧身标 <code>back pocket</code>；侧身不写 looking at viewer；过肩 3/4 是 looking back</td></tr>
+      <tr><td>姿势 · 23:24</td><td><code>walk</code></td><td>口袋相对母图对调，标 <code>left chest pocket</code>；迈出的鞋略灰蓝，仍写白鞋；<code>walking, one foot forward</code></td></tr>
+      <tr><td></td><td><code>hands_behind</code></td><td>不是双手背后：左手插短裤侧袋，右手垂在身侧；口袋与母图同侧 <code>right chest pocket</code></td></tr>
+      <tr><td></td><td><code>head_turn</code></td><td>水平转头，身子 3/4 from left，facing left，不是俯仰，没看向镜头</td></tr>
+      <tr><td></td><td><code>hands_hips</code></td><td>双手叉腰；头略偏大，未写 chibi；口袋对调</td></tr>
+      <tr><td></td><td><code>weight_shift</code></td><td>重心在角色右腿；未写 chibi；口袋对调</td></tr>
+    </tbody>
+  </table>
+  <p>完整 caption 原文见配套 Markdown <code>设计说明-雯宝资产管线.md</code>。拒收（<code>held_aside</code>，无 txt）：<code>wave</code>、<code>look_down</code>、<code>look_up</code>、<code>closer_full</code>。<code>10_xiaoyan</code> 的 6 张 caption 以 2026-11-11 22:20 那版为准，本轮不改。<code>mother_05</code> 在 <code>xiaoyan_held_out\aside</code>，不进第一组。用户删除的 25 张不要找回。</p>
+
+  <h3>5. 舞台交付契约（现在只对齐文档，不入库）</h3>
+  <table>
+    <thead><tr><th>项</th><th>契约</th></tr></thead>
+    <tbody>
+      <tr><td>画布</td><td>760×760 RGBA（<code>tools/character/spec.json</code>）</td></tr>
+      <tr><td>对齐</td><td>脚底约 y=748，水平中心 x≈380</td></tr>
+      <tr><td>分层（第一期设想）</td><td>自下而上：body、dress、head、arms-front</td></tr>
+      <tr><td>开关</td><td><code>PHASE1_LAYERED_OUTFIT_IDS</code> 目前是空数组，分层关闭；读不到分层时走全身图</td></tr>
+      <tr><td>透明</td><td>入库资产必须自带正确 alpha。运行时洪水抠图会打穿白衣，也去不掉灰渐变；<strong>入库后客户端不应再抠一次</strong></td></tr>
+      <tr><td>正式库</td><td>局域网 <code>http://192.168.124.77:8788</code>，<code>/home/xinzhi/wenbao-assets</code>。本轮不上正式库</td></tr>
+    </tbody>
+  </table>
+
+  <h3>6. 训练门禁</h3>
+  <div class="hold">当前训练关闭。开训需要同时满足：用户明确说开训；过审集合达到可训规模（精选约 20–30 张是常见起点；现在是 6+10，且 6 张里有旧风格同伴，还不能当作完整第一组就开）；caption 已对齐，污染图都在外面；与 Live With You、comfyui 对齐路径和对照方式。</div>
+  <p>若开训：用 <code>D:\lora_train\xiaoyan\打开训练页面.bat</code>（7861，锁 LoRA、8GB）；Kohya GUI（7860）只做打标等辅助。<strong>不要 DreamBooth</strong>。触发词与输出名用 <code>wenbao</code>。新 LoRA 先在对照目录试，过关后再考虑和官方 JSON、客户端一起切；不要把该 LoRA 挂到 Qwen 官方线上。</p>
+</section>
+
+<section id="arch">
+  <h2>三、架构</h2>
+  <h3>1. 正式出图数据流</h3>
+  <div class="flow">
+    <div class="box"><strong>母图</strong>Wenbao_redraw_00001_.png<br>在 10_xiaoyan</div>
+    <div class="arrow">→</div>
+    <div class="box"><strong>官方 Qwen JSON</strong>母图 + 提示词<br>不挂角色 LoRA</div>
+    <div class="arrow">→</div>
+    <div class="box"><strong>出图 512×768</strong>wenbao_qwen_edit_official/</div>
+    <div class="arrow">→</div>
+    <div class="box"><strong>用户过目</strong>过审或拒收</div>
+  </div>
+  <div class="flow">
+    <div class="box"><strong>过审 accepted</strong>10 PNG + 10 caption<br>先不写入 10_xiaoyan</div>
+    <div class="arrow">→</div>
+    <div class="box paused"><strong>训练门禁</strong>当前关闭<br>同意且集合足够后才开</div>
+    <div class="arrow">→</div>
+    <div class="box paused"><strong>将来 LoRA</strong>只进对照目录<br>不挂到 Qwen</div>
+    <div class="arrow">→</div>
+    <div class="box paused"><strong>将来入库</strong>760 RGBA 对齐<br>等用户恢复</div>
+  </div>
+  <div class="flow">
+    <div class="box archive"><strong>已归档</strong>MeinaMix 官方 A/B 线<br>_archive_20261113_meinamix<br>默认不要再跑</div>
+    <div class="box archive"><strong>拒收 held_aside</strong>挥手 / 低头 / 抬头 / 靠近全身<br>不打标签、不收入</div>
+  </div>
+  <p>Qwen 官方线是图像编辑，不是文生图。Lightning LoRA 只用于 8 步加速，与角色 LoRA 不是一类东西。</p>
+
+  <h3>2. 与客户端的接口（资产侧观点）</h3>
+  <div class="flow">
+    <div class="box"><strong>本轮现状</strong>全身图 fallback<br>PHASE1 分层 ID 为空<br>/api/comfy/draw 仍是旧 MeinaMix</div>
+    <div class="arrow">⇢</div>
+    <div class="box paused"><strong>用户点头后</strong>代理对齐到 Qwen：母图 + 提示词，不挂 wenbao_v1<br>四层与 :8788 仍另需授权</div>
+  </div>
+  <ol>
+    <li>实时生图若对齐，目标是官方 Qwen 线：母图 + 提示词，不挂 <code>wenbao_v1</code> 或 <code>xiaoyan.safetensors</code>。</li>
+    <li>提示词不要再堆 <code>chibi</code>、不要把五官写成 Q 版模板；身份以母图为准。</li>
+    <li>分层未开，舞台不应指望四层文件已经存在。</li>
+    <li>将来入库帧：760×760 RGBA，脚底约 748，中心约 380；带正确透明，入库后不要再洪水抠图。</li>
+    <li>远端资源为空时回退 <code>public/assets</code>；产品文档写明加载失败没有自动 onerror 回退。角色不显示由 Live With You 查。本轮资产侧没有向 <code>:8788</code> 写新正式图。</li>
+  </ol>
+
+  <h3>3. 当前停在哪</h3>
+  <p>停在「官方 Qwen 已切好 + 10 张过审已打标签，训练关闭，四层关闭，不入库」。下一步如果继续补角度，仍只写入 accepted 并打 caption。开训、对齐客户端代理、恢复四层，都要用户先说。</p>
+
+  <h3>4. 明确暂停的子系统</h3>
+  <table>
+    <thead><tr><th>子系统</th><th>状态</th><th>恢复条件</th></tr></thead>
+    <tbody>
+      <tr><td>MeinaMix 官方 A/B 线</td><td>已归档，默认拒绝再跑</td><td>显式 <code>--legacy-meinamix</code>，且不是正式出图</td></tr>
+      <tr><td>角色 LoRA 训练</td><td>关闭</td><td>用户同意 + 过审集合足够 + 三方对齐</td></tr>
+      <tr><td>四层生成 / 拆层 / 上传</td><td>暂停</td><td>用户亲口恢复</td></tr>
+      <tr><td>客户端分层</td><td><code>PHASE1_LAYERED_OUTFIT_IDS = []</code></td><td>与四层资产过视觉门后，由 Live With You 改</td></tr>
+      <tr><td><code>/api/comfy/draw</code> 对齐 Qwen</td><td>已识别，未改代码</td><td>用户点头；Live With You 向 comfyui 要 API</td></tr>
+      <tr><td>写入 nikki / <code>:8788</code></td><td>禁止</td><td>视觉门 + 用户授权</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="paths">5. 路径一览</h3>
+  <table>
+    <thead><tr><th>用途</th><th>路径</th></tr></thead>
+    <tbody>
+      <tr><td>本机工程</td><td><code>C:\Users\ZhuanZ1\Desktop\wenbebi</code>，分支 <code>featurle/xinzhi_feat</code></td></tr>
+      <tr><td>ComfyUI</td><td><code>D:\xuxinzhi\ComfyUI_windows_portable_nvidia\ComfyUI_windows_portable\ComfyUI\</code></td></tr>
+      <tr><td>官方 JSON（live）</td><td><code>...\user\default\workflows\Qwen_Image_Edit_2509_Q4_官方出图.json</code></td></tr>
+      <tr><td>实验 JSON</td><td>同目录 <code>Qwen_Image_Edit_2509_Q4_experimental.json</code></td></tr>
+      <tr><td>MeinaMix 归档</td><td><code>...\workflows\_archive_20261113_meinamix\</code></td></tr>
+      <tr><td>母图 / 现训练集</td><td><code>D:\lora_train\xiaoyan\10_xiaoyan\</code></td></tr>
+      <tr><td>过审衍生</td><td><code>D:\lora_train\xiaoyan\derived_qwen_20261112_accepted\</code></td></tr>
+      <tr><td>拒收衍生</td><td><code>D:\lora_train\xiaoyan\derived_qwen_20261112_held_aside\</code></td></tr>
+      <tr><td>更早隔离</td><td><code>D:\lora_train\xiaoyan_held_out\</code></td></tr>
+      <tr><td>训练面板</td><td><code>D:\lora_train\xiaoyan\打开训练页面.bat</code>（7861）</td></tr>
+      <tr><td>角色规格</td><td><code>tools/character/spec.json</code>（760 / 748 / 380）</td></tr>
+      <tr><td>资源库</td><td><code>http://192.168.124.77:8788</code>，<code>/home/xinzhi/wenbao-assets</code></td></tr>
+    </tbody>
+  </table>
+</section>
+
+</main>
+<footer>
+  <div class="wrap">配套 Markdown：PRD-雯宝资产管线.md、设计说明-雯宝资产管线.md、架构-雯宝资产管线.md。参数与路径于 2026-11-13 在 ZhuanZ 上对照 live 工作流和训练集核对。不改仓库、不开训。</div>
+</footer>
+</body>
+</html>

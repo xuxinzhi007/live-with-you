@@ -31,6 +31,7 @@ import {
   type WishPool,
 } from "./world/nikki-wardrobe";
 import { isComfyDressSource, resolveAsset } from "./world/remote-assets";
+import { useRemoteAssetGeneration } from "./world/use-remote-assets";
 import {
   getWearableOverlaySrc,
   loadCutoutImage,
@@ -94,7 +95,7 @@ import "./world.css";
  * - "wardrobe" : 高定换装试衣间（上半全身试衣镜 + 下半轻巧衣橱）
  * - "rig"      : 🦴 可视化骨骼工作台（在角色身上直接显示骨骼杆与关节圆环，按住关节直接拖动校准！）
  * - "stages"   : 主题搭配闯关页
- * - "pavilion" : 星愿幻阁 & ComfyUI 实时生图工坊
+ * - "pavilion" : 星愿幻阁 & 官方 Qwen 编辑工坊
  * - "codex"    : 典藏套装与原画图鉴
  * - "chat"     : 和雯宝私语
  */
@@ -179,6 +180,7 @@ export function WorldApp() {
     comfyBusy, setComfyBusy,
     showAtelier, setShowAtelier,
   } = usePavilionState();
+  const assetGeneration = useRemoteAssetGeneration();
   const heldDressSrc = useRef("");
   const wishTimer = useRef(0);
   const wishRailRef = useRef<HTMLDivElement>(null);
@@ -359,11 +361,11 @@ export function WorldApp() {
     void probeCompanionStatus().then(setCompanionConn);
   }, []);
 
-  const currentDress = useMemo(() => getWardrobeItem(nikki.equipped.dress), [nikki.equipped.dress]);
-  const currentHairAcc = useMemo(() => getWardrobeItem(nikki.equipped.hairAcc), [nikki.equipped.hairAcc]);
-  const currentHandheld = useMemo(() => getWardrobeItem(nikki.equipped.handheld), [nikki.equipped.handheld]);
-  const currentAura = useMemo(() => getWardrobeItem(nikki.equipped.aura), [nikki.equipped.aura]);
-  const currentCard = useMemo(() => getWardrobeItem(nikki.equipped.memoryCard), [nikki.equipped.memoryCard]);
+  const currentDress = useMemo(() => getWardrobeItem(nikki.equipped.dress), [nikki.equipped.dress, assetGeneration]);
+  const currentHairAcc = useMemo(() => getWardrobeItem(nikki.equipped.hairAcc), [nikki.equipped.hairAcc, assetGeneration]);
+  const currentHandheld = useMemo(() => getWardrobeItem(nikki.equipped.handheld), [nikki.equipped.handheld, assetGeneration]);
+  const currentAura = useMemo(() => getWardrobeItem(nikki.equipped.aura), [nikki.equipped.aura, assetGeneration]);
+  const currentCard = useMemo(() => getWardrobeItem(nikki.equipped.memoryCard), [nikki.equipped.memoryCard, assetGeneration]);
 
   // 当前所穿服装的专属层级骨骼树（每套衣服独立保存！）
   const activeSkeleton = useMemo(
@@ -376,13 +378,19 @@ export function WorldApp() {
     [nikki.customImages],
   );
 
-  // 预先抠好全部礼服。换装时只用已经透明的图，避免先闪出白底原图。
+  // 仓库里已有的 Comfy 礼服仍可预处理；官方 Qwen 新图（customImages）先用未抠原图，不用洪水填充。
   useEffect(() => {
     let active = true;
-    const jobs = WARDROBE_ITEMS.filter((item) => item.slot === "dress" && isComfyDressSource(item.image));
     const customSrc = nikki.customImages?.[currentDress.id];
-    const queue = customSrc ? [...jobs, { id: currentDress.id, image: customSrc }] : jobs;
-    for (const item of queue) {
+    if (customSrc) {
+      setCutoutMap((prev) => (prev[currentDress.id] === customSrc ? prev : { ...prev, [currentDress.id]: customSrc }));
+    }
+    const jobs = WARDROBE_ITEMS.filter((item) => {
+      if (item.slot !== "dress" || !isComfyDressSource(item.image)) return false;
+      if (nikki.customImages?.[item.id]) return false;
+      return true;
+    });
+    for (const item of jobs) {
       void loadCutoutImage(item.image, "character").then((dataUrl) => {
         if (!active) return;
         setCutoutMap((prev) => (prev[item.id] === dataUrl ? prev : { ...prev, [item.id]: dataUrl }));
@@ -465,12 +473,12 @@ export function WorldApp() {
   const unlockedSet = useMemo(() => new Set(nikki.unlockedIds), [nikki.unlockedIds]);
   const bondInfo = useMemo(() => getBondLevelInfo(state.bond), [state.bond]);
 
-  const inspectedItem = useMemo(() => getWardrobeItem(inspectedItemId), [inspectedItemId]);
+  const inspectedItem = useMemo(() => getWardrobeItem(inspectedItemId), [inspectedItemId, assetGeneration]);
   const activeSuitInfo = useMemo(() => detectActiveSuit(nikki.equipped), [nikki.equipped]);
 
   const activeSkin = useMemo(
     () => getCharacterSkin(currentDress.skinId ?? "original"),
-    [currentDress.skinId],
+    [currentDress.skinId, assetGeneration],
   );
 
   const totalStats = useMemo(
@@ -666,35 +674,34 @@ export function WorldApp() {
   const handleLiveComfyGenerate = useCallback(async () => {
     if (comfyBusy) return;
     setComfyBusy(true);
-    const isDress = inspectedItem.slot === "dress";
-    showToast("🎨 正在调用本机 ComfyUI + 雯宝 LoRA 生成同角色立绘并自动对齐 760×760 骨骼画布…");
+    showToast("🎨 正在用官方 Qwen 编辑母图出图，大约需要 3–4 分钟…");
     try {
       const res = await fetch("/api/comfy/draw", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: comfyPrompt,
-          useWenbaoLora: isDress,
         }),
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok || !payload?.ok || !payload?.image) {
         throw new Error(payload?.error || "ComfyUI 生图失败");
       }
-      const cutoutUrl = await loadCutoutImage(payload.image, isDress ? "character" : "accessory");
-      setCutoutMap((prev) => ({ ...prev, [inspectedItem.id]: cutoutUrl }));
+      // 预览用未抠原图，不用洪水填充（白 T 白短裤会穿帮）。
+      const previewUrl = payload.image as string;
+      setCutoutMap((prev) => ({ ...prev, [inspectedItem.id]: previewUrl }));
       setNikki((prev) => ({
         ...prev,
-        customImages: { ...(prev.customImages || {}), [inspectedItem.id]: cutoutUrl },
+        customImages: { ...(prev.customImages || {}), [inspectedItem.id]: previewUrl },
       }));
       setEquipBurstKey((k) => k + 1);
-      pushPopup(`🎨 新生成的【${inspectedItem.name}】已绑定骨骼！可点『🦴骨骼』微调关节`);
+      pushPopup(`🎨 新生成的【${inspectedItem.name}】已作为预览（未抠底），可点『🦴骨骼』微调`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "请确认本机 ComfyUI (127.0.0.1:8188) 正在运行");
     } finally {
       setComfyBusy(false);
     }
-  }, [comfyBusy, comfyPrompt, inspectedItem.id, inspectedItem.name, inspectedItem.slot, pushPopup, showToast]);
+  }, [comfyBusy, comfyPrompt, inspectedItem.id, inspectedItem.name, pushPopup, showToast]);
 
   const handleTapCharacter = useCallback(() => {
     if (screen === "rig") return;
@@ -1361,7 +1368,7 @@ export function WorldApp() {
           />
         )}
 
-        {/* ==================== 画面 6：星愿幻阁 + 本地 ComfyUI 雯宝 LoRA 实时工坊 ==================== */}
+        {/* ==================== 画面 6：星愿幻阁 + 官方 Qwen 编辑工坊 ==================== */}
         {screen === "pavilion" && (
           <section className="nk-pavilion nk-panel-enter" aria-label="星愿幻阁">
             <div className="nk-pavilion-veil" />
@@ -1627,7 +1634,7 @@ export function WorldApp() {
                     type="text"
                     value={comfyPrompt}
                     onChange={(e) => setComfyPrompt(e.target.value)}
-                    placeholder="描述想要的样子"
+                    placeholder="描述视角或姿势（只改这些，保持同一角色和白 T 白短裤）"
                     disabled={comfyBusy}
                   />
                   <button type="button" disabled={comfyBusy} onClick={() => void handleLiveComfyGenerate()}>

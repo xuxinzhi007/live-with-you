@@ -11,3 +11,11 @@ public/vendor/live2dcubismcore.min.js
 
 # Local Netlify folder
 .netlify
+
+# 管线本地输出与临时文件。官方要进 Git 的资源放在 tools/wenbao-assets/（out 外面）。
+tools/out/
+tools/_tmp_*/
+tools/__pycache__/
+**/__pycache__/
+*.pyc
+spark-output/

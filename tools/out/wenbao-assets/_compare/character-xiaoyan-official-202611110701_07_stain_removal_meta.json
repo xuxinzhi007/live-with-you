@@ -1,7 +1,0 @@
-{
-  "group": 7,
-  "title": "去橙红光渍",
-  "status": "passthrough",
-  "reason": "No stable conservative Comfy stain-removal node on this machine (only ImageBlend / ImageSharpen, which are not stain fixers). Official hook left in the template. This file is a passthrough of stage 6 isnet-anime white.",
-  "source": "character-xiaoyan-official-202611110701_06_isnet_white.png"
-}

@@ -123,6 +123,7 @@ function remoteSkin(skin: CharacterSkin): CharacterSkin {
   };
 }
 
+/** 模块加载时的快照；运行时请用 getCharacterSkin，以便探活后重新解析。 */
 export const CHARACTER_SKINS: Record<CharacterSkinId, CharacterSkin> = {
   original: remoteSkin(LOCAL_CHARACTER_SKINS.original),
   maid: remoteSkin(LOCAL_CHARACTER_SKINS.maid),
@@ -136,6 +137,8 @@ export function isCharacterSkinId(value: unknown): value is CharacterSkinId {
   return typeof value === "string" && CHARACTER_SKIN_IDS.includes(value as CharacterSkinId);
 }
 
+/** 每次从本地路径重新 resolve，配合资源库探活订阅。 */
 export function getCharacterSkin(id: CharacterSkinId | string | undefined): CharacterSkin {
-  return isCharacterSkinId(id) ? CHARACTER_SKINS[id] : CHARACTER_SKINS[DEFAULT_CHARACTER_SKIN];
+  const key = isCharacterSkinId(id) ? id : DEFAULT_CHARACTER_SKIN;
+  return remoteSkin(LOCAL_CHARACTER_SKINS[key]);
 }

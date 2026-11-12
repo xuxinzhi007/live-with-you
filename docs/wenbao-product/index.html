@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>雯宝 · 产品分析文档 · 2026-11-13</title>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "base",
+      themeVariables: {
+        primaryColor: "#f3e4e6",
+        primaryTextColor: "#2a2420",
+        primaryBorderColor: "#b85c6e",
+        lineColor: "#8a6a6e",
+        secondaryColor: "#efe6d8",
+        tertiaryColor: "#faf7f2",
+        fontFamily: "Georgia, 'Songti SC', 'Noto Serif SC', serif"
+      }
+    });
+  </script>
+  <style>
+    :root {
+      --ink: #2a2420;
+      --muted: #6b5e58;
+      --line: #e4d6cc;
+      --paper: #faf7f2;
+      --card: #fffdf9;
+      --rose: #b85c6e;
+      --rose-s: #f6e8ea;
+      --ok: #2f6f4e;
+      --warn: #9a4f12;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font: 16px/1.7 "Source Han Serif SC", "Noto Serif SC", "Songti SC", Georgia, serif;
+    }
+    header.hero {
+      border-bottom: 1px solid var(--line);
+      padding: 2.4rem 1.4rem 1.6rem;
+      background: linear-gradient(180deg, #fff 0%, var(--paper) 100%);
+    }
+    header.hero .wrap, main.wrap, footer.wrap { max-width: 880px; margin: 0 auto; }
+    .kicker { color: var(--rose); letter-spacing: .12em; font-size: .74rem; font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 700; }
+    h1 { font-weight: 600; font-size: 1.9rem; margin: .35rem 0 .5rem; letter-spacing: .02em; }
+    .lede { color: var(--muted); margin: 0; max-width: 40em; }
+    nav.toc {
+      position: sticky; top: 0; z-index: 5;
+      background: rgba(250,247,242,.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line);
+    }
+    nav.toc .wrap { display: flex; flex-wrap: wrap; gap: .4rem 1rem; padding: .7rem 1.4rem; font-family: ui-sans-serif, system-ui, sans-serif; font-size: .85rem; }
+    nav.toc a { color: var(--muted); text-decoration: none; }
+    nav.toc a:hover { color: var(--rose); }
+    main.wrap { padding: 1.6rem 1.4rem 4rem; }
+    section { margin: 2.6rem 0; }
+    h2 { font-size: 1.35rem; font-weight: 600; margin: 0 0 .8rem; padding-bottom: .35rem; border-bottom: 1px solid var(--line); }
+    h3 { font-size: 1.05rem; font-weight: 600; margin: 1.4rem 0 .5rem; }
+    p { margin: .7rem 0; }
+    a { color: var(--rose); }
+    blockquote {
+      margin: 1rem 0;
+      padding: .7rem 1rem;
+      background: var(--rose-s);
+      border-left: 3px solid var(--rose);
+      color: #5a3a40;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: .95rem; margin: 1rem 0; background: var(--card); }
+    th, td { border: 1px solid var(--line); padding: .5rem .65rem; text-align: left; vertical-align: top; }
+    th { background: #f3ece4; font-family: ui-sans-serif, system-ui, sans-serif; font-size: .8rem; letter-spacing: .04em; }
+    code, .path { font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace; font-size: .86em; background: #efe8df; padding: .05em .32em; border-radius: 3px; }
+    .diagram { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1rem; margin: 1rem 0; overflow-x: auto; }
+    .callout { border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.1rem; background: var(--card); margin: 1rem 0; }
+    .callout.warn { border-color: #e8c8a4; background: #fff8f0; }
+    .callout strong.tag { font-family: ui-sans-serif, system-ui, sans-serif; font-size: .72rem; letter-spacing: .08em; color: var(--warn); }
+    .grid { display: grid; gap: .8rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: .9rem 1rem; }
+    .card h3 { margin: 0 0 .35rem; }
+    .card p { margin: 0; color: var(--muted); font-size: .95rem; }
+    ul, ol { margin: .5rem 0 1rem; padding-left: 1.25rem; }
+    li { margin: .25rem 0; }
+    footer { border-top: 1px solid var(--line); padding: 1.4rem; color: var(--muted); font-size: .88rem; }
+    @media print {
+      nav.toc { position: static; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <div class="kicker">LIVE WITH YOU · 2026-11-13 · ASIA/SHANGHAI</div>
+      <h1>雯宝产品分析</h1>
+      <p class="lede">整包产品 PRD，以及客户端与舞台接线的设计、架构。正式出图已切到 Qwen，出图本身没有问题；当前阻塞是角色在客户端不显示。Comfy 出图文档由 comfyui 出具，资产管线文档由小燕资产管线出具。</p>
+    </div>
+  </header>
+  <nav class="toc"><div class="wrap">
+    <a href="#prd">产品 PRD</a>
+    <a href="#design">设计</a>
+    <a href="#arch">架构</a>
+    <a href="#bug">角色不显示</a>
+    <a href="#next">下一步</a>
+  </div></nav>
+  <main class="wrap">
+
+  <section id="prd">
+    <h2>1. 产品需求</h2>
+    <p>《雯宝》是以角色「雯宝」为核心的竖屏换装搭配与 AI 陪伴产品。打开之后，要先看到她；再用官方出图线稳定做出同一张脸和默认衣服，在舞台上换装、闯关、收集和聊天。当前是个人使用，没有商业化计划。质量标准：特征正常、角色正确、画面干净、没有报错。</p>
+    <p>北极星体验（当前被打破，优先修）：<strong>打开数秒内看到雯宝与当前装扮。</strong></p>
+
+    <h3>本阶段目标</h3>
+    <div class="grid">
+      <div class="card"><h3>P0 角色可见</h3><p>局域网资源库不可用时，回退到仓库 <code>public/assets</code>，不能让舞台空白。</p></div>
+      <div class="card"><h3>P0 出图锁定 Qwen</h3><p>工作流 <code>Qwen_Image_Edit_2509_Q4_官方出图.json</code>，母图锁 <code>Wenbao_redraw_00001_.png</code>。用户已过目，出图按没问题接受。</p></div>
+      <div class="card"><h3>P0 不走回头路</h3><p>开发时「星愿幻阁」的 <code>/api/comfy/draw</code> 仍是旧 MeinaMix。对齐需主人点头，并向 comfyui 要官方 API。不挂 <code>wenbao_v1</code>。</p></div>
+    </div>
+    <p>P1：10 张过审衍生图先留在 <code>derived_qwen_20261112_accepted</code>，这轮不开训；四层开关保持空。P2：四层生成 / 拆层 / 上传与分层舞台，需明确授权后再做。</p>
+
+    <h3>已锁定的角色约束</h3>
+    <table>
+      <thead><tr><th>项</th><th>内容</th></tr></thead>
+      <tbody>
+        <tr><td>官方名</td><td>wenbao（磁盘上仍保留 <code>xiaoyan.safetensors</code>，不删）</td></tr>
+        <tr><td>默认衣服</td><td>白 T 加白短裤，以主图为准</td></tr>
+        <tr><td>五官</td><td>短黑发、齐刘海、棕眼、浅笑；不锁 Q 版比例</td></tr>
+        <tr><td>训练触发词</td><td><code>wenbao</code> 打头；五官进触发词，caption 只写衣服和姿势</td></tr>
+        <tr><td>画布</td><td>760×760，脚底约 y=748，水平中心 x=380</td></tr>
+      </tbody>
+    </table>
+
+    <h3>本阶段不做</h3>
+    <ul>
+      <li>不开训，不把过审 10 张写入训练集，不找回已删的 25 张</li>
+      <li>不把 <code>wenbao_v1</code> 挂到 Qwen；不启用分层舞台；不恢复四层与入库</li>
+      <li>不做自定义训练 exe；星辉 / moe-social 继续搁置</li>
+    </ul>
+
+    <h3>分工与验收</h3>
+    <table>
+      <thead><tr><th>角色</th><th>本阶段</th></tr></thead>
+      <tbody>
+        <tr><td>Live With You</td><td>整包 PRD、客户端与舞台；角色可见回退（等点头再改代码）；对齐 <code>/api/comfy/draw</code> 时再动手</td></tr>
+        <tr><td>comfyui</td><td>看守 Qwen 官方线；出具出图流程与接口文档；对齐时代官方 API</td></tr>
+        <tr><td>小燕资产管线</td><td>管线 PRD 与设计；看守训练集与过审目录；这轮不开训</td></tr>
+        <tr><td>主人</td><td>最终视觉验收；改客户端、开训、恢复四层需点头</td></tr>
+      </tbody>
+    </table>
+    <ol>
+      <li>访问不到 <code>:8788</code> 时，封面和大厅仍能显示雯宝。</li>
+      <li>正式出图只走 Qwen 官方工作流，母图不变。</li>
+      <li>四层开关仍为关；仓库无未授权提交。</li>
+    </ol>
+  </section>
+
+  <section id="design">
+    <h2>2. 设计说明（客户端与舞台）</h2>
+    <p>设计原则：先看见她；装扮变化立刻反映在立绘上；正式出图和开发预览用同一套身份标准（主图）；提示词只写变量（衣服、姿势、构图），身份交给母图。</p>
+    <h3>信息架构</h3>
+    <div class="diagram">
+      <pre class="mermaid">
+flowchart TB
+  Title[封面 title] --> Lobby[大厅 lobby · 共享舞台]
+  Lobby --> W[换装 wardrobe]
+  Lobby --> R[骨骼 rig]
+  Lobby --> S[闯关 stages]
+  Lobby --> P[星愿幻阁 pavilion]
+  Lobby --> C[图鉴 codex]
+  Lobby --> Chat[密语 chat]
+      </pre>
+    </div>
+    <p>默认装扮：<code>dress-snow-white</code>（初雪白茶）+ 雏菊发夹 + 茶杯 + 晨风光环 + 第一杯茶心境卡。</p>
+    <h3>三条显示路径（同一时间只走一条）</h3>
+    <table>
+      <thead><tr><th>路径</th><th>何时用</th><th>现状</th></tr></thead>
+      <tbody>
+        <tr><td>A. 皮肤帧</td><td>默认套装等非 Comfy 整身图</td><td>本地文件齐全，但 URL 被解析到 8788，库宕则空白</td></tr>
+        <tr><td>B. 整身抠图 + 假切片</td><td>Comfy 的 <code>dress-*</code> 或不透明定制图</td><td>依赖原图加载成功</td></tr>
+        <tr><td>C. 真四层纸娃娃</td><td>开关包含该衣服且四张透明件可探测</td><td>开关为空，有意关闭；未过门的整身图不能当分层</td></tr>
+      </tbody>
+    </table>
+    <p>路径 A 在远端失败时必须回到本地。路径 C 未过门前不要打开。这符合纸娃娃换装的常见做法：统一画布和脚底锚点，层必须是透明切件。</p>
+  </section>
+
+  <section id="arch">
+    <h2>3. 架构（客户端与资源）</h2>
+    <p>技术栈：React 19 + TypeScript + Vite 8，入口只挂 <code>WorldApp.tsx</code>，React DOM + CSS，无 Pixi。活动分支 <code>featurle/xinzhi_feat</code>。官方出图在本机 ComfyUI，工作流以 comfyui 文档为准。</p>
+    <h3>系统上下文</h3>
+    <div class="diagram">
+      <pre class="mermaid">
+flowchart LR
+  User[主人] --> App[WorldApp]
+  App --> Local["public/assets 本地皮肤"]
+  App --> N100["资源库 n100:8788"]
+  App --> ComfyDev["/api/comfy/draw 现仍 MeinaMix"]
+  User --> ComfyUI[本机 ComfyUI]
+  ComfyUI --> Qwen[Qwen 官方工作流]
+  ComfyUI -.-> Archive[已归档 MeinaMix]
+      </pre>
+    </div>
+    <h3>资源解析：现状与目标</h3>
+    <div class="diagram">
+      <pre class="mermaid">
+flowchart LR
+  Path["assets/characters/original/idle.webp"] --> Map[resolveAsset]
+  Map --> URL["http://192.168.124.77:8788/files/base/original-idle.webp"]
+  URL -->|库可达| Show[舞台显示]
+  URL -->|库超时| Blank[舞台空白]
+  Path -.-> Local["public 下文件还在，代码走不到"]
+      </pre>
+    </div>
+    <p>目标修复（尚未改代码）：图片 <code>onerror</code> 回退到本地相对路径；启动时对 8788 做短超时探活，失败则本场会话走本地；不要删除 <code>public/assets</code>。</p>
+  </section>
+
+  <section id="bug">
+    <h2>4. 角色不显示：核实结论</h2>
+    <div class="callout warn">
+      <strong class="tag">本机已核实 · 01:53 ASIA/SHANGHAI</strong>
+      <p>从 ZhuanZ 访问 <code>http://192.168.124.77:8788/</code> 连接超时（curl 退出码 28）。默认立绘经 <code>resolveAsset</code> 变成 <code>/files/base/original-idle.webp</code> 等远端地址，失败后没有回退。<code>public/assets/characters/original/</code> 里 idle、breathe、react 等文件是齐全的。</p>
+    </div>
+    <ul>
+      <li>不是出图问题：官方 Qwen 线用户已过目。</li>
+      <li>不是四层开关被关掉：关闭后本应走本地皮肤帧。</li>
+      <li>幻阁里仍走旧 MeinaMix 代理是另一件事，不会让大厅默认立绘消失，等点头再对齐。</li>
+    </ul>
+    <p>建议修复只动客户端资源解析：<code>onerror</code> 回退、启动探活、保留本地副本。验收：访问不到 8788 时，封面和大厅数秒内仍能看到雯宝。改代码前等主人点头。</p>
+  </section>
+
+  <section id="next">
+    <h2>5. 建议下一步</h2>
+    <ol>
+      <li>主人确认后，Live With You 在客户端补上资源回退，先让角色重新显示。</li>
+      <li>对齐 <code>/api/comfy/draw</code> 时，向 comfyui 要官方 API，按母图加提示词接 Qwen 线，不挂 <code>wenbao_v1</code>。</li>
+      <li>出图与管线的详细 md / html，分别等 comfyui 与小燕资产管线发到群里，与本包并列，不互相覆盖。</li>
+      <li>四层、入库、开训继续不动。</li>
+    </ol>
+    <p>Markdown 原件与本页在同一目录：<code>PRD.md</code>、<code>设计文档.md</code>、<code>架构文档.md</code>、<code>角色不显示分析.md</code>。</p>
+  </section>
+  </main>
+  <footer><div class="wrap">雯宝 / live-with-you · 文档包由 Live With You 出具 · 活动分支 featurle/xinzhi_feat · 未经授权不改仓库</div></footer>
+</body>
+</html>

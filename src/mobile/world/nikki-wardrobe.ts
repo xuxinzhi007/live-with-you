@@ -540,11 +540,20 @@ const LOCAL_WARDROBE_ITEMS: WardrobeItem[] = [
     skillName: "星河华尔兹 +22%",
   },
 ];
-export const WARDROBE_ITEMS: WardrobeItem[] = LOCAL_WARDROBE_ITEMS.map((item) => ({
-  ...item,
-  image: resolveAsset(item.image),
-  bgScene: item.bgScene ? resolveAsset(item.bgScene) : item.bgScene,
-}));
+function withRemoteAssets(item: WardrobeItem): WardrobeItem {
+  return {
+    ...item,
+    image: resolveAsset(item.image),
+    bgScene: item.bgScene ? resolveAsset(item.bgScene) : item.bgScene,
+  };
+}
+
+/** 每次取目录时重新 resolve；不要在模块加载时把远端 URL 烤死。 */
+export function listWardrobeItems(): WardrobeItem[] {
+  return LOCAL_WARDROBE_ITEMS.map(withRemoteAssets);
+}
+
+export const WARDROBE_ITEMS: WardrobeItem[] = listWardrobeItems();
 
 const WISH_RARITY_RANK: Record<ItemRarity, number> = { SSR: 0, SR: 1, R: 2 };
 
@@ -552,7 +561,7 @@ const WISH_RARITY_RANK: Record<ItemRarity, number> = { SSR: 0, SR: 1, R: 2 };
 export function showcaseForWishPool(pool: WishPool): WardrobeItem[] {
   const entry = WISH_POOLS.find((item) => item.id === pool);
   const slots = new Set(entry?.slots ?? WARDROBE_SLOTS);
-  const ranked = WARDROBE_ITEMS.filter((item) => slots.has(item.slot)).sort(
+  const ranked = listWardrobeItems().filter((item) => slots.has(item.slot)).sort(
     (a, b) => WISH_RARITY_RANK[a.rarity] - WISH_RARITY_RANK[b.rarity],
   );
   if (pool === "dress" && ranked.length > 1) return [ranked[1], ranked[0], ranked[2]].filter((item): item is WardrobeItem => Boolean(item));
@@ -582,7 +591,8 @@ export const DEFAULT_EQUIPPED_OUTFIT: EquippedOutfit = {
 };
 
 export function getWardrobeItem(id: string): WardrobeItem {
-  return WARDROBE_ITEMS.find((item) => item.id === id) ?? WARDROBE_ITEMS[0];
+  const item = LOCAL_WARDROBE_ITEMS.find((it) => it.id === id) ?? LOCAL_WARDROBE_ITEMS[0];
+  return withRemoteAssets(item);
 }
 
 /* ==================== 《奇迹暖暖》式舞台 PK 主动技能 ==================== */

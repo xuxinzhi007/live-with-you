@@ -1,7 +1,0 @@
-{
-  "unofficial": true,
-  "reason": "API-override compare aborted after group decision: gate must come from the official dress template, not a temporary API graph. These files are not the gate plate. No upscale/rematte/ingest was performed on this attempt after the stop.",
-  "seed": 202611110401,
-  "prompt_id": "97eae94f-895a-469b-8f7f-fc988109152f",
-  "workflow": "run-official-dress.mjs API graph (not loaded from official JSON)"
-}

@@ -78,6 +78,7 @@ import {
 import {
   mapLocalAsset,
   resolveAsset,
+  resetRemoteAssetStateForTests,
 } from "../src/mobile/world/remote-assets.ts";
 
 function createMemoryStorage(seed = {}) {
@@ -342,7 +343,8 @@ test("layered paper-doll paths map to base/dress remote categories and probe fal
   assert.deepEqual(mapLocalAsset(local.armsFront), { cat: "base", name: "original-arms-front.png" });
   assert.deepEqual(mapLocalAsset(local.dress), { cat: "dress", name: "dress-snow-white.png" });
 
-  assert.equal(isPhase1LayeredOutfit("dress-snow-white"), true);
+  // 四层仍暂停（PHASE1_LAYERED_OUTFIT_IDS 为空），过目分层件到位前不要当成已启用。
+  assert.equal(isPhase1LayeredOutfit("dress-snow-white"), false);
   assert.equal(isPhase1LayeredOutfit("dress-apricot-tea"), false);
   assert.equal(isPhase1LayeredOutfit("dress-rose-waltz"), false);
   assert.deepEqual(mapLocalAsset("assets/nikki/dress-apricot-tea.png"), {
@@ -353,6 +355,15 @@ test("layered paper-doll paths map to base/dress remote categories and probe fal
   const resolved = resolveLayeredPartUrls("original", "dress-snow-white");
   assert.equal(resolved.body, local.body);
   assert.equal(resolveAsset(local.dress), local.dress);
+
+  resetRemoteAssetStateForTests("unknown");
+  assert.equal(resolveAsset(local.body), local.body);
+  resetRemoteAssetStateForTests("down");
+  assert.equal(resolveAsset(local.body), local.body);
+  // Node 测试没有 Vite env，getAssetBaseUrl 为空，即使标记 up 也必须回落本地。
+  resetRemoteAssetStateForTests("up");
+  assert.equal(resolveAsset(local.body), local.body);
+  resetRemoteAssetStateForTests("unknown");
 
   const ready = await probeLayeredParts(resolved);
   assert.equal(ready, false, "Node has no Image loader; missing local public parts must fall back");
