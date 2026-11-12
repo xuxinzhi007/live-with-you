@@ -1,0 +1,5 @@
+exit 0
+cmd npm run test:mobile && npm run build
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - import "./vite-plugins/couple-room-dev" without a file extension (vite.config.ts:4:37). Add the file extension
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.

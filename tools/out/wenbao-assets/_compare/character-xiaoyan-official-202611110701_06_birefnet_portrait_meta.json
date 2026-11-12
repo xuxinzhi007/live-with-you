@@ -1,0 +1,15 @@
+{
+  "src": "/workspace/wenbao-pipeline/official-align/character-xiaoyan-official-202611110701_05_facedetailer.png",
+  "session": "birefnet-portrait",
+  "size": [
+    1024,
+    1280
+  ],
+  "keep_gt16": 0.151546,
+  "opaque_gt240": 0.130087,
+  "mid_16_240": 0.021282,
+  "white": "/workspace/wenbao-pipeline/official-align/character-xiaoyan-official-202611110701_06_birefnet_portrait_white.png",
+  "rgba": "/workspace/wenbao-pipeline/official-align/character-xiaoyan-official-202611110701_06_birefnet_portrait_rgba.png",
+  "display_2x_white": null,
+  "display_2x_rgba": null
+}

@@ -1,0 +1,26 @@
+{
+  "official": true,
+  "official_json": "D:\\xuxinzhi\\ComfyUI_windows_portable_nvidia\\ComfyUI_windows_portable\\ComfyUI\\user\\default\\workflows\\MeinaMix_雯宝LoRA_换装抠图.json",
+  "source": "loaded official UI workflow (not an API-only override graph)",
+  "name": "character-xiaoyan-official-202611110501.png",
+  "seed": 202611110501,
+  "face": "standby-bust-white.png",
+  "pose": "xiaoyan_pose_stand_clean_padded.png",
+  "prompt": "masterpiece, best quality, xiaoyan, full body, solo, 1girl, standing, front view, looking at viewer, arms at sides, wearing a plain white t-shirt and white shorts, short black hair, brown eyes, simple white background, soft even lighting, no props, feet visible, entire body in frame",
+  "negative": "overexposed, blown out highlights, high-key, vignette, circle, oval, ring, halo, backdrop, spotlight, lantern, ornament, gourd, prop, object, scenery, furniture, chair, seat, pillar, doorway, door, curtain, frame, border, extra objects, wings, black dress, long skirt, dark background, complex background, window, shadow, floor, wooden floor, cropped, cropped feet, cut off, close-up, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, worst quality, low quality, watermark, blurry, multiple girls, extra limbs, deformed, socks, stockings, red eyes",
+  "prompt_id": "2c6f8930-b655-4f4c-9456-74dcfb63c2d3",
+  "saved": {
+    "poseskel": "C:\\Users\\ZhuanZ1\\Desktop\\wenbebi\\tools\\out\\wenbao-assets\\_compare\\character-xiaoyan-official-202611110501_poseskel.png",
+    "raw": "C:\\Users\\ZhuanZ1\\Desktop\\wenbebi\\tools\\out\\wenbao-assets\\_compare\\raw\\character-xiaoyan-official-202611110501_raw.png",
+    "animesharp4x_raw": "C:\\Users\\ZhuanZ1\\Desktop\\wenbebi\\tools\\out\\wenbao-assets\\_compare\\character-xiaoyan-official-202611110501_animesharp4x_raw.png",
+    "animesharp2x_raw": "C:\\Users\\ZhuanZ1\\Desktop\\wenbebi\\tools\\out\\wenbao-assets\\_compare\\character-xiaoyan-official-202611110501_animesharp2x_raw.png"
+  },
+  "note": "compare only; not copied to nikki or :8788; formal matte is official-isnet-rematte.py (isnet-anime), color-key is disabled",
+  "official_rematte": {
+    "script": "C:\\Users\\ZhuanZ1\\Desktop\\wenbebi\\tools\\official-isnet-rematte.py",
+    "model": "isnet-anime",
+    "src": "character-xiaoyan-official-202611110501_animesharp4x_raw.png",
+    "note": "ran on box rembg venv; Comfy has no isnet node. Color-key was not used."
+  },
+  "gate": "visual inspection of 2x white; compare only; not ingested"
+}

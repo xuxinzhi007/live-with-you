@@ -1,0 +1,272 @@
+{
+  "4": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "meinamix_v12Final.safetensors"
+    }
+  },
+  "12": {
+    "class_type": "LoraLoader",
+    "inputs": {
+      "model": [
+        "4",
+        0
+      ],
+      "clip": [
+        "4",
+        1
+      ],
+      "lora_name": "xiaoyan.safetensors",
+      "strength_model": 0.8,
+      "strength_clip": 0.8
+    }
+  },
+  "10": {
+    "class_type": "CLIPSetLastLayer",
+    "inputs": {
+      "clip": [
+        "12",
+        1
+      ],
+      "stop_at_clip_layer": -2
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "10",
+        0
+      ],
+      "text": "masterpiece, best quality, xiaoyan, full body, solo, 1girl, standing, front view, looking at viewer, arms at sides, wearing a plain white t-shirt and white shorts, short black hair, brown eyes, simple white background, soft even lighting, no props, feet visible, entire body in frame"
+    }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "10",
+        0
+      ],
+      "text": "overexposed, blown out highlights, high-key, vignette, circle, oval, ring, halo, backdrop, spotlight, lantern, ornament, gourd, prop, object, scenery, furniture, chair, seat, pillar, doorway, door, curtain, frame, border, extra objects, wings, black dress, long skirt, dark background, complex background, window, shadow, floor, wooden floor, cropped, cropped feet, cut off, close-up, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, worst quality, low quality, watermark, blurry, multiple girls, extra limbs, deformed, socks, stockings, red eyes"
+    }
+  },
+  "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 512,
+      "height": 640,
+      "batch_size": 1
+    }
+  },
+  "3": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "22",
+        0
+      ],
+      "positive": [
+        "27",
+        0
+      ],
+      "negative": [
+        "27",
+        1
+      ],
+      "latent_image": [
+        "5",
+        0
+      ],
+      "seed": 284168658032071,
+      "steps": 26,
+      "cfg": 6.8,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1
+    }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "4",
+        2
+      ]
+    }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "8",
+        0
+      ],
+      "filename_prefix": "Wenbao_Raw"
+    }
+  },
+  "20": {
+    "class_type": "IPAdapterUnifiedLoader",
+    "inputs": {
+      "model": [
+        "12",
+        0
+      ],
+      "preset": "PLUS FACE (portraits)"
+    }
+  },
+  "21": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "standby-bust-white.png"
+    }
+  },
+  "22": {
+    "class_type": "IPAdapter",
+    "inputs": {
+      "model": [
+        "20",
+        0
+      ],
+      "ipadapter": [
+        "20",
+        1
+      ],
+      "image": [
+        "21",
+        0
+      ],
+      "weight": 0.8,
+      "start_at": 0,
+      "end_at": 1,
+      "weight_type": "standard"
+    }
+  },
+  "23": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "xiaoyan_pose_stand_clean_padded.png"
+    }
+  },
+  "24": {
+    "class_type": "ImageScaleToMaxDimension",
+    "inputs": {
+      "image": [
+        "23",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "largest_size": 768
+    }
+  },
+  "25": {
+    "class_type": "OpenposePreprocessor",
+    "inputs": {
+      "image": [
+        "24",
+        0
+      ],
+      "detect_hand": "enable",
+      "detect_body": "enable",
+      "detect_face": "enable",
+      "resolution": 512,
+      "scale_stick_for_xinsr_cn": "disable"
+    }
+  },
+  "26": {
+    "class_type": "ControlNetLoader",
+    "inputs": {
+      "control_net_name": "control_v11p_sd15_openpose.pth"
+    }
+  },
+  "27": {
+    "class_type": "ControlNetApplyAdvanced",
+    "inputs": {
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "control_net": [
+        "26",
+        0
+      ],
+      "image": [
+        "25",
+        0
+      ],
+      "strength": 0.85,
+      "start_percent": 0,
+      "end_percent": 1
+    }
+  },
+  "28": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "25",
+        0
+      ],
+      "filename_prefix": "Wenbao_Dress_PoseSkel"
+    }
+  },
+  "40": {
+    "class_type": "UpscaleModelLoader",
+    "inputs": {
+      "model_name": "4x-AnimeSharp.pth"
+    }
+  },
+  "41": {
+    "class_type": "ImageUpscaleWithModel",
+    "inputs": {
+      "upscale_model": [
+        "40",
+        0
+      ],
+      "image": [
+        "8",
+        0
+      ]
+    }
+  },
+  "42": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "41",
+        0
+      ],
+      "filename_prefix": "Wenbao_Official_AnimeSharp4x"
+    }
+  },
+  "43": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "image": [
+        "41",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "width": 1024,
+      "height": 1280,
+      "crop": "disabled"
+    }
+  },
+  "44": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "43",
+        0
+      ],
+      "filename_prefix": "Wenbao_Official_AnimeSharp2x"
+    }
+  }
+}

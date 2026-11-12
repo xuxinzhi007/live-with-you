@@ -16,8 +16,8 @@ export type LayerSkinId = "original" | "maid";
 
 export type StageMotion = "idle" | "react" | "equip";
 
-/** 第一期只启用这一套透明四层。其它裙子仍是 /files/dress 里的不透明整身图，不能当 dress 层。 */
-export const PHASE1_LAYERED_OUTFIT_IDS = ["dress-snow-white"] as const;
+/** 第一期候选是 dress-snow-white，但图库四张仍是整身图、尚未过门，暂不启用探测。过门后再加回。 */
+export const PHASE1_LAYERED_OUTFIT_IDS = [] as const;
 
 export function isPhase1LayeredOutfit(outfitId: string): boolean {
   return (PHASE1_LAYERED_OUTFIT_IDS as readonly string[]).includes(outfitId);

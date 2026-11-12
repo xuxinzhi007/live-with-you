@@ -1,0 +1,45 @@
+# 雯宝 / 林小燕 · 官方出图管线（合并说明）
+
+## 三条官方路径（不要再平行维护十几条短图）
+
+| 路径 | 工作流 / 命令 | 用途 |
+|------|----------------|------|
+| **Official dress** | `MeinaMix_雯宝LoRA_换装抠图.json` + `tools/run-official-dress.mjs` + `tools/official-isnet-rematte.py` | 锁脸锁姿全身对照；AnimeSharp 放大后用 isnet-anime 铺纯白底 |
+| **Official card** | V7 `generate-comfy-assets.mjs` 的 `kind=card`（512×640 CG） | 图鉴/评比，**不当衣服层** |
+| **Experimental** | `MeinaMix_小燕LoRA.json` | 纯提示词试姿势/服装，**无锁姿 = unofficial** |
+
+## Official dress 阶段（必须连在一起，不是事后补丁）
+
+1. MeinaMix + `xiaoyan.safetensors` LoRA 0.8/0.8（本轮暂不改名为 wenbao）
+2. IPAdapter PLUS FACE 锁脸（`standby-bust-white.png`，权重 0.80）
+3. OpenPose → ControlNet 0.85 end=1.0（默认 `xiaoyan_pose_stand_clean_padded.png`，头脚留边；先看骨架预览）
+4. 采样（512×640，dpmpp_2m / karras / 26 / cfg 6.8）→ `Wenbao_Raw`
+5. 图内 **4x-AnimeSharp** → `Wenbao_Official_AnimeSharp4x`，lanczos 1024×1280 → `Wenbao_Official_AnimeSharp2x`
+6. **正式抠图**：`python tools/official-isnet-rematte.py --src <AnimeSharp RAW> --stem <name>`（rembg `isnet-anime` 铺纯白底）。由 `tools/run-official-dress.mjs` 在出图后自动调用。颜色键 / 洪水填充已停用，不当正式抠图。
+
+默认衣服锁定为白 T 恤 + 白短裤。正向要求全身入画、脚可见；背景用温和的 `simple white background`，不要用 `(plain solid white background:1.6)`。负向要挡门/柱/框/家具/地面/椭圆/背景板，**不要**写 `shorts`。
+
+本轮不加 FaceDetailer。对照只写到 `tools/out/wenbao-assets/_compare/`，不入库、不上 :8788。
+
+仓库内同步副本：`tools/workflows/MeinaMix_雯宝LoRA_换装抠图.json`。本机 Comfy 正在用的是 `ComfyUI/user/default/workflows/` 下同名文件；改官方模板时两边一起改。`MeinaMix_小燕_姿势训练集_v2.json` 是训练采图路径，本轮未改。
+
+## 可合并 / 建议弃用（保留文件但不要当正式源）
+
+| 工作流 | 建议 |
+|--------|------|
+| `MeinaMix_同角色换姿势.json` | 与姿势训练集_v2 重复 → **并入/让位** 姿势训练集_v2（训练采图）与官方换装抠图（礼服/默认衣服） |
+| `MeinaMix_小燕_成长后站姿_solo02.json` | 单姿势特化 → 用官方 dress 换姿势参考即可 |
+| `MeinaMix_训练集出图.json` / `_mcpfix` | 训练辅助 → 保留给采数据，不当衣柜 |
+| `MeinaMix_文生图.json` / `图生图` / `补全全身` / `全身统一` | 早期短图 → **experimental only**；`补全全身` 已于 2026-11-08 移入 `_archive_20261108`（半身扩图，禁止雯宝四层） |
+| `MeinaMix_小燕LoRA.json` | **保留为 unofficial 试提示词**（在 `_archive_20261106`） |
+| `MeinaMix_小燕_姿势训练集_v2.json` | **保留（live，本轮未改）**：挂 `xiaoyan` LoRA 0.8 + 锁脸+锁姿采训练图；正式对照改走「换装抠图」官方版 |
+
+未删除任何工作流文件。2026-11-11：官方换装模板写入锁定链（白 T+白短裤、留边姿势、AnimeSharp），颜色键改为 deprecated，正式抠图改走 isnet-anime 官方后处理。
+
+## 残留抽奖风险
+
+- 姿势参考裁腿 / 骨架抽空 → 仍会漂；必须先看骨架预览，默认用 padded 站姿
+- IPAdapter 过强会压服装细节；过弱脸会漂
+- 底模仍可能画出棚拍椭圆、门框或道具；负向已加门/框/椭圆，但仍要目视过门
+- 无 ControlNet、或只用 API 临时覆盖提示词而不走官方 JSON = unofficial
+- 本机 Comfy 无 isnet/rembg 节点，所以正式抠图在官方 runner 后处理里跑

@@ -1,0 +1,27 @@
+{
+  "official": true,
+  "official_json": "D:\\xuxinzhi\\ComfyUI_windows_portable_nvidia\\ComfyUI_windows_portable\\ComfyUI\\user\\default\\workflows\\MeinaMix_雯宝LoRA_换装抠图.json",
+  "source": "loaded official UI workflow (not an API-only override graph)",
+  "name": "character-xiaoyan-official-202611110601.png",
+  "seed": 202611110601,
+  "face": "standby-bust-white.png",
+  "pose": "xiaoyan_pose_stand_clean_padded.png",
+  "prompt": "masterpiece, best quality, xiaoyan, chibi, q-version, chibi proportions, large head, full body, solo, 1girl, standing, front view, looking at viewer, arms at sides, wearing a plain white t-shirt and white shorts, short black hair, straight bangs, brown eyes, simple white background, soft even lighting, no props, feet visible, entire body in frame",
+  "negative": "realistic, photorealistic, realistic proportions, realistic face, adult body, small head, long legs, tall, western cartoon, overexposed, blown out highlights, high-key, vignette, circle, oval, ring, halo, backdrop, spotlight, lantern, ornament, gourd, prop, object, scenery, furniture, chair, seat, pillar, doorway, door, curtain, frame, border, extra objects, wings, black dress, long skirt, dark background, complex background, window, shadow, floor, wooden floor, cropped, cropped feet, cut off, close-up, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, worst quality, low quality, watermark, blurry, multiple girls, extra limbs, deformed, socks, stockings, red eyes, colored rim light, orange stain, orange lighting, color contamination, extra hair clumps, stray hair, floating hair, hair fragment",
+  "prompt_id": "b54700f0-82ac-407f-90fa-a92320df1c58",
+  "saved": {
+    "poseskel": "C:\\Users\\ZhuanZ1\\Desktop\\wenbebi\\tools\\out\\wenbao-assets\\_compare\\character-xiaoyan-official-202611110601_poseskel.png",
+    "raw": "C:\\Users\\ZhuanZ1\\Desktop\\wenbebi\\tools\\out\\wenbao-assets\\_compare\\raw\\character-xiaoyan-official-202611110601_raw.png",
+    "animesharp4x_raw": "C:\\Users\\ZhuanZ1\\Desktop\\wenbebi\\tools\\out\\wenbao-assets\\_compare\\character-xiaoyan-official-202611110601_animesharp4x_raw.png",
+    "animesharp2x_raw": "C:\\Users\\ZhuanZ1\\Desktop\\wenbebi\\tools\\out\\wenbao-assets\\_compare\\character-xiaoyan-official-202611110601_animesharp2x_raw.png"
+  },
+  "note": "compare only; not copied to nikki or :8788; formal matte is official-isnet-rematte.py (isnet-anime), color-key is disabled",
+  "official_rematte": {
+    "script": "tools/official-isnet-rematte.py",
+    "model": "isnet-anime",
+    "src": "character-xiaoyan-official-202611110601_animesharp4x_raw.png",
+    "note": "ran on box rembg venv; keep-mask 0.360 includes the double grey oval backdrop"
+  },
+  "gate": "FAIL: face not 待机状态 (eyes/bangs); oval backdrop left in white; compare only; not ingested",
+  "ipadapter_weight": 0.9
+}

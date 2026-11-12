@@ -1,0 +1,259 @@
+/**
+ * Official dress runner — queues the live ComfyUI graph
+ * `MeinaMix_雯宝LoRA_换装抠图` (LoRA 0.8 + IPAdapter FACE 0.8 +
+ * photo → OpenposePreprocessor → ControlNet 0.85 / end 1.0).
+ *
+ * Usage (from repo root):
+ *   node tools/run-official-dress.mjs --name dress-apricot-tea.png
+ *
+ * Writes only under tools/out/wenbao-assets/_compare/ by default.
+ * Does not copy to public/assets/nikki or upload to :8788.
+ */
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+
+const COMFY_URL = process.env.COMFY_BASE_URL || "http://127.0.0.1:8188";
+const CHECKPOINT = "meinamix_v12Final.safetensors";
+const LORA_FILE = "xiaoyan.safetensors";
+const FACE_REF = process.env.COMFY_FACE_IMAGE || "待机状态.png";
+const POSE_REF = process.env.COMFY_CONTROLNET_IMAGE || "xiaoyan_pose_stand_clean.png";
+const STAGE_ROOT = path.resolve(process.env.WENBAO_STAGE_ROOT || "tools/out/wenbao-assets/_compare");
+
+const OFFICIAL_NEGATIVE =
+  "wings, black dress, dark background, complex background, scenery, furniture, window, shadow, floor, cropped, close-up, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, worst quality, low quality, watermark, blurry, multiple girls, extra limbs, deformed";
+
+const PRESETS = {
+  "dress-apricot-tea.png": {
+    seed: 202611102301,
+    prompt:
+      "masterpiece, best quality, xiaoyan, full body, solo, 1girl, wearing a warm apricot beige cable-knit sweater dress with a brown caramel ribbon bow at collar, warm cream stockings, brown mary jane shoes, standing, front view, looking at viewer, (plain solid white background:1.4), simple background",
+  },
+  "character-xiaoyan-clean.png": {
+    seed: 202611102501,
+    prompt:
+      "masterpiece, best quality, xiaoyan, full body, solo, 1girl, standing, front view, looking at viewer, arms at sides, wearing a plain white t-shirt, (plain solid white background:1.6), simple background, no props",
+    negative:
+      "lantern, paper lantern, hanging beads, ornament, gourd, prop, object, scenery, furniture, pillar, doorway, curtain, frame, border, extra objects, wings, black dress, dark background, complex background, window, shadow, floor, cropped, close-up, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, worst quality, low quality, watermark, blurry, multiple girls, extra limbs, deformed",
+  },
+};
+
+function parseArgs(argv) {
+  const out = { name: "dress-apricot-tea.png", seed: null, prompt: null, negative: null };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    const next = () => argv[++i];
+    if (a === "--name") out.name = next();
+    else if (a === "--seed") out.seed = Number(next());
+    else if (a === "--prompt") out.prompt = next();
+    else if (a === "--negative") out.negative = next();
+  }
+  return out;
+}
+
+function buildOfficialDressGraph({ prompt, negative, seed }) {
+  return {
+    "4": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: CHECKPOINT } },
+    "12": {
+      class_type: "LoraLoader",
+      inputs: {
+        model: ["4", 0],
+        clip: ["4", 1],
+        lora_name: LORA_FILE,
+        strength_model: 0.8,
+        strength_clip: 0.8,
+      },
+    },
+    "10": {
+      class_type: "CLIPSetLastLayer",
+      inputs: { clip: ["12", 1], stop_at_clip_layer: -2 },
+    },
+    "6": { class_type: "CLIPTextEncode", inputs: { text: prompt, clip: ["10", 0] } },
+    "7": { class_type: "CLIPTextEncode", inputs: { text: negative, clip: ["10", 0] } },
+    "5": {
+      class_type: "EmptyLatentImage",
+      inputs: { width: 512, height: 640, batch_size: 1 },
+    },
+    "20": {
+      class_type: "IPAdapterUnifiedLoader",
+      inputs: { model: ["12", 0], preset: "PLUS FACE (portraits)" },
+    },
+    "21": { class_type: "LoadImage", inputs: { image: FACE_REF } },
+    "22": {
+      class_type: "IPAdapter",
+      inputs: {
+        model: ["20", 0],
+        ipadapter: ["20", 1],
+        image: ["21", 0],
+        weight: 0.8,
+        start_at: 0,
+        end_at: 1,
+        weight_type: "standard",
+      },
+    },
+    "23": { class_type: "LoadImage", inputs: { image: POSE_REF } },
+    "24": {
+      class_type: "ImageScaleToMaxDimension",
+      inputs: { image: ["23", 0], upscale_method: "lanczos", largest_size: 768 },
+    },
+    "25": {
+      class_type: "OpenposePreprocessor",
+      inputs: {
+        image: ["24", 0],
+        detect_hand: "enable",
+        detect_body: "enable",
+        detect_face: "enable",
+        resolution: 512,
+        scale_stick_for_xinsr_cn: "disable",
+      },
+    },
+    "26": {
+      class_type: "ControlNetLoader",
+      inputs: { control_net_name: "control_v11p_sd15_openpose.pth" },
+    },
+    "27": {
+      class_type: "ControlNetApplyAdvanced",
+      inputs: {
+        positive: ["6", 0],
+        negative: ["7", 0],
+        control_net: ["26", 0],
+        image: ["25", 0],
+        strength: 0.85,
+        start_percent: 0,
+        end_percent: 1,
+      },
+    },
+    "3": {
+      class_type: "KSampler",
+      inputs: {
+        seed,
+        steps: 26,
+        cfg: 6.8,
+        sampler_name: "dpmpp_2m",
+        scheduler: "karras",
+        denoise: 1,
+        model: ["22", 0],
+        positive: ["27", 0],
+        negative: ["27", 1],
+        latent_image: ["5", 0],
+      },
+    },
+    "8": { class_type: "VAEDecode", inputs: { samples: ["3", 0], vae: ["4", 2] } },
+    "9": {
+      class_type: "SaveImage",
+      inputs: { filename_prefix: "Wenbao_OfficialCompare_Raw", images: ["8", 0] },
+    },
+    "28": {
+      class_type: "SaveImage",
+      inputs: { filename_prefix: "Wenbao_OfficialCompare_PoseSkel", images: ["25", 0] },
+    },
+  };
+}
+
+async function waitForPrompt(promptId, timeoutMs = 240000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    await new Promise((r) => setTimeout(r, 1000));
+    const histRes = await fetch(`${COMFY_URL}/history/${encodeURIComponent(promptId)}`);
+    if (!histRes.ok) continue;
+    const hist = await histRes.json();
+    const record = hist[promptId];
+    if (!record) continue;
+    if (record.status?.completed === false && record.status?.status_str === "error") {
+      throw new Error(`ComfyUI error: ${JSON.stringify(record.status)}`);
+    }
+    const outputs = record.outputs || {};
+    const images = [];
+    for (const [nodeId, nodeOut] of Object.entries(outputs)) {
+      for (const img of nodeOut?.images || []) {
+        images.push({ nodeId, ...img });
+      }
+    }
+    if (images.length) return { record, images };
+  }
+  throw new Error(`Timeout waiting for ${promptId}`);
+}
+
+async function downloadImage(img, destPath) {
+  const q = new URLSearchParams({
+    filename: img.filename,
+    subfolder: img.subfolder || "",
+    type: img.type || "output",
+  });
+  const viewRes = await fetch(`${COMFY_URL}/view?${q.toString()}`);
+  if (!viewRes.ok) throw new Error(`view HTTP ${viewRes.status} for ${img.filename}`);
+  const buf = Buffer.from(await viewRes.arrayBuffer());
+  await writeFile(destPath, buf);
+  return buf.length;
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const preset = PRESETS[args.name] || {};
+  const prompt = args.prompt || preset.prompt;
+  const negative = args.negative || preset.negative || OFFICIAL_NEGATIVE;
+  const seed = Number.isFinite(args.seed) ? args.seed : (preset.seed ?? 202611102301);
+  if (!prompt) {
+    console.error(`No prompt for ${args.name}. Pass --prompt or add a preset.`);
+    process.exit(1);
+  }
+
+  const rawDir = path.join(STAGE_ROOT, "raw");
+  await mkdir(rawDir, { recursive: true });
+  const stem = args.name.replace(/\.png$/i, "");
+  const meta = {
+    official: true,
+    workflow: "MeinaMix_雯宝LoRA_换装抠图",
+    name: args.name,
+    seed,
+    lora: `${LORA_FILE} 0.8/0.8`,
+    ipadapter: `PLUS FACE 0.8 + ${FACE_REF}`,
+    controlnet: `OpenposePreprocessor -> CN 0.85 end=1.0 + ${POSE_REF}`,
+    canvas: "512x640",
+    sampler: "dpmpp_2m / karras / 26 / cfg 6.8",
+    prompt,
+    negative,
+    note: "compare only; not copied to nikki or :8788; Cutout node skipped (draft color-key)",
+  };
+  console.log(`Official dress compare -> ${STAGE_ROOT}`);
+  console.log(JSON.stringify({ seed, face: FACE_REF, pose: POSE_REF, name: args.name }, null, 2));
+
+  const graph = buildOfficialDressGraph({ prompt, negative, seed });
+  const submitRes = await fetch(`${COMFY_URL}/prompt`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ client_id: "wenbebi-official-dress", prompt: graph }),
+  });
+  const submitText = await submitRes.text();
+  if (!submitRes.ok) {
+    throw new Error(`ComfyUI /prompt HTTP ${submitRes.status}: ${submitText}`);
+  }
+  const submitJson = JSON.parse(submitText);
+  if (submitJson.node_errors && Object.keys(submitJson.node_errors).length) {
+    throw new Error(`node_errors: ${JSON.stringify(submitJson.node_errors, null, 2)}`);
+  }
+  const promptId = submitJson.prompt_id;
+  if (!promptId) throw new Error(`No prompt_id: ${submitText}`);
+  console.log(`queued ${promptId}`);
+
+  const { images } = await waitForPrompt(promptId);
+  const saved = [];
+  for (const img of images) {
+    const isSkel = /PoseSkel/i.test(img.filename) || img.nodeId === "28";
+    const outName = isSkel ? `${stem}_poseskel.png` : `${stem}_raw.png`;
+    const dest = path.join(isSkel ? STAGE_ROOT : rawDir, isSkel ? outName : outName);
+    const destFinal = isSkel ? path.join(STAGE_ROOT, outName) : path.join(rawDir, outName);
+    const bytes = await downloadImage(img, destFinal);
+    saved.push({ file: destFinal, bytes, comfy: img.filename, nodeId: img.nodeId });
+    console.log(`saved ${destFinal} (${(bytes / 1024).toFixed(1)} KiB) from ${img.filename}`);
+  }
+  meta.saved = saved;
+  meta.prompt_id = promptId;
+  const metaPath = path.join(STAGE_ROOT, `${stem}_meta.json`);
+  await writeFile(metaPath, JSON.stringify(meta, null, 2));
+  console.log(`DONE compare only. meta ${metaPath}`);
+}
+
+main().catch((err) => {
+  console.error("ERROR:", err);
+  process.exit(1);
+});

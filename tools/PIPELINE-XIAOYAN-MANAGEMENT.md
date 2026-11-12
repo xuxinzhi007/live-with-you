@@ -1,11 +1,36 @@
 # 小燕 / 雯宝 · 出图与训练管理说明（调整版）
 
+> **2026-11-13 归档（Asia/Shanghai）：** 旧 MeinaMix 官方工作流（`MeinaMix_雯宝LoRA_换装抠图.json`、`MeinaMix_小燕_姿势训练集_v2.json` 及其 live 目录下的 `.bak*`）已移入 `_archive_20261113_meinamix`（Comfy `user/default/workflows/` 与 `wenbebi/tools/workflows/` 各一份）。现行官方出图为 `Qwen_Image_Edit_2509_Q4_官方出图.json`。不要再打开或排队已归档的 MeinaMix 官方图。`tools/run-official-dress.py` / `.mjs` 默认拒绝再跑七组；历史回放需显式 `--legacy-meinamix`。
+
 > 只写管理规则，不新建第三条万能工作流 JSON。  
-> 整理日期：2026-11-08（Asia/Shanghai）→ **调整版落地**  
-> 角色 LoRA 正式名 / trigger：**继续 `xiaoyan`**（本轮不切 `wenbao`）  
-> 正式文件：`xiaoyan.safetensors`
+> 整理日期：2026-11-08（Asia/Shanghai）→ **调整版落地**；2026-11-13 官方角色 LoRA 过门切到 `wenbao_v1`  
+> **2026-11-13 再补充：正式角色出图已改为 Qwen-Image-Edit-2509 Q4**（见下方新节）。此前正式出图是 MeinaMix+LoRA；`wenbao_v1` / 七组锁脸锁姿不再作为正式出图路径。
+> 角色 LoRA 正式文件：`wenbao_v1.safetensors`（强度 `0.8 / 0.8`）  
+> 正式 trigger：`wenbao`  
+> 前正式文件 `xiaoyan.safetensors` 及检查点 `xiaoyan-000001`…`000009` 保留，不删不覆盖
 
 ---
+
+## 2026-11-13 · 正式角色出图切到 Qwen-Image-Edit-2509 Q4
+
+用户明确要求正式角色出图走已经跑通的新 Qwen 流程，不再用 MeinaMix。
+
+- **现用正式角色出图**：`Qwen_Image_Edit_2509_Q4_官方出图.json`（由已跑通的 `Qwen_Image_Edit_2509_Q4_experimental.json` 提升为官方线，生成参数未改：Unet `Qwen-Image-Edit-2509-Q4_K_M.gguf` + CLIP `qwen_2.5_vl_7b_fp8_scaled.safetensors` / `CLIPLoader` type `qwen_image` + Lightning 8-step LoRA 强度 1.0 + AuraFlow shift 3.0 + CFGNorm 1.0；KSampler 8 步 / CFG 1 / euler / simple / denoise 1.0；母图锁定 `Wenbao_redraw_00001_.png`，原生 512×768，不用 FluxKontextImageScale）。官方 fp8 Qwen unet 装不进 8GB，继续走这条 Q4。
+- **此前正式出图**是 MeinaMix + 角色 LoRA（含七组 IPAdapter/OpenPose 换装线）。用户问为什么不用新的 Qwen 流程后，该 MeinaMix 七组路径不再作为正式角色出图。
+- `wenbao_v1.safetensors` 仍留在磁盘，需要时还可挂到 MeinaMix 上，但**不能**挂到 Qwen。A 线 / B 线官方 MeinaMix JSON 已于 2026-11-13 移入 `_archive_20261113_meinamix`（未删除）。
+- 实验文件 `Qwen_Image_Edit_2509_Q4_experimental.json` 原样保留。`tools/run-official-dress.py` / `.mjs` 默认拒绝再跑旧 MeinaMix 七组，并指向上述 Qwen 官方工作流与归档目录；历史回放需显式 `--legacy-meinamix`。
+
+（下面「官方角色 LoRA 过门切到 wenbao_v1」记录保持原样：那是把 MeinaMix 线上的 LoRA 从 `xiaoyan` 切到 `wenbao_v1`，不是这条 Qwen 出图线。）
+
+## 2026-11-13 · 官方角色 LoRA 过门切到 wenbao_v1
+
+用户目视过门第一版 `wenbao_v1` 对照图（MeinaMix 文生图正面 / 侧身 / 略偏 3/4，强度 0.8）后批准正式切换。
+
+- 官方 A/B 线 LoRA：`xiaoyan.safetensors` → `wenbao_v1.safetensors`，强度仍为 `0.8 / 0.8`（采样、CLIP skip、锁脸、锁姿、FaceDetailer、IPAdapter、OpenPose、默认 rematte `isnet-anime` 均未改）。
+- 官方正向 trigger：`xiaoyan` → `wenbao`（姿势参考图文件名、输出前缀、工作流 id 未改）。
+- `xiaoyan.safetensors` 与 `000001`–`000009` 检查点保留。未开新训练，未改四层 / 入库 / 上传。
+
+（下面「调整版 2026-11-08」记录保持原样：当时正式文件与 trigger 仍为 `xiaoyan`。）
 
 ## 调整版 2026-11-08 · 变更记录
 
@@ -89,13 +114,13 @@ Checkpoint → Character LoRA → IPAdapter(脸) → OpenPose预处理 → Contr
 | 槽位 | 当前值 |
 |------|--------|
 | 底模 | `meinamix_v12Final.safetensors` |
-| 角色 LoRA | **`xiaoyan.safetensors`，`0.8 / 0.8`**（调整版已挂） |
+| 角色 LoRA | **`wenbao_v1.safetensors`，`0.8 / 0.8`**（2026-11-13 过门；前正式 `xiaoyan.safetensors` 保留） |
 | CLIP skip | `-2` |
 | 锁脸 | `待机状态.png` + IPAdapter PLUS FACE，权重 `0.8` |
 | 锁姿 | `xiaoyan_pose_stand_clean.png` → **OpenposePreprocessor** → ControlNet `0.85`，`end=1.0` |
 | 画布 | `512×768` |
 | 采样 | 28 步，cfg 7，`dpmpp_2m` / `karras`，denoise 1.0 |
-| 正向原则 | `xiaoyan` + 姿势/构图词；**不堆**蓝发绿眼长描述 |
+| 正向原则 | `wenbao` + 姿势/构图词；**不堆**蓝发绿眼长描述 |
 | 输出前缀 | `MeinaMix_xiaoyan_pose_train` + 骨架预览 `MeinaMix_xiaoyan_pose_skel` |
 
 **即拿即用时只改**
@@ -114,7 +139,7 @@ Checkpoint → Character LoRA → IPAdapter(脸) → OpenPose预处理 → Contr
 
 - ~~v2 未挂 LoRA~~ → **已消除（调整版）**  
 - 训练集 caption 污染 / 缺 txt → 见 `PIPELINE-XIAOYAN-DATASET-AUDIT.md`（清洗与重训另下令）  
-- 命名双轨：部分 caption 仍写 `wenbao`，正式推理文件/trigger 本轮仍固定 `xiaoyan`
+- 命名：2026-11-13 起正式推理文件为 `wenbao_v1.safetensors`、trigger 为 `wenbao`（与 caption 触发词对齐）；前正式 `xiaoyan.safetensors` 保留
 
 ---
 
@@ -128,7 +153,7 @@ Checkpoint → Character LoRA → IPAdapter(脸) → OpenPose预处理 → Contr
 | 槽位 | 当前值 |
 |------|--------|
 | 底模 | `meinamix_v12Final.safetensors` |
-| 角色 LoRA | `xiaoyan.safetensors`，`0.8 / 0.8` |
+| 角色 LoRA | `wenbao_v1.safetensors`，`0.8 / 0.8`（2026-11-13 过门） |
 | CLIP skip | `-2` |
 | 锁脸 | `待机状态.png` + IPAdapter PLUS FACE，`0.8` |
 | 锁姿 | `xiaoyan_pose_stand_clean.png` → OpenposePreprocessor → ControlNet `0.85`，`end=1.0` |
@@ -160,12 +185,13 @@ python tools\deliver-dress-frame.py <Wenbao_Raw路径> --name dress-xxx.png --ch
 
 | 文件 | 用途 |
 |------|------|
-| `xiaoyan.safetensors` | **正式推理用** |
-| `xiaoyan-000001` … `000009` | 同轮训练检查点，对比用，日常别混着挂 |
+| `wenbao_v1.safetensors` | **正式推理用**（2026-11-13 用户目视过门后切换，强度 `0.8 / 0.8`，trigger `wenbao`） |
+| `xiaoyan.safetensors` | 前正式推理文件，**保留不删、不覆盖** |
+| `xiaoyan-000001` … `000009` | 旧轮训练检查点，对比用，日常别混着挂 |
 | `xiaoyan_*.json` | 训练配置备份，不是推理 LoRA |
 
-触发词 / 提示：A/B 正向都用 **`xiaoyan`**；外貌细节交给 LoRA + 锁脸。  
-**本轮明确：正式 trigger / 文件名继续 `xiaoyan`，不切 `wenbao`。**（README 若仍写重训输出 `wenbao.safetensors`，视为规划项，未生效前勿混挂。）
+触发词 / 提示：A/B 正向都用 **`wenbao`**；外貌细节交给 LoRA + 锁脸。  
+历史：2026-11-08 调整版期间正式文件/trigger 仍为 `xiaoyan`；勿把旧的 `xiaoyan.safetensors` 或规划项 `wenbao.safetensors` 与现用 `wenbao_v1.safetensors` 混挂。
 
 ---
 
@@ -182,9 +208,9 @@ python tools\deliver-dress-frame.py <Wenbao_Raw路径> --name dress-xxx.png --ch
 
 ## 7. 调整版检查清单
 
-- [ ] ComfyUI 打开 **live** `MeinaMix_小燕_姿势训练集_v2`，确认有 `LoraLoader` → `xiaoyan.safetensors` 0.8/0.8  
+- [ ] ComfyUI 打开 **live** `MeinaMix_小燕_姿势训练集_v2`，确认有 `LoraLoader` → `wenbao_v1.safetensors` 0.8/0.8  
 - [ ] 确认仍有 OpenposePreprocessor，且未把手绘骨架直连 ControlNet  
-- [ ] 正向含 `xiaoyan`，无大段蓝发绿眼外貌堆砌  
+- [ ] 正向含 `wenbao`，无大段蓝发绿眼外貌堆砌  
 - [ ] live 目录只有 A/B 两条正式 JSON（外加 `.index.json`）  
 - [ ] 需要对照时：用户在 UI 用 v2 出一张站姿图 vs 挂 LoRA 前观感（本任务未授权代理排队出图）  
 - [ ] 训练集问题只看 `PIPELINE-XIAOYAN-DATASET-AUDIT.md`，清洗/重训另开任务  
@@ -211,6 +237,6 @@ python tools\deliver-dress-frame.py <Wenbao_Raw路径> --name dress-xxx.png --ch
 - 不删除归档文件  
 - 不恢复雯宝四层重做生成 / 拆层 / 上传  
 - 不批量改 caption、不自动开训  
-- 不把正式名切到 `wenbao`（除非两边文件与文档一起切）  
+- ~~不把正式名切到 `wenbao`（除非两边文件与文档一起切）~~ → **已于 2026-11-13 过门执行**（正式文件 `wenbao_v1.safetensors`，trigger `wenbao`）  
 
 可选下一刀（未做）：B 线 CN `end` 1.0 vs 0.85 单变量对照；训练集清洗后再评 checkpoint。

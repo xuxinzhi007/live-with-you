@@ -1,14 +1,16 @@
 /**
- * 本地 ComfyUI (http://127.0.0.1:8188 · meinamix_v12Final.safetensors + xiaoyan.safetensors LoRA)
- * 雯宝同角色换装 + 纯单件无人物配饰 + 同角色羁绊 CG 生成管线（V7.1：分类暂存 + 可选 760 透明交付）
+ * UNOFFICIAL batch helper (V7.1 自建文生图图，不是官方换装工作流)。
  *
- * 解决三大问题：
- * 1. 【礼服同角色且颜色款式 100% 准确】：LoRA 强度设为 0.58，负向强力排除 `wings, black dress, white dress, detached sleeves`，
- *    确保「杏仁奶昔针织裙」是暖杏色毛衣裙、「暮色蔷薇圆舞曲」是粉红蔷薇礼服、「星河眠云轻纱裙」是星空蓝紫纱裙，且无黑块残影！
- * 2. 【配饰 100% 是纯物品（绝不画出金发陌生女孩）】：在 MeinaMix 中绝对不能写 `hairpin / headband / hat` 等会触发画人头的词，
- *    并在负向提示词中加入 `(1girl, girl, human, face, head, hair, eyes, person, body:1.6)`，使用纯色背景 `plain solid white background`，
- *    确保发夹、茶杯、花束、香水瓶都是干净独立的单件物品！
- * 3. 【心境羁绊卡 CG 全部挂载雯宝 LoRA】：确保 5 张羁绊卡里的主角也是同一个短黑发棕眼的 Q 版雯宝！
+ * 正式礼服 / 角色出图请走：
+ *   node tools/run-official-dress.mjs --name dress-xxx.png
+ * 即 ComfyUI 官方图 `MeinaMix_雯宝LoRA_换装抠图`
+ * （xiaoyan LoRA 0.8 + IPAdapter FACE 0.8 + OpenposePreprocessor → CN 0.85/end1.0），
+ * 再视情况用 tools/deliver-dress-frame.py 做 760 透明交付。
+ *
+ * 本脚本默认：LoRA 偏弱（0.58/0.65）、不锁脸、默认无锁姿、提示词带 chibi，
+ * 只适合配饰道具或明确的非正式试跑。
+ * 若要对这里的 dress 任务强制走本图，必须设 WENBAO_UNOFFICIAL=1。
+ * 默认不写入 public/assets/nikki，也不上传 :8788。
  */
 import { mkdir, writeFile, copyFile } from "node:fs/promises";
 import { spawn, execFileSync } from "node:child_process";
@@ -560,9 +562,18 @@ async function main() {
     console.error("No jobs matched WENBAO_KIND / WENBAO_ONLY filters.");
     process.exit(1);
   }
+  const unofficialOk = process.env.WENBAO_UNOFFICIAL === "1";
+  if (jobs.some((j) => j.kind === "dress") && !unofficialOk) {
+    console.error(
+      "REFUSED: dress jobs must use the official workflow.\n" +
+        "  node tools/run-official-dress.mjs --name <dress-file.png>\n" +
+        "To force this unofficial txt2img graph anyway, set WENBAO_UNOFFICIAL=1.",
+    );
+    process.exit(1);
+  }
   const lock = CONTROLNET !== "none" && CONTROLNET_IMAGE;
   console.log(
-    `Connecting to ComfyUI at ${COMFY_URL} (model: ${CHECKPOINT}, LoRA: ${LORA_FILE})`,
+    `Connecting to ComfyUI at ${COMFY_URL} (model: ${CHECKPOINT}, LoRA: ${LORA_FILE}) UNOFFICIAL`,
   );
   console.log(
     `Staging -> ${STAGE_ROOT} | jobs=${jobs.length} | dressDeliver=${DELIVER_DRESS} | alsoNikki=${ALSO_NIKKI} | poseLock=${lock ? "ON" : "OFF(unofficial)"}`,

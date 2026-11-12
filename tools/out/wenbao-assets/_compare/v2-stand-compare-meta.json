@@ -1,0 +1,16 @@
+{
+  "workflow": "MeinaMix_小燕_姿势训练集_v2",
+  "prompt_id": "39e2590f-2d47-4e2f-a475-5a3631d4ce8f",
+  "seed": 202611110031,
+  "lora": "xiaoyan.safetensors 0.8/0.8",
+  "face": "待机状态.png",
+  "pose": "xiaoyan_pose_stand_clean.png",
+  "canvas": "512x768",
+  "cn": "OpenposePreprocessor -> CN 0.85 end=1.0",
+  "ingest": false,
+  "upload_8788": false,
+  "files": [
+    "C:\\Users\\ZhuanZ1\\Desktop\\wenbebi\\tools\\out\\wenbao-assets\\_compare\\Wenbao_V2StandCompare_PoseSkel_00001_.png",
+    "C:\\Users\\ZhuanZ1\\Desktop\\wenbebi\\tools\\out\\wenbao-assets\\_compare\\Wenbao_V2StandCompare_00001_.png"
+  ]
+}

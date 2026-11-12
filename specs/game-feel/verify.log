@@ -1,0 +1,6 @@
+cmd npm test
+exit 0
+tests 11
+pass 11
+fail 0
+note python launcher unavailable; command run directly
