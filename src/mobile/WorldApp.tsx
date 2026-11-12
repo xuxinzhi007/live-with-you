@@ -41,7 +41,6 @@ import {
   HUMANOID_BONES,
   JOINT_LIST,
   buildTaperedBonePolygon,
-  computeHumanoidPartSlices,
   evaluateAnimClip,
   getSkeletonForDress,
   moveJointCascade,
@@ -523,11 +522,6 @@ export function WorldApp() {
   const worldJoints = useMemo(
     () => solveWorldSkeleton(activeSkeleton, currentAnimOffsets),
     [activeSkeleton, currentAnimOffsets],
-  );
-
-  const partSlices = useMemo(
-    () => computeHumanoidPartSlices(activeSkeleton, worldJoints, currentAnimOffsets),
-    [activeSkeleton, currentAnimOffsets, worldJoints],
   );
 
   const hairWorld = worldJoints[hairJointId];
@@ -1034,21 +1028,12 @@ export function WorldApp() {
                     <img className="nk-layer m-arms" src={layeredUrls.armsFront} alt="" draggable={false} />
                   </div>
                 ) : (
-                  partSlices.map((slice) => (
-                    <img
-                      key={`${slice.part}-${preparedDressSrc ? currentDress.id : "hold"}`}
-                      className={`nk-bone-body m-part-${slice.part}`}
-                      src={heroSpriteSrc}
-                      alt=""
-                      style={{
-                        zIndex: slice.zIndex,
-                        clipPath: slice.clipPath,
-                        transformOrigin: `${slice.originX}% ${slice.originY}%`,
-                        transform: `translateY(${slice.ty}%) rotate(${slice.angle}deg)`,
-                      }}
-                      draggable={false}
-                    />
-                  ))
+                  <img
+                    className="nk-bone-body"
+                    src={heroSpriteSrc}
+                    alt="雯宝"
+                    draggable={false}
+                  />
                 )}
 
                 {/* Layer 32: 绑定在头部骨骼链上的头饰（随歪头动作同步旋转！） */}

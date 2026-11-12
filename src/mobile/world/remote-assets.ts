@@ -6,8 +6,9 @@ export function getAssetBaseUrl(): string {
   const env = (import.meta as ImportMeta & { env?: { VITE_ASSET_BASE_URL?: string } }).env;
   if (!env) return "";
   const raw = env.VITE_ASSET_BASE_URL?.trim();
-  if (raw === "") return "";
-  return (raw ?? DEFAULT_ASSET_BASE_URL).replace(/\/$/, "");
+  // 默认只用仓库 public/assets；只有显式配置了非空地址才连资源库。
+  if (!raw) return "";
+  return raw.replace(/\/$/, "");
 }
 
 export interface RemoteAssetRef {

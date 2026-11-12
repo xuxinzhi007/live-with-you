@@ -1,24 +1,61 @@
 {
   "version": 2,
-  "baseUrl": "http://192.168.124.77:8788",
-  "note": "游戏通过 VITE_ASSET_BASE_URL + src/mobile/world/remote-assets.ts 解析。局域网不可用或环境变量为空时回退到仓库 public 路径。本地 public/assets 整身图暂未删除。分层纸娃娃件（body/head/arms-front + parts/dress）可能尚未入库；缺失时舞台回退整身+抠图。",
+  "baseUrl": "",
+  "note": "默认只用本仓库 public/assets。仅当显式配置 VITE_ASSET_BASE_URL 且探活成功时才连资源库。正式入库已暂停。",
   "mapping": [
-    { "from": "assets/characters/parts/dress/{outfitId}.png", "to": "/files/dress/{outfitId}.png" },
-    { "from": "assets/characters/{skin}/body.png", "to": "/files/base/{skin}-body.png" },
-    { "from": "assets/characters/{skin}/head.png", "to": "/files/base/{skin}-head.png" },
-    { "from": "assets/characters/{skin}/arms-front.png", "to": "/files/base/{skin}-arms-front.png" },
-    { "from": "assets/characters/{skin}/{file}", "to": "/files/base/{skin}-{file}" },
-    { "from": "assets/nikki/dress-*", "to": "/files/dress/dress-*" },
-    { "from": "assets/nikki/card-*", "to": "/files/card/card-*" },
-    { "from": "assets/nikki/item-*", "to": "/files/part/item-*" },
-    { "from": "assets/scenes/{home|garden|street}.webp", "to": "/files/ui/stage-{name}.webp" },
-    { "from": "assets/scenes/{other}", "to": "/files/world/{other}" }
+    {
+      "from": "assets/characters/parts/dress/{outfitId}.png",
+      "to": "/files/dress/{outfitId}.png"
+    },
+    {
+      "from": "assets/characters/{skin}/body.png",
+      "to": "/files/base/{skin}-body.png"
+    },
+    {
+      "from": "assets/characters/{skin}/head.png",
+      "to": "/files/base/{skin}-head.png"
+    },
+    {
+      "from": "assets/characters/{skin}/arms-front.png",
+      "to": "/files/base/{skin}-arms-front.png"
+    },
+    {
+      "from": "assets/characters/{skin}/{file}",
+      "to": "/files/base/{skin}-{file}"
+    },
+    {
+      "from": "assets/nikki/dress-*",
+      "to": "/files/dress/dress-*"
+    },
+    {
+      "from": "assets/nikki/card-*",
+      "to": "/files/card/card-*"
+    },
+    {
+      "from": "assets/nikki/item-*",
+      "to": "/files/part/item-*"
+    },
+    {
+      "from": "assets/scenes/{home|garden|street}.webp",
+      "to": "/files/ui/stage-{name}.webp"
+    },
+    {
+      "from": "assets/scenes/{other}",
+      "to": "/files/world/{other}"
+    }
   ],
   "layeredParts": {
-    "order": ["body", "dress", "head", "arms-front"],
+    "order": [
+      "body",
+      "dress",
+      "head",
+      "arms-front"
+    ],
     "canvas": "760x760",
     "feetY": 748,
-    "phase1Outfits": ["dress-snow-white"],
+    "phase1Outfits": [
+      "dress-snow-white"
+    ],
     "local": {
       "body": "assets/characters/{skin}/body.png",
       "head": "assets/characters/{skin}/head.png",
@@ -26,5 +63,13 @@
       "dress": "assets/characters/parts/dress/{outfitId}.png"
     }
   },
-  "counts": { "base": 24, "dress": 3, "part": 17, "card": 5, "ui": 4, "world": 19, "icon": 0 }
+  "counts": {
+    "base": 24,
+    "dress": 3,
+    "part": 17,
+    "card": 5,
+    "ui": 4,
+    "world": 19,
+    "icon": 0
+  }
 }

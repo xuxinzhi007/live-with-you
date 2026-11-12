@@ -16,8 +16,8 @@ export interface SkinMetrics {
 
 export const CHARACTER_METRICS: Record<string, SkinMetrics> = {
   original: {
-    visibleHeight: 720,
-    visibleWidth: 429,
+    visibleHeight: 732,
+    visibleWidth: 239,
     baseline: 0.9842105263157894,
   },
   maid: {

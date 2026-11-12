@@ -1,15 +1,15 @@
 {
   "original": {
-    "visibleHeight": 720,
-    "visibleWidth": 429,
+    "visibleHeight": 732,
+    "visibleWidth": 239,
     "baseline": 0.9842105263157894,
     "frames": {
       "idle": {
-        "w": 429,
-        "h": 720,
-        "x0": 166,
-        "y0": 29,
-        "x1": 594,
+        "w": 239,
+        "h": 732,
+        "x0": 261,
+        "y0": 17,
+        "x1": 499,
         "y1": 748,
         "cx": 380,
         "feet": 748,
