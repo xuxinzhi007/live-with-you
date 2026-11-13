@@ -15,9 +15,9 @@
 - **星愿幻阁**：单抽 5 券 / 五连 20 券（五连保底 SR+，重复自动升星），可切换衣服 / 配饰 / 羁绊分类。
 - **骨骼工坊**：11 根锥形骨骼、6 部位蒙皮、Setup 对位 + Pose 摆姿，每套衣服独立骨骼树，随衣橱存档。
 - **小世界**：三场景切换 + 14 个可交互物件 + 花圃种植（只画房间与道具，不画角色）。
-- **密语（AI 陪伴）**：同源 `/.netlify/functions/companion-scene` 连局域网 Ollama，失败回退本地台词。**当前没有导航入口**，见现行状态 §3。
+- **密语（AI 陪伴）**：同源 `/.netlify/functions/companion-scene` 连局域网 Ollama，失败回退本地台词（底栏第 7 项）。
 
-底部导航：大厅 / 小世界 / 衣橱 / 闯关 / 幻阁 / 图鉴（6 项）。
+底部导航：大厅 / 小世界 / 衣橱 / 闯关 / 幻阁 / 图鉴 / 密语（7 项）。
 
 ---
 
@@ -67,7 +67,7 @@ Node ≥ 22.6（`package.json` 的 `engines`）。
 ### 3.2 游戏内实时重绘（**仅开发环境**）
 
 `npm run dev` 时 `vite.config.ts` 提供 `/api/comfy/draw`：星愿幻阁 → 裁缝铺 → 输入描述 → 绘制。
-生产环境没有对应 Netlify Function，点击会 404；生成图以 dataURL 存进 `localStorage`，有配额风险。见 [docs/服务端接线.md](./docs/服务端接线.md)。
+生产环境没有对应 Netlify Function，所以入口用 `import.meta.env.DEV` 包住，生产不渲染；生成图以 dataURL 存进 `localStorage`，有配额风险。见 [docs/服务端接线.md](./docs/服务端接线.md)。
 
 ---
 

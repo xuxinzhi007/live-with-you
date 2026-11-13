@@ -109,6 +109,15 @@ function companionDevPlugin(env: Record<string, string>): Plugin {
               seed,
               filenamePrefix,
             });
+            // 可选源图：默认仍是角色母图；传 source（ComfyUI input 里的文件名）可对场景图做同线编辑。
+            // 只换 LoadImage 的输入，不动工作流其它参数。
+            if (input.source != null && String(input.source).trim()) {
+              const sourceName = String(input.source).trim();
+              if (/[\\/]/.test(sourceName) || sourceName.includes("..")) {
+                throw new Error("source 只能是 ComfyUI input 目录下的文件名");
+              }
+              graph["1"].inputs.image = sourceName;
+            }
             const graphText = JSON.stringify(graph);
             for (const pat of FORBIDDEN_GRAPH) {
               if (pat.test(graphText)) {

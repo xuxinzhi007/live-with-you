@@ -9,7 +9,7 @@
 
 | 文件 | 干什么 |
 | --- | --- |
-| [现行状态.md](./现行状态.md) | 屏幕与导航、**链路闭环检查（5 条通 / 6 条断）**、资源与存档、出图路线、待拍板 |
+| [现行状态.md](./现行状态.md) | 屏幕与导航、**链路闭环检查（已修 4 断，剩 4 条）**、资源与存档、出图路线、待拍板 |
 | [product-charter.md](./product-charter.md) | 产品约束与质量底线 |
 | [game-direction.md](./game-direction.md) | 方向摘要与核心循环 |
 | [architecture-map.md](./architecture-map.md) | 分层 / 依赖方向 / 数据模型 / 模块健康度 / 玩法流程 / 技术债 |
@@ -21,10 +21,11 @@
 
 指针文件（保留旧路径，内容已并入上面）：`current-state-and-next.md` → 现行状态；`mobile-architecture.md` → architecture-map；`wenbao-product/交接-当前状态.md` → 现行状态。
 
-## 二、调研（不是运行时，别照它改主路径）
+## 二、调研与专题（不是运行时，别照它改主路径）
 
 | 文件 | 内容 |
 | --- | --- |
+| [产品分析-主大厅与小世界.md](./产品分析-主大厅与小世界.md) | 这两块屏的现状取证、根因与改造清单（P0/P1/P2 + 验收） |
 | [character-rig-design.md](./character-rig-design.md) | 角色底模与部件化提案 |
 | [standard-character-plan.md](./standard-character-plan.md) | 五头身底模计划 |
 | [spine-integration.md](./spine-integration.md) | Spine 设想 |
@@ -43,6 +44,6 @@
 ## 四、不是文档源
 
 - `tools/`：生图、抠图、校验脚本，以及 `PIPELINE-*.md` 管线笔记（`tools/_archive-docs/` 是停用的旧版）。
-- `specs/`：本机工作记录（gitignore）。当前一次运行见 `specs/docs-consolidation/`。
+- `specs/`：data-workflow 的运行记录（decision / check / evidence / confess），随仓库提交。最近两次运行：`specs/docs-consolidation/`、`specs/nav-and-closure/`。
 - `spark-output/`：历史审计与截图（已清理，文档里的相关图片链接不再有效）。
 - [dev/learnings.md](./dev/learnings.md)：踩过的坑与可复用事实（verify 入口、搬目录断链、口径断言）。

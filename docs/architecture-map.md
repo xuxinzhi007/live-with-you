@@ -351,10 +351,10 @@ SavedNikkiState {
 | pavilion/rig 未拆 | 高 | 拖拽动画状态耦合 | 需先统一动画状态 |
 | `latest` 版本已锁但无 CI | 中 | 本地通过 ≠ 远端通过 | 加 GitHub Actions |
 | lint 46 个问题 | 中 | 历史遗留 | 随拆分逐步清 |
-| 文档可能再次脱节 | 中 | 方向调整后文档没同步 | 方向调整时必须改文档；`node tools/audit/docs-links.mjs --verify-claims` 检查 6 条口径 |
-| 密语页无入口 | 高 | `ChatScreen` 与分支都在，但全仓库无 `setScreen("chat")` | 加导航项或删屏，二选一 |
-| `sit` / `sleep` 帧未接 | 中 | `skins.ts` 有帧、`WorldApp` 只渲染 `react`，换图看不到 | 先补坐下/躺下交互入口 |
-| 裁缝铺仅 dev + dataURL 落 localStorage | 高 | 生产点「绘制」404；单图 3–4MB 会顶爆 5MB 配额 | 加 `DEV` 保护，图改存 IndexedDB / 服务端 |
+| 文档可能再次脱节 | 中 | 方向调整后文档没同步 | 方向调整时必须改文档；`node tools/audit/docs-links.mjs --verify-claims` 检查 7 条口径 |
+| `sit` / `sleep` 帧未接 | 中 | `skins.ts` 有帧、`WorldApp` 只渲染 `react`，换图看不到 | 先补坐下/躺下交互入口（本轮放置） |
+| 裁缝铺仅 dev | 中 | 生产已隐藏入口，功能仍仅在 dev | 补 Netlify Function 或保持仅开发 |
+| 生成图 dataURL 落 localStorage | 高 | 单图 3–4MB，会顶爆 5MB 配额 | 改存 IndexedDB / 服务端 |
 | 无 E2E 测试 | 低 | 核心流程没保障 | Playwright 排期 |
 
 ---

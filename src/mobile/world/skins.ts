@@ -142,3 +142,9 @@ export function getCharacterSkin(id: CharacterSkinId | string | undefined): Char
   const key = isCharacterSkinId(id) ? id : DEFAULT_CHARACTER_SKIN;
   return remoteSkin(LOCAL_CHARACTER_SKINS[key]);
 }
+
+/** 未 resolve 的本地帧路径，给 <img> onError 回退用。 */
+export function getLocalCharacterSkin(id: CharacterSkinId | string | undefined): CharacterSkin {
+  const key = isCharacterSkinId(id) ? id : DEFAULT_CHARACTER_SKIN;
+  return LOCAL_CHARACTER_SKINS[key];
+}

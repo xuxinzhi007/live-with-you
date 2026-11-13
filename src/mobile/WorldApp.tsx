@@ -30,7 +30,7 @@ import {
   type WardrobeSlot,
   type WishPool,
 } from "./world/nikki-wardrobe";
-import { isComfyDressSource, resolveAsset } from "./world/remote-assets";
+import { isComfyDressSource, resolveAsset, applyLocalAssetFallback } from "./world/remote-assets";
 import { useRemoteAssetGeneration } from "./world/use-remote-assets";
 import {
   getWearableOverlaySrc,
@@ -63,7 +63,7 @@ import {
   type ChatTurn,
   type CompanionConnection,
 } from "./world/companion-bridge";
-import { getCharacterSkin } from "./world/skins";
+import { getCharacterSkin, getLocalCharacterSkin } from "./world/skins";
 import {
   MOTION_DURATION_MS,
   isPhase1LayeredOutfit,
@@ -117,6 +117,15 @@ function GemSvg() {
     </svg>
   );
 }
+
+/** 大厅自发台词：她每隔一段时间自己动一下，代替常驻动效 */
+const LOBBY_IDLE_LINES = [
+  "「嗯～今天的光刚刚好，站在这里等你也不错。」",
+  "「你在看什么呀？要不要一起去院子里走走？」",
+  "「衣橱里那件新裙子，要不要试试看嘛。」",
+  "「小世界的花好像开了，回去记得带我去看。」",
+  "「站累啦，等我一下，我去床上坐一会儿。」",
+];
 
 const QUICK_CHAT_TOPICS = [
   "今天这身搭配和头饰好看吗？",
@@ -475,9 +484,22 @@ export function WorldApp() {
   const inspectedItem = useMemo(() => getWardrobeItem(inspectedItemId), [inspectedItemId, assetGeneration]);
   const activeSuitInfo = useMemo(() => detectActiveSuit(nikki.equipped), [nikki.equipped]);
 
+  /** 大厅信息条：当前主装扮 + 星级 + 最高属性，补齐北极星的「看到当前装扮」 */
+  const lookStar = nikki.itemStars[currentDress.id] ?? 1;
+  const topAttr = useMemo(() => {
+    const stats = computeOutfitStats(nikki.equipped, nikki.itemStars);
+    return (Object.entries(stats) as [StyleAttr, number][]).reduce((a, b) => (b[1] > a[1] ? b : a));
+  }, [nikki.equipped, nikki.itemStars]);
+
   const activeSkin = useMemo(
     () => getCharacterSkin(currentDress.skinId ?? "original"),
     [currentDress.skinId, assetGeneration],
+  );
+
+  /** 未 resolve 的本地帧：远端 8788 单张缺失时用它兑底 */
+  const localSkin = useMemo(
+    () => getLocalCharacterSkin(currentDress.skinId ?? "original"),
+    [currentDress.skinId],
   );
 
   const totalStats = useMemo(
@@ -711,7 +733,7 @@ export function WorldApp() {
     playStageMotion("react");
     const lines = [
       `「今天穿的是【${currentDress.name}】，头饰和手持物都牢牢绑在我的骨骼点上啦！」`,
-      "「如果新生成的衣服高矮不同，点右边的『🦴骨骼』就能直接拖动我身上的关节点对位哦～」",
+      "「如果新生成的衣服高矮不同，点下方的『🦴 骨骼』就能直接拖动我身上的关节点对位哦～」",
       `「当前搭配总魅力已经达到 ${totalCharmPower} 分啦！」`,
     ];
     setLobbyLine(lines[Math.floor(Math.random() * lines.length)]);
@@ -721,6 +743,26 @@ export function WorldApp() {
         : `+${res.bondGained} 亲密`,
     );
   }, [companionAct, currentDress.name, nikki.lastCouponPatAt, playStageMotion, pushPopup, screen, totalCharmPower]);
+
+  // 她自己也会动：每 45–90s 自发一个小反应（react 帧 + 台词），大厅不再是静帧
+  useEffect(() => {
+    if (screen !== "lobby") return;
+    let reactTimer = 0;
+    const schedule = () => {
+      const next = window.setTimeout(() => {
+        setReacting(true);
+        setLobbyLine(LOBBY_IDLE_LINES[Math.floor(Math.random() * LOBBY_IDLE_LINES.length)]);
+        reactTimer = window.setTimeout(() => setReacting(false), 1600);
+        schedule();
+      }, 45000 + Math.floor(Math.random() * 45000));
+      return next;
+    };
+    let next = schedule();
+    return () => {
+      window.clearTimeout(next);
+      window.clearTimeout(reactTimer);
+    };
+  }, [screen, setLobbyLine, setReacting]);
 
   const handleAutoRecommend = useCallback((stage: StylingStage) => {
     const best = recommendBestOutfitForStage(stage, unlockedSet, nikki.itemStars);
@@ -876,7 +918,12 @@ export function WorldApp() {
               <img className="nk-layer m-arms" src={layeredUrls.armsFront} alt="" draggable={false} />
             </div>
           ) : (
-            <img src={heroSpriteSrc} alt="雯宝" draggable={false} />
+            <img
+              src={heroSpriteSrc}
+              alt="雯宝"
+              draggable={false}
+              onError={(e) => applyLocalAssetFallback(e.currentTarget, localSkin.idle)}
+            />
           )}
         </div>
 
@@ -947,41 +994,17 @@ export function WorldApp() {
               style={{ backgroundImage: `url(${itemImage(currentCard) || currentDress.bgScene || resolveAsset("assets/scenes/home.webp")})` }}
               aria-hidden="true"
             />
-            <div className="nk-stage-frame" aria-hidden="true" />
+            <div className="nk-stage-floor" aria-hidden="true" />
 
             {equipBurstKey > 0 && (
               <div key={equipBurstKey} className="nk-magic-ring" aria-hidden="true" />
             )}
 
-            <div className="nk-sparkles" aria-hidden="true">
-              <i className="s1" /><i className="s2" /><i className="s3" /><i className="s4" /><i className="s5" />
-            </div>
-
             {/* 仅在「主大厅 Lobby」显示的右侧精致悬浮功能按钮组（不挡人物、不削头顶！） */}
             {screen === "lobby" && (
-              <>
-                <div className="nk-lobby-bubble" onClick={handleTapCharacter}>
-                  <span>{lobbyLine}</span>
-                </div>
-                <aside className="nk-lobby-menu" aria-label="快捷入口">
-                  <button type="button" className="nk-lobby-btn" onClick={() => setScreen("wardrobe")}>
-                    <span>👗</span>
-                    <small>换装</small>
-                  </button>
-                  <button type="button" className="nk-lobby-btn" onClick={() => setScreen("rig")}>
-                    <span>🦴</span>
-                    <small>骨骼</small>
-                  </button>
-                  <button type="button" className="nk-lobby-btn m-pk" onClick={() => setScreen("stages")}>
-                    <span>👑</span>
-                    <small>闯关</small>
-                  </button>
-                  <button type="button" className="nk-lobby-btn" onClick={() => setScreen("pavilion")}>
-                    <span>✨</span>
-                    <small>幻阁</small>
-                  </button>
-                </aside>
-              </>
+              <div className="nk-lobby-bubble" onClick={handleTapCharacter}>
+                <span>{lobbyLine}</span>
+              </div>
             )}
 
             {/* ==================== 核心：每套衣服独立的层级骨骼容器 (Hierarchical Skeleton Rig) ==================== */}
@@ -1033,6 +1056,12 @@ export function WorldApp() {
                     src={heroSpriteSrc}
                     alt="雯宝"
                     draggable={false}
+                    onError={(e) =>
+                      applyLocalAssetFallback(
+                        e.currentTarget,
+                        reacting ? localSkin.react : localSkin.idle,
+                      )
+                    }
                   />
                 )}
 
@@ -1150,12 +1179,36 @@ export function WorldApp() {
               </div>
             </div>
 
+            {/* 大厅快捷入口：舞台底部一条行动带，不再悬浮在角色右侧 */}
+            {screen === "lobby" && (
+              <div className="nk-lobby-actions" aria-label="快捷入口">
+                <button type="button" className="nk-lobby-tab" onClick={() => setScreen("wardrobe")}>
+                  <span>👗</span>
+                  <small>换装</small>
+                </button>
+                <button type="button" className="nk-lobby-tab" onClick={() => setScreen("rig")}>
+                  <span>🦴</span>
+                  <small>骨骼</small>
+                </button>
+                <button type="button" className="nk-lobby-tab m-pk" onClick={() => setScreen("stages")}>
+                  <span>👑</span>
+                  <small>闯关</small>
+                </button>
+                <button type="button" className="nk-lobby-tab" onClick={() => setScreen("pavilion")}>
+                  <span>✨</span>
+                  <small>幻阁</small>
+                </button>
+              </div>
+            )}
+
             {/* 舞台底栏：左套装铭牌，右快速切换「🦴骨骼校准」 */}
             <div className="nk-stage-foot">
               <span className="nk-suit-badge">
-                {activeSuitInfo.suit
-                  ? `✨ ${activeSuitInfo.suit.name} (+${activeSuitInfo.bonusScore})`
-                  : `${currentDress.rarity} · ${currentDress.name}`}
+                {screen === "lobby"
+                  ? `${currentDress.name} · ★${lookStar} · ${STYLE_ATTR_LABELS[topAttr[0]].name} ${Math.round(topAttr[1])}`
+                  : activeSuitInfo.suit
+                    ? `✨ ${activeSuitInfo.suit.name} (+${activeSuitInfo.bonusScore})`
+                    : `${currentDress.rarity} · ${currentDress.name}`}
               </span>
               <div className="nk-foot-btns">
                 <button
@@ -1531,9 +1584,12 @@ export function WorldApp() {
                 </button>
               </div>
 
-              <button type="button" className="nk-pavilion-atelier" onClick={() => setShowAtelier((open) => !open)}>
-                {showAtelier ? "收起裁缝铺" : "裁缝铺"}
-              </button>
+              {/* 裁缝铺只在开发环境存在：生产没有 /api/comfy/draw 函数 */}
+              {import.meta.env.DEV && (
+                <button type="button" className="nk-pavilion-atelier" onClick={() => setShowAtelier((open) => !open)}>
+                  {showAtelier ? "收起裁缝铺" : "裁缝铺（仅开发环境）"}
+                </button>
+              )}
             </div>
 
             {wishPhase !== "idle" && gachaResults && (
@@ -1609,7 +1665,7 @@ export function WorldApp() {
               </div>
             )}
 
-            {showAtelier && (
+            {import.meta.env.DEV && showAtelier && (
               <div className="nk-comfy-box">
                 <div className="nk-comfy-head">
                   <strong>为【{inspectedItem.name}】重绘卡面</strong>
@@ -1697,7 +1753,15 @@ export function WorldApp() {
           onClick={() => setScreen("codex")}
         >
           <span>📖</span>
-          <small>原画 ({collectionPercent}%)</small>
+          <small>图鉴 {collectionPercent}%</small>
+        </button>
+        <button
+          type="button"
+          className={screen === "chat" ? "m-active" : ""}
+          onClick={() => setScreen("chat")}
+        >
+          <span>💬</span>
+          <small>密语</small>
         </button>
       </nav>
     </div>

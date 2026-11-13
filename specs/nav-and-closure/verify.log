@@ -1,0 +1,2 @@
+exit 0
+cmd npm run test:mobile && npm run build

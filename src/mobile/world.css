@@ -317,7 +317,7 @@ body {
   position: absolute;
   top: 14px;
   left: 14px;
-  right: 76px;
+  max-width: min(72%, 320px);
   z-index: 6;
   padding: 8px 13px;
   border-radius: 16px;
@@ -330,46 +330,18 @@ body {
   line-height: 1.4;
 }
 
-.nk-lobby-menu {
+.nk-lobby-bubble::after {
+  content: "";
   position: absolute;
-  top: 50%;
-  right: 12px;
-  transform: translateY(-50%);
-  z-index: 7;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.nk-lobby-btn {
-  width: 52px;
-  height: 54px;
-  border-radius: 16px;
-  border: 1.5px solid rgba(228, 185, 200, 0.8);
-  background: rgba(255, 253, 254, 0.92);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 5px 14px rgba(120, 65, 85, 0.12);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  color: #593e46;
-}
-
-.nk-lobby-btn.m-pk {
-  background: linear-gradient(135deg, #fff6e8, #fde6ef);
-  border-color: #e8b57c;
-}
-
-.nk-lobby-btn span {
-  font-size: 20px;
-  line-height: 1;
-}
-
-.nk-lobby-btn small {
-  font-size: 9.5px;
-  font-weight: 700;
+  right: 16%;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  background: inherit;
+  border-right: 1px solid rgba(220, 175, 190, 0.65);
+  border-bottom: 1px solid rgba(220, 175, 190, 0.65);
+  border-bottom-right-radius: 3px;
+  transform: rotate(45deg);
 }
 
 /* ==================== 🦴 可视化骨骼连线与可拖拽关节手柄 ==================== */
@@ -564,15 +536,6 @@ body {
   pointer-events: none;
 }
 
-.nk-stage-frame {
-  position: absolute;
-  inset: 6px;
-  border-radius: 16px;
-  border: 1px solid rgba(226, 178, 130, 0.6);
-  box-shadow: inset 0 0 28px rgba(255, 250, 252, 0.85);
-  pointer-events: none;
-}
-
 /* 换装瞬间绽放的金色魔法冲击波 */
 .nk-magic-ring {
   position: absolute;
@@ -669,23 +632,6 @@ body {
   font-size: 9.5px;
 }
 
-/* 飘落柔光星尘 */
-.nk-sparkles i {
-  position: absolute;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: rgba(255, 225, 155, 0.95);
-  box-shadow: 0 0 10px rgba(255, 190, 110, 0.95);
-  animation: nk-float 3.2s ease-in-out infinite;
-  pointer-events: none;
-}
-.nk-sparkles .s1 { top: 24%; left: 25%; animation-delay: 0s; }
-.nk-sparkles .s2 { top: 30%; right: 25%; animation-delay: 0.7s; }
-.nk-sparkles .s3 { top: 58%; left: 22%; animation-delay: 1.4s; }
-.nk-sparkles .s4 { top: 52%; right: 24%; animation-delay: 2.1s; }
-.nk-sparkles .s5 { top: 38%; left: 48%; animation-delay: 1.1s; }
-
 @keyframes nk-float {
   0%, 100% { transform: translateY(0) scale(0.85); opacity: 0.45; }
   50% { transform: translateY(-10px) scale(1.25); opacity: 1; }
@@ -766,7 +712,6 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  animation: nk-hero-breathe 3.6s ease-in-out infinite;
 }
 
 @keyframes nk-hero-breathe {
@@ -1855,8 +1800,11 @@ body {
 }
 
 .nk-nav button small {
-  font-size: 9.5px;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 9px;
   font-weight: 600;
+  letter-spacing: -0.1px;
 }
 
 .nk-nav button.m-active {
@@ -1960,11 +1908,12 @@ body {
 
 .nk-world-stage {
   position: relative;
-  flex: 1 1 auto;
-  min-height: 240px;
+  width: 100%;
+  margin: 0 auto;
   border-radius: 18px;
   overflow: hidden;
   background: #f7efe4;
+  box-shadow: 0 10px 26px rgba(120, 85, 60, 0.12);
 }
 
 .nk-world-bg {
@@ -1982,7 +1931,6 @@ body {
 
 .nk-world-prop {
   position: absolute;
-  bottom: 12%;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
@@ -1992,16 +1940,30 @@ body {
   background: none;
   padding: 0;
   cursor: pointer;
-  min-width: 56px;
+}
+
+.nk-world-prop.m-decor {
+  pointer-events: none;
 }
 
 .nk-world-prop img {
   width: 100%;
   height: auto;
-  max-height: 22vh;
   object-fit: contain;
+  object-position: bottom;
   filter: drop-shadow(0 4px 8px rgba(90, 70, 50, 0.22));
   transition: transform 160ms ease;
+}
+
+/* 她本人：走路 4 帧 + 到达后的反应帧，位置全是世界单位 */
+.nk-world-hero {
+  position: absolute;
+  transform: translateX(-50%);
+  width: auto;
+  object-fit: contain;
+  object-position: bottom;
+  filter: drop-shadow(0 5px 9px rgba(90, 70, 50, 0.28));
+  transition: left 420ms linear, bottom 420ms linear;
 }
 
 .nk-world-prop.m-selected img {
@@ -2015,6 +1977,17 @@ body {
   border-radius: 999px;
   padding: 2px 8px;
   white-space: nowrap;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity 160ms ease, transform 160ms ease;
+  pointer-events: none;
+}
+
+/* 标签只在她走近或选中时出现，不再是满屏白点 */
+.nk-world-prop.m-near span,
+.nk-world-prop.m-selected span {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .nk-world-line {

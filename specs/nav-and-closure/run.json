@@ -1,0 +1,9 @@
+{
+  "workflow": "change",
+  "feature": "nav-and-closure",
+  "stage": 3,
+  "status": "done",
+  "question": "",
+  "reply": "",
+  "raw_request": "补充当前断掉的 6 个  密语：加回导航项  动作帧 暂时放置  使用当前工作流中合适的 skill 进行处理"
+}

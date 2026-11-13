@@ -103,20 +103,19 @@ if (process.argv.includes('--verify-claims')) {
       })(),
     },
     {
-      name: '底栏六项与代码一致',
+      name: '底栏七项与代码一致',
       ok: (() => {
+        const want = ['大厅', '小世界', '衣橱', '闯关', '幻阁', '图鉴', '密语'];
         const canon = navLabels.map((label) => {
-          const hit = ['大厅', '小世界', '衣橱', '闯关', '幻阁', '图鉴'].find((n) =>
+          const hit = want.find((n) =>
             n === '图鉴' ? /原画|图鉴/.test(label) : label.includes(n),
           );
           return hit ?? label;
         });
-        const want = ['大厅', '小世界', '衣橱', '闯关', '幻阁', '图鉴'];
         return (
-          navLabels.length === 6 &&
+          navLabels.length === 7 &&
           canon.join('/') === want.join('/') &&
-          want.every((n) => direction.includes(n)) &&
-          !/图鉴\s*\/\s*密语|密语\s*）/.test(direction)
+          want.every((n) => direction.includes(n))
         );
       })(),
     },
@@ -125,14 +124,29 @@ if (process.argv.includes('--verify-claims')) {
       ok: !/activeSkin\.(sit|sleep)/.test(worldApp) && current.includes('从未渲染'),
     },
     {
-      name: '密语页无入口',
-      ok: !/setScreen\(["']chat["']\)/.test(worldApp) && current.includes('无入口'),
+      name: '密语有底栏入口',
+      ok: (() => {
+        const chatRow = current.split('\n').find((l) => l.includes('`chat`')) ?? '';
+        return (
+          /setScreen\(["']chat["']\)/.test(worldApp) &&
+          navLabels.some((l) => l.includes('密语')) &&
+          chatRow.length > 0 &&
+          !chatRow.includes('无入口')
+        );
+      })(),
+    },
+    {
+      name: '角色图 onError 回退已接线',
+      ok:
+        /applyLocalAssetFallback\(/.test(worldApp) &&
+        read('src/mobile/world/remote-assets.ts').includes('export function applyLocalAssetFallback'),
     },
     {
       name: '裁缝铺仅开发环境',
       ok:
         read('vite.config.ts').includes('/api/comfy/draw') &&
         !fs.readdirSync(path.join(ROOT, 'netlify/functions')).some((f) => /comfy/i.test(f)) &&
+        /import\.meta\.env\.DEV/.test(worldApp) &&
         server.includes('仅开发'),
     },
   ];
