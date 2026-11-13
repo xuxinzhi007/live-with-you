@@ -1,0 +1,9 @@
+{
+  "workflow": "change",
+  "feature": "docs-consolidation",
+  "stage": 3,
+  "status": "done",
+  "question": "",
+  "reply": "",
+  "raw_request": "整理项目文件与架构，核实链路闭环；合并重复文档、修正与代码冲突的口径、清理文档冗余"
+}

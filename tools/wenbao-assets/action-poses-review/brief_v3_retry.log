@@ -1,0 +1,15 @@
+comfyui 0.28.0 vram_free 2860067542
+after /free vram_free 2860141270
+========================================================================
+BRIEF-V3 react tag=retry seed=20261113222801
+  prompt_id=9390f180-d0e7-45a5-8495-52523cd7ca68 node_errors={}
+  status=success elapsed=120.50s images=1 finished=2026-11-13 22:39:38 +0800
+  saved D:\xuxinzhi\ComfyUI_windows_portable_nvidia\ComfyUI_windows_portable\ComfyUI\output\wenbao_qwen_edit_official\wenbao_q4_react_00005_.png (512, 768) 335788 bytes
+  desktop_copy C:\Users\ZhuanZ1\Desktop\wenbao_qwen_action_poses\wenbao_q4_react_00005_.png
+========================================================================
+BRIEF-V3 sleep tag=retry seed=20261113222803
+  prompt_id=65b25ec0-4bcd-49d5-a579-d60286ea72dd node_errors={}
+  status=success elapsed=66.41s images=1 finished=2026-11-13 22:40:45 +0800
+  saved D:\xuxinzhi\ComfyUI_windows_portable_nvidia\ComfyUI_windows_portable\ComfyUI\output\wenbao_qwen_edit_official\wenbao_q4_sleep_00005_.png (512, 768) 259721 bytes
+  desktop_copy C:\Users\ZhuanZ1\Desktop\wenbao_qwen_action_poses\wenbao_q4_sleep_00005_.png
+DONE brief-v3 ['react:wenbao_q4_react_00004_.png', 'sleep:wenbao_q4_sleep_00004_.png', 'react:wenbao_q4_react_00005_.png', 'sleep:wenbao_q4_sleep_00005_.png']

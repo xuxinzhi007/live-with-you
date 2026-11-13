@@ -2,6 +2,7 @@
 
 > 状态：2026-11-06 起以本文件为现行产品约束。
 > 入口与运行时真相：`src/main.tsx` → `src/mobile/WorldApp.tsx`（高定衣橱 / 舞台搭配 / 纸偶叠加 / 星愿幻阁 / AI 密语）。
+> 本文是产品约束；实现现状与链路闭环以 [现行状态.md](./现行状态.md) 为准（密语页当前无导航入口）。
 > V2「可走动小世界、禁抽卡」全文见 [archive/product-charter-v2-walkable-world.md](./archive/product-charter-v2-walkable-world.md)；冲突时以本文件与代码为准。
 
 ## 一句话定义
@@ -21,7 +22,7 @@
 | 我在打扮她 | 换装立刻反映在立绘上 | 五大槽位、纸偶叠加、骨骼工坊微调 |
 | 搭配有目标 | 闯关有主题与评级 | 舞台章节、风格属性、技能与套装共鸣 |
 | 收集有温度 | 单品与心境卡有故事 | 图鉴、升星、星愿幻阁 |
-| 陪伴不断线 | 想聊就能聊 | Ollama 密语 + 离线回退；bond 亲密随互动增长 |
+| 陪伴不断线 | 想聊就能聊 | Ollama 密语 + 离线回退；bond 亲密随互动增长（密语页入口见 [现行状态](./现行状态.md) §2） |
 | 竖屏可单手 | 手机主线 | 顶栏资源 + 底栏导航，试衣镜优先 |
 
 ## 核心循环
@@ -45,7 +46,7 @@ V2 宪章中的「禁抽卡」仅适用于已归档的可走动小世界方案�
 - 入口唯一：`src/main.tsx` 挂载 `WorldApp`。无 `?legacy` / `?desktop` 双入口；无 `WorldView.tsx`；无 Pixi 运行时依赖。
 - 渲染：React DOM + CSS。舞台立绘 = 角色皮肤帧或 Comfy 套装抠图 + SVG 可穿戴叠加 +（工坊内）骨骼切片预览。
 - 衣橱数据：`src/mobile/world/nikki-wardrobe.ts`；骨骼：`skeleton-system.ts`；抠图与 SVG 叠加：`paper-doll-rig.ts`。
-- 资源解析：`src/mobile/world/remote-assets.ts` + 环境变量 `VITE_ASSET_BASE_URL`（默认局域网小主机 `http://192.168.124.77:8788`）。变量为空时回退仓库 `public/assets` 相对路径。当前**没有**图片加载失败时的自动 onerror 回退。
+- 资源解析：`src/mobile/world/remote-assets.ts` + 环境变量 `VITE_ASSET_BASE_URL`。**默认不连资源库**：变量为空（当前默认）时只用仓库 `public/assets` 相对路径；显式配置且探活成功才走局域网 `/files/...`。当前**没有**图片加载失败时的自动 onerror 回退。
 - 存档：衣橱本地键（如 `wenbebi-nikki-wardrobe-v8`）与世界 bond 存档键并存；新增字段须兼容旧档。
 - Live2D / Spine 仅为未来可选方向，见调研文档；不得当作当前运行时。
 

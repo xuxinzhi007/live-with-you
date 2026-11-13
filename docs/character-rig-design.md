@@ -237,7 +237,7 @@ export const PALETTE_SLOTS = [
 
 用途：AI 出图后叠加比对、人工修图时对齐。**它不是要上线的素材。**
 
-本次已用脚本生成四张实测图（见 [`spark-output/audit/character-rig/`](../spark-output/audit/character-rig/)）：
+本次已用脚本生成四张实测图（见 `spark-output/audit/character-rig/`（原 spark-output 审计已清理））：
 
 | 文件 | 内容 |
 | --- | --- |
@@ -250,9 +250,9 @@ export const PALETTE_SLOTS = [
 > 之后换皮肤也能一键重出。`pose-guide` 里的关节坐标是按剪影**估算**的（假设），
 > 不是从原画里检测出来的骨骼点。
 
-![对位模板：关键点、基线、中心线](../spark-output/audit/character-rig/base-template-390.png)
+对位模板：关键点、基线、中心线（截图已随 spark-output 清理）
 
-![同一基线下的四个姿势](../spark-output/audit/character-rig/pose-families.png)
+同一基线下的四个姿势（截图已随 spark-output 清理）
 
 实测关键值：可见 428×720、脚底 748、中心 380；头（crown→chin）**386px = 身高的 53.6%**，
 即约 **1.87 头身**；最宽处在 35% 高度、421px（含头发与袖子），裙摆约 259px，脚约 165px。
@@ -332,7 +332,7 @@ public/assets/characters/
 | `acc-head` | 70 | 否 | 复用 | 发饰/帽子 |
 | `acc-hand` | 45 | 否 | 复用 | 手持物 |
 
-![部件槽 z 序：z<50 在身后，z≥50 在身前](../spark-output/audit/character-rig/part-slots-390.png)
+部件槽 z 序：z<50 在身后，z≥50 在身前（截图已随 spark-output 清理）
 
 > 这张图只表达**顺序关系**，不表达真实裁切形状。实际部件按各自包围盒裁切（见 9.2），
 > 每件只比自身内容大 10–15%，不是整张 760×760。
@@ -355,7 +355,7 @@ public/assets/characters/
 
 姿势引导图（同一套关节，可直接作为 img2img 参考）：
 
-![关节与骨骼引导](../spark-output/audit/character-rig/pose-guide-390.png)
+关节与骨骼引导（截图已随 spark-output 清理）
 
 生成新姿势时，把「底模剪影 + 关节图 + 目标姿势描述」一起给模型，
 比只给文字更容易保住比例与脚底位置。

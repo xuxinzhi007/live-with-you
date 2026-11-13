@@ -1,0 +1,27 @@
+雯宝动作图过目说明（补充批 brief-v3，2026-11-13，Asia/Shanghai）
+这些是给目视过审的 512×768 白底原图，还没有去做底，也没有替换 public/assets。坐下两张未改。
+
+本轮只补点击和躺下（用户已删掉旧的 *_brief.png 推荐稿）。各出一张后各重试一次，推荐稿取两次里较好的一张。
+
+推荐过目稿（已重建桌面别名）：
+- wenbao_q4_react_brief.png  = 点击第一次（Comfy: wenbao_q4_react_00004_.png）
+  种子 20261113222701，prompt_id 00405108-12ad-4147-bef4-5bab6c0ba3ae
+  动作对：小跳、双手举起、开掌、笑、看着镜头。大眼睛还在，白衣白鞋在。
+  但仍偏 Q 版：头和手比官方站姿母图 / react_00001 参考明显偏大，腿偏短；上衣口袋也不稳定。
+  重试稿 wenbao_q4_react_00005_.png（种子 20261113222801）Q 版更重，而且跳得更高，已弃用。
+  两张都还没达到母图头身比，这一轮不再加种子，请过目决定要不要再收提示词。
+
+- wenbao_q4_sleep_brief.png  = 躺下第一次（Comfy: wenbao_q4_sleep_00004_.png）
+  种子 20261113222703，prompt_id bdf4bb9e-39c7-48e2-aba0-ba05f8dc2929
+  方向对：头在画面右侧，脚在左侧。侧躺蜷卧、闭眼、浅笑、手在脸旁。无闪光、无星星、无 Zzz、无贴纸。
+  但短裤仍偏长、偏松，几乎像九分裤，不如 sleep_00001 的干净长度/版型，也不如母图能露出小腿。
+  重试稿 wenbao_q4_sleep_00005_.png（种子 20261113222803）方向对，但头顶多了 Zzz，短裤仍偏长，已弃用。
+
+未改、请勿覆盖：
+- wenbao_q4_sit_brief.png / wenbao_q4_sit_00002_.png、wenbao_q4_sit_00001_.png（坐下保留稿）
+- wenbao_q4_react_00001_.png、wenbao_q4_sleep_00001_.png：只作头身比 / 干净服装参考，不是本轮过目定稿
+
+原图目录：
+D:\xuxinzhi\ComfyUI_windows_portable_nvidia\ComfyUI_windows_portable\ComfyUI\output\wenbao_qwen_edit_official\
+桌面对照目录：
+C:\Users\ZhuanZ1\Desktop\wenbao_qwen_action_poses\

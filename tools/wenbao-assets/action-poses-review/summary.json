@@ -1,0 +1,171 @@
+[
+  {
+    "name": "react",
+    "seed": 20261113035001,
+    "prefix": "wenbao_qwen_edit_official/wenbao_q4_react",
+    "prompt_text": "Change only the pose to a standing full-body reaction to being lightly tapped. The girl stays on her feet, facing the camera, with a small happy flinch: her shoulders lift slightly and one hand moves up near her chest. Keep the exact same girl and identity from the input image. Keep the same face, short black hair with straight bangs, large brown eyes, and a slight smile. Keep the same clothes: a white short-sleeve T-shirt with a chest pocket, white shorts, and white shoes. Keep a standing full-body view with both feet visible. Keep a plain pure white background. Keep natural anime proportions; do not make chibi, Q-version, or big-head proportions. Do not change the clothes, hairstyle, or character design. Do not crop to a bust or close-up.",
+    "prompt_id": "0fb12998-195e-4cb8-b646-08af50bb7fb5",
+    "elapsed_seconds": 219.28,
+    "status": {
+      "status_str": "success",
+      "completed": true,
+      "messages": [
+        [
+          "execution_start",
+          {
+            "prompt_id": "0fb12998-195e-4cb8-b646-08af50bb7fb5",
+            "timestamp": 1794513244017
+          }
+        ],
+        [
+          "execution_cached",
+          {
+            "nodes": [],
+            "prompt_id": "0fb12998-195e-4cb8-b646-08af50bb7fb5",
+            "timestamp": 1794513244031
+          }
+        ],
+        [
+          "execution_success",
+          {
+            "prompt_id": "0fb12998-195e-4cb8-b646-08af50bb7fb5",
+            "timestamp": 1794513459715
+          }
+        ]
+      ]
+    },
+    "images": [
+      {
+        "filename": "wenbao_q4_react_00001_.png",
+        "subfolder": "wenbao_qwen_edit_official",
+        "type": "output",
+        "node": "13"
+      }
+    ],
+    "output_path": "D:\\xuxinzhi\\ComfyUI_windows_portable_nvidia\\ComfyUI_windows_portable\\ComfyUI\\output\\wenbao_qwen_edit_official\\wenbao_q4_react_00001_.png",
+    "pixel_size": {
+      "width": 512,
+      "height": 768
+    },
+    "desktop_copy": "C:\\Users\\ZhuanZ1\\Desktop\\wenbao_qwen_action_poses\\wenbao_q4_react_00001_.png",
+    "bytes": 291828
+  },
+  {
+    "name": "sit",
+    "seed": 20261113035002,
+    "prefix": "wenbao_qwen_edit_official/wenbao_q4_sit",
+    "prompt_text": "Change only the pose so the girl is sitting on the ground, full body, facing the camera, with both feet clearly visible. She sits naturally with her legs folded in front of her, not standing, and not a cropped bust. Keep the exact same girl and identity from the input image. Keep the same face, short black hair with straight bangs, large brown eyes, and a slight smile. Keep the same clothes: a white short-sleeve T-shirt with a chest pocket, white shorts, and white shoes. Keep a full-body view including the feet. Keep a plain pure white background. Keep natural anime proportions; do not make chibi, Q-version, or big-head proportions. Do not change the clothes, hairstyle, or character design.",
+    "prompt_id": "651b7620-24c0-4d2b-ab72-68db4014b2af",
+    "elapsed_seconds": 94.02,
+    "status": {
+      "status_str": "success",
+      "completed": true,
+      "messages": [
+        [
+          "execution_start",
+          {
+            "prompt_id": "651b7620-24c0-4d2b-ab72-68db4014b2af",
+            "timestamp": 1794513462405
+          }
+        ],
+        [
+          "execution_cached",
+          {
+            "nodes": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "9",
+              "10"
+            ],
+            "prompt_id": "651b7620-24c0-4d2b-ab72-68db4014b2af",
+            "timestamp": 1794513462445
+          }
+        ],
+        [
+          "execution_success",
+          {
+            "prompt_id": "651b7620-24c0-4d2b-ab72-68db4014b2af",
+            "timestamp": 1794513554268
+          }
+        ]
+      ]
+    },
+    "images": [
+      {
+        "filename": "wenbao_q4_sit_00001_.png",
+        "subfolder": "wenbao_qwen_edit_official",
+        "type": "output",
+        "node": "13"
+      }
+    ],
+    "output_path": "D:\\xuxinzhi\\ComfyUI_windows_portable_nvidia\\ComfyUI_windows_portable\\ComfyUI\\output\\wenbao_qwen_edit_official\\wenbao_q4_sit_00001_.png",
+    "pixel_size": {
+      "width": 512,
+      "height": 768
+    },
+    "desktop_copy": "C:\\Users\\ZhuanZ1\\Desktop\\wenbao_qwen_action_poses\\wenbao_q4_sit_00001_.png",
+    "bytes": 369306
+  },
+  {
+    "name": "sleep",
+    "seed": 20261113035003,
+    "prefix": "wenbao_qwen_edit_official/wenbao_q4_sleep",
+    "prompt_text": "Change only the pose so the girl is lying down asleep on the ground, full body visible from head to feet, on a plain pure white background. She is resting on her side in a natural sleeping pose, not standing, and not a curled-up close-up of the head. Keep the exact same girl and identity from the input image. Keep the same face, short black hair with straight bangs, large brown eyes, and a slight smile. Keep the same clothes: a white short-sleeve T-shirt with a chest pocket, white shorts, and white shoes. Keep the entire body in frame, including both feet. Keep natural anime proportions; do not make chibi, Q-version, or big-head proportions. Do not change the clothes, hairstyle, or character design.",
+    "prompt_id": "a8e25de1-e76a-4898-8d01-4bebbff87ef0",
+    "elapsed_seconds": 93.49,
+    "status": {
+      "status_str": "success",
+      "completed": true,
+      "messages": [
+        [
+          "execution_start",
+          {
+            "prompt_id": "a8e25de1-e76a-4898-8d01-4bebbff87ef0",
+            "timestamp": 1794513556452
+          }
+        ],
+        [
+          "execution_cached",
+          {
+            "nodes": [
+              "3",
+              "4",
+              "7",
+              "9",
+              "10"
+            ],
+            "prompt_id": "a8e25de1-e76a-4898-8d01-4bebbff87ef0",
+            "timestamp": 1794513556468
+          }
+        ],
+        [
+          "execution_success",
+          {
+            "prompt_id": "a8e25de1-e76a-4898-8d01-4bebbff87ef0",
+            "timestamp": 1794513648046
+          }
+        ]
+      ]
+    },
+    "images": [
+      {
+        "filename": "wenbao_q4_sleep_00001_.png",
+        "subfolder": "wenbao_qwen_edit_official",
+        "type": "output",
+        "node": "13"
+      }
+    ],
+    "output_path": "D:\\xuxinzhi\\ComfyUI_windows_portable_nvidia\\ComfyUI_windows_portable\\ComfyUI\\output\\wenbao_qwen_edit_official\\wenbao_q4_sleep_00001_.png",
+    "pixel_size": {
+      "width": 512,
+      "height": 768
+    },
+    "desktop_copy": "C:\\Users\\ZhuanZ1\\Desktop\\wenbao_qwen_action_poses\\wenbao_q4_sleep_00001_.png",
+    "bytes": 303180
+  }
+]

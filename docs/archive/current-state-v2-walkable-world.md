@@ -1,6 +1,6 @@
 # 《雯宝》当前实现与下一步（V2）
 
-> 依据：[产品宪章 V2](./product-charter.md)
+> 依据：[产品宪章 V2](../product-charter.md)
 > 状态：V2「可走动的单主角小世界」已落地并通过 390×844 自动化验收；内容深度与真机回归待补。
 
 ## 1. 现在是什么
@@ -49,9 +49,9 @@ node --experimental-strip-types --test tests/mobile-engine.test.mjs   # Node ≥
 
 验收证据：
 
-- [spark-output/audit/v2-390x844](../spark-output/audit/v2-390x844/README.md)：12 项玩法检查全部通过；360/390/430 三档 HUD 与角色不重叠；控制台 0 错误。
-- [spark-output/audit/v2-character-skins](../spark-output/audit/v2-character-skins/README.md)：14 项皮肤检查全部通过；默认白色、切换小鲸鱼、刷新保留、点角色仍可交互。
-- [spark-output/audit/v2-character-poses](../spark-output/audit/v2-character-poses/README.md)：11 项动作检查全部通过；呼吸在动、坐下/躺下/蹲下姿势互不混淆、换皮后缺帧会回落、减少动态时完全静止。
+- spark-output/audit/v2-390x844（原 spark-output 审计已清理）：12 项玩法检查全部通过；360/390/430 三档 HUD 与角色不重叠；控制台 0 错误。
+- spark-output/audit/v2-character-skins（原 spark-output 审计已清理）：14 项皮肤检查全部通过；默认白色、切换小鲸鱼、刷新保留、点角色仍可交互。
+- spark-output/audit/v2-character-poses（原 spark-output 审计已清理）：11 项动作检查全部通过；呼吸在动、坐下/躺下/蹲下姿势互不混淆、换皮后缺帧会回落、减少动态时完全静止。
 
 ## 3. 仍存在的差距
 

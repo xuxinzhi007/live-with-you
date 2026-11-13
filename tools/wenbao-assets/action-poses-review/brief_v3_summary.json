@@ -1,0 +1,78 @@
+[
+  {
+    "set": "brief-v3",
+    "name": "react",
+    "tag": "try1",
+    "seed": 20261113222701,
+    "prefix": "wenbao_qwen_edit_official/wenbao_q4_react",
+    "prompt_text": "Keep the same girl and the same outfit: white t-shirt, white shorts, white shoes. Normal non-chibi body proportions, full body, front view, looking at the viewer, simple white background. Change only the pose: a short happy reaction, a small hop or just lifted heels (not a high jump), both arms raised with open hands, a bright smile. Keep the exact same head-to-body ratio as the standing input image; do not enlarge the head or hands; hands must stay naturally sized, not oversized cute hands. Keep her large brown eyes visible. Do not change her face, hair, or clothes. No chibi, no large head, no Q-version or super-deformed proportions.",
+    "prompt_id": "00405108-12ad-4147-bef4-5bab6c0ba3ae",
+    "elapsed_seconds": 123.71,
+    "finished_local": "2026-11-13 22:35:22 +0800",
+    "output_path": "D:\\xuxinzhi\\ComfyUI_windows_portable_nvidia\\ComfyUI_windows_portable\\ComfyUI\\output\\wenbao_qwen_edit_official\\wenbao_q4_react_00004_.png",
+    "desktop_copy": "C:\\Users\\ZhuanZ1\\Desktop\\wenbao_qwen_action_poses\\wenbao_q4_react_00004_.png",
+    "pixel_size": {
+      "width": 512,
+      "height": 768
+    },
+    "bytes": 318769,
+    "filename": "wenbao_q4_react_00004_.png"
+  },
+  {
+    "set": "brief-v3",
+    "name": "sleep",
+    "tag": "try1",
+    "seed": 20261113222703,
+    "prefix": "wenbao_qwen_edit_official/wenbao_q4_sleep",
+    "prompt_text": "Keep the same girl and the same outfit: white t-shirt, white shorts, white shoes. Normal non-chibi body proportions, full body, simple white background. Change only the pose: lying on her side in a curled resting pose, eyes closed, a gentle smile, hands near her cheek; head toward the right of the frame, feet toward the left. The character's head must be on the right side of the picture, and her feet must be on the left side. The lying figure should be clearly shorter than the standing pose. Keep the white shorts clean, fitted, and the same length as the standing input, not baggy or long like cropped pants. No extra sparkles, stars, glitter, Zzz, stickers, or sleep symbols. Keep the same head-to-body ratio as the input image. Do not change her face, hair, or clothes. No chibi, no large head, no Q-version proportions.",
+    "prompt_id": "bdf4bb9e-39c7-48e2-aba0-ba05f8dc2929",
+    "elapsed_seconds": 90.3,
+    "finished_local": "2026-11-13 22:36:53 +0800",
+    "output_path": "D:\\xuxinzhi\\ComfyUI_windows_portable_nvidia\\ComfyUI_windows_portable\\ComfyUI\\output\\wenbao_qwen_edit_official\\wenbao_q4_sleep_00004_.png",
+    "desktop_copy": "C:\\Users\\ZhuanZ1\\Desktop\\wenbao_qwen_action_poses\\wenbao_q4_sleep_00004_.png",
+    "pixel_size": {
+      "width": 512,
+      "height": 768
+    },
+    "bytes": 269982,
+    "filename": "wenbao_q4_sleep_00004_.png"
+  },
+  {
+    "set": "brief-v3",
+    "name": "react",
+    "tag": "retry",
+    "seed": 20261113222801,
+    "prefix": "wenbao_qwen_edit_official/wenbao_q4_react",
+    "prompt_text": "Keep the same girl and the same outfit: white t-shirt, white shorts, white shoes. Normal non-chibi body proportions, full body, front view, looking at the viewer, simple white background. Change only the pose: a short happy reaction, a small hop or just lifted heels (not a high jump), both arms raised with open hands, a bright smile. Keep the exact same head-to-body ratio as the standing input image; do not enlarge the head or hands; hands must stay naturally sized, not oversized cute hands. Keep her large brown eyes visible. Do not change her face, hair, or clothes. No chibi, no large head, no Q-version or super-deformed proportions.",
+    "prompt_id": "9390f180-d0e7-45a5-8495-52523cd7ca68",
+    "elapsed_seconds": 120.5,
+    "finished_local": "2026-11-13 22:39:38 +0800",
+    "output_path": "D:\\xuxinzhi\\ComfyUI_windows_portable_nvidia\\ComfyUI_windows_portable\\ComfyUI\\output\\wenbao_qwen_edit_official\\wenbao_q4_react_00005_.png",
+    "desktop_copy": "C:\\Users\\ZhuanZ1\\Desktop\\wenbao_qwen_action_poses\\wenbao_q4_react_00005_.png",
+    "pixel_size": {
+      "width": 512,
+      "height": 768
+    },
+    "bytes": 335788,
+    "filename": "wenbao_q4_react_00005_.png"
+  },
+  {
+    "set": "brief-v3",
+    "name": "sleep",
+    "tag": "retry",
+    "seed": 20261113222803,
+    "prefix": "wenbao_qwen_edit_official/wenbao_q4_sleep",
+    "prompt_text": "Keep the same girl and the same outfit: white t-shirt, white shorts, white shoes. Normal non-chibi body proportions, full body, simple white background. Change only the pose: lying on her side in a curled resting pose, eyes closed, a gentle smile, hands near her cheek; head toward the right of the frame, feet toward the left. The character's head must be on the right side of the picture, and her feet must be on the left side. The lying figure should be clearly shorter than the standing pose. Keep the white shorts clean, fitted, and the same length as the standing input, not baggy or long like cropped pants. No extra sparkles, stars, glitter, Zzz, stickers, or sleep symbols. Keep the same head-to-body ratio as the input image. Do not change her face, hair, or clothes. No chibi, no large head, no Q-version proportions.",
+    "prompt_id": "65b25ec0-4bcd-49d5-a579-d60286ea72dd",
+    "elapsed_seconds": 66.41,
+    "finished_local": "2026-11-13 22:40:45 +0800",
+    "output_path": "D:\\xuxinzhi\\ComfyUI_windows_portable_nvidia\\ComfyUI_windows_portable\\ComfyUI\\output\\wenbao_qwen_edit_official\\wenbao_q4_sleep_00005_.png",
+    "desktop_copy": "C:\\Users\\ZhuanZ1\\Desktop\\wenbao_qwen_action_poses\\wenbao_q4_sleep_00005_.png",
+    "pixel_size": {
+      "width": 512,
+      "height": 768
+    },
+    "bytes": 259721,
+    "filename": "wenbao_q4_sleep_00005_.png"
+  }
+]

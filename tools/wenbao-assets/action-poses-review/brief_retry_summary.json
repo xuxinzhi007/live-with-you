@@ -1,0 +1,36 @@
+[
+  {
+    "set": "brief-aligned-retry",
+    "name": "react",
+    "seed": 20261113040701,
+    "prefix": "wenbao_qwen_edit_official/wenbao_q4_react",
+    "prompt_text": "Keep the same girl and the same outfit: white t-shirt, white shorts, white shoes. Normal non-chibi body proportions, full body, front view, looking at the viewer, simple white background. Change only the pose: a short happy reaction, a small hop or lifted heels, both arms raised with open hands, a bright smile. Keep the same head-to-body ratio as the input image; do not enlarge the head or hands. Keep her large brown eyes visible. Do not change her face, hair, or clothes. No chibi, no large head, no Q-version proportions.",
+    "prompt_id": "6a22d2ae-24e9-47b0-b290-ef3f5e15c354",
+    "elapsed_seconds": 90.37,
+    "output_path": "D:\\xuxinzhi\\ComfyUI_windows_portable_nvidia\\ComfyUI_windows_portable\\ComfyUI\\output\\wenbao_qwen_edit_official\\wenbao_q4_react_00003_.png",
+    "desktop_copy": "C:\\Users\\ZhuanZ1\\Desktop\\wenbao_qwen_action_poses\\wenbao_q4_react_00003_.png",
+    "desktop_alias": "C:\\Users\\ZhuanZ1\\Desktop\\wenbao_qwen_action_poses\\wenbao_q4_react_brief.png",
+    "pixel_size": {
+      "width": 512,
+      "height": 768
+    },
+    "bytes": 334288
+  },
+  {
+    "set": "brief-aligned-retry",
+    "name": "sleep",
+    "seed": 20261113040703,
+    "prefix": "wenbao_qwen_edit_official/wenbao_q4_sleep",
+    "prompt_text": "Keep the same girl and the same outfit: white t-shirt, white shorts, white shoes. Normal non-chibi body proportions, full body, simple white background. Change only the pose: lying on her side in a curled resting pose, eyes closed, a gentle smile, hands near her cheek; head toward the right of the frame, feet toward the left. The character's head must be on the right side of the picture, and her feet must be on the left side. The lying figure should be clearly shorter than the standing pose. No extra sparkles or sleep symbols, no stars or glitter. Keep the same head-to-body ratio as the input image. Do not change her face, hair, or clothes. No chibi, no large head, no Q-version proportions.",
+    "prompt_id": "c582808d-84c5-4fb9-9e40-0fc9e705817f",
+    "elapsed_seconds": 96.39,
+    "output_path": "D:\\xuxinzhi\\ComfyUI_windows_portable_nvidia\\ComfyUI_windows_portable\\ComfyUI\\output\\wenbao_qwen_edit_official\\wenbao_q4_sleep_00003_.png",
+    "desktop_copy": "C:\\Users\\ZhuanZ1\\Desktop\\wenbao_qwen_action_poses\\wenbao_q4_sleep_00003_.png",
+    "desktop_alias": "C:\\Users\\ZhuanZ1\\Desktop\\wenbao_qwen_action_poses\\wenbao_q4_sleep_brief.png",
+    "pixel_size": {
+      "width": 512,
+      "height": 768
+    },
+    "bytes": 253977
+  }
+]

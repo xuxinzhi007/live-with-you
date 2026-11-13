@@ -77,8 +77,8 @@ README.md            写「Pixi 舞台」      代码已经删了 Pixi
 ┌────────────────────────────────────────────────────────────┐
 │  入口层   src/main.tsx → render(<WorldApp />)               │
 ├────────────────────────────────────────────────────────────┤
-│  路由层   WorldApp.tsx (1736 行)                            │
-│           9 屏条件渲染 + 35 个 useState + 全部 handler       │
+│  路由层   WorldApp.tsx (1705 行)                            │
+│           9 屏条件渲染 + 6 个分层 store + 全部 handler      │
 │           title / lobby / world / wardrobe / rig /          │
 │           stages / pavilion / codex / chat                  │
 ├──────────────┬──────────────┬──────────────┬───────────────┤
@@ -152,6 +152,15 @@ SavedNikkiState {
   dressSkeletons: AllDressSkeletons        // 每套衣服的骨骼校准
 }
 ```
+
+### 2.4 扩展约定
+
+- 规则模块（`world/*`）不写 DOM；`WorldApp` 不内联复制衣橱数值规则。
+- 新增屏幕走 `store/useScreenState.ts` 的 `GameScreen`，不要在 `WorldApp` 里再声明一份同名类型。
+- 资源：`VITE_ASSET_BASE_URL` 非空且探活成功才走 `/files/...`，否则本地 `public`。分类映射在 `remote-assets.ts` 与 `public/assets/manifest.json`。
+- 可穿戴舞台叠加以 `paper-doll-rig.ts` 的 SVG 为准；图鉴卡面用 `nikki/item-*.png`。
+- 角色皮肤：`original` / `maid`，帧 760×760、脚底 y=748（`tools/character/spec.json`）。
+- 存档：衣橱 `wenbebi-nikki-wardrobe-v8`（兼容 v4–v7）；世界/bond `wenbebi-mobile-game-v2`；新增字段只补默认值，不删旧键。
 
 ---
 
@@ -342,7 +351,10 @@ SavedNikkiState {
 | pavilion/rig 未拆 | 高 | 拖拽动画状态耦合 | 需先统一动画状态 |
 | `latest` 版本已锁但无 CI | 中 | 本地通过 ≠ 远端通过 | 加 GitHub Actions |
 | lint 46 个问题 | 中 | 历史遗留 | 随拆分逐步清 |
-| 文档可能再次脱节 | 中 | 方向调整后文档没同步 | 方向调整时必须改文档 |
+| 文档可能再次脱节 | 中 | 方向调整后文档没同步 | 方向调整时必须改文档；`node tools/audit/docs-links.mjs --verify-claims` 检查 6 条口径 |
+| 密语页无入口 | 高 | `ChatScreen` 与分支都在，但全仓库无 `setScreen("chat")` | 加导航项或删屏，二选一 |
+| `sit` / `sleep` 帧未接 | 中 | `skins.ts` 有帧、`WorldApp` 只渲染 `react`，换图看不到 | 先补坐下/躺下交互入口 |
+| 裁缝铺仅 dev + dataURL 落 localStorage | 高 | 生产点「绘制」404；单图 3–4MB 会顶爆 5MB 配额 | 加 `DEV` 保护，图改存 IndexedDB / 服务端 |
 | 无 E2E 测试 | 低 | 核心流程没保障 | Playwright 排期 |
 
 ---
